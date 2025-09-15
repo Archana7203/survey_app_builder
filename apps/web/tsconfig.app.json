@@ -21,7 +21,11 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Added for testing */
+    "types": ["vitest/globals", "node", "react"]
   },
   "include": ["src"]
 }
+
