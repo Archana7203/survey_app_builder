@@ -8,7 +8,8 @@
     "dev:web": "npm --workspace apps/web run dev",
     "dev:api": "npm --workspace apps/api run dev",
     "lint": "eslint \"**/*.{ts,tsx}\"",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "heroku-postbuild": "node scripts/heroku-postbuild.js"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.39.0",
