@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build
+dist/
+dist-ssr/
+build/
+*.local
+
+# Testing
+coverage/
+**/coverage/
+test-results/
+**/test-results/
+tests/**/temp/
+tests/**/__snapshots__/
+**/tests/e2e/videos/
+**/tests/e2e/screenshots/
+**/tests/unit/coverage/
+playwright-report/
+**/e2e/screenshots/
+**/e2e/videos/
+
+# Environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Cache and temp
+.cache
+.temp
+**/.cache
+**/.temp
+.eslintcache
+
+# Storybook
+*storybook.log
+storybook-static
+
+# MongoDB
+**/data/db/
+
+# Build cache
+.turbo
+.next
+.nuxt
+.output

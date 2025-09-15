@@ -1,0 +1,15 @@
+{
+  "autoSaveInterval": 60000,
+  "pagination": {
+    "surveys": {
+      "defaultLimit": 5,
+      "maxLimit": 5,
+      "pageSize": 5
+    },
+    "respondentProgress": {
+      "defaultLimit": 5,
+      "maxLimit": 5,
+      "pageSize": 5
+    }
+  }
+}

@@ -1,0 +1,114 @@
+@layer base {
+  /* Base dark mode styles - apply only inside DarkThemeWrapper */
+  .dark-mode-enabled.dark {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  /* Dark mode styles - scoped to DarkThemeWrapper */
+  .dark-mode-enabled.dark {
+    /* Base colors */
+    background-color: #111827;
+    color: white;
+  }
+
+  /* Background colors */
+  .dark-mode-enabled.dark .bg-gray-50,
+  .dark-mode-enabled.dark .bg-gray-100 {
+    background-color: #111827;
+  }
+
+  /* Do not override explicit white backgrounds for survey question cards */
+  .dark-mode-enabled.dark .question-card,
+  .dark-mode-enabled.dark .question-card.bg-white {
+    background-color: #ffffff !important;
+    color: #000000;
+  }
+
+  /* Keep default override for general white backgrounds elsewhere */
+  .dark-mode-enabled.dark .bg-white:not(.question-card) {
+    background-color: #1f2937;
+  }
+
+  /* Text colors */
+  .dark-mode-enabled.dark .text-gray-900,
+  .dark-mode-enabled.dark .text-gray-800 {
+    color: white;
+  }
+
+  .dark-mode-enabled.dark .text-gray-700,
+  .dark-mode-enabled.dark .text-gray-600,
+  .dark-mode-enabled.dark .text-gray-500 {
+    color: #d1d5db;
+  }
+
+  /* Border colors */
+  .dark-mode-enabled.dark .border-gray-200,
+  .dark-mode-enabled.dark .border-gray-300 {
+    border-color: #374151;
+  }
+
+  /* Hover states */
+  .dark-mode-enabled.dark .hover\:bg-gray-100:hover,
+  .dark-mode-enabled.dark .hover\:bg-gray-50:hover {
+    background-color: #374151;
+  }
+
+  /* Form elements */
+  .dark-mode-enabled.dark input,
+  .dark-mode-enabled.dark select,
+  .dark-mode-enabled.dark textarea {
+    background-color: #1f2937;
+    color: white;
+    border-color: #4b5563;
+  }
+
+  .dark-mode-enabled.dark input::placeholder,
+  .dark-mode-enabled.dark textarea::placeholder {
+    color: black;
+  }
+
+  /* Navigation */
+  .dark-mode-enabled.dark .nav-link {
+    color: #d1d5db;
+  }
+
+  .dark-mode-enabled.dark .nav-link:hover {
+    background-color: #374151;
+  }
+
+  .dark-mode-enabled.dark .nav-link.active {
+    background-color: #3b82f6;
+    color: white;
+  }
+
+  /* Cards - exclude survey question cards */
+  .dark-mode-enabled.dark .dashboard-card {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: white;
+  }
+
+  /* Star Rating Components - ensure proper colors in dark mode */
+  .dark-mode-enabled.dark .star-rating button {
+    color: inherit;
+  }
+
+  .dark-mode-enabled.dark .star-rating button[style*="color: #f59e0b"] {
+    color: #f59e0b !important;
+  }
+
+  .dark-mode-enabled.dark .star-rating button[style*="color: #9ca3af"] {
+    color: #9ca3af !important;
+  }
+
+  /* Ensure CSS variables work properly in dark mode */
+  .dark-mode-enabled.dark {
+    --color-primary: #60a5fa;
+    --color-primary-hover: #3b82f6;
+    --color-secondary: #374151;
+    --color-secondary-border: #60a5fa;
+    --color-accent-button: #818cf8;
+  }
+}

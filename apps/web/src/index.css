@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+:root {
+  font-size: 17px;
+  
+  /* Light theme colors */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-secondary: #f1f5f9;
+  --color-secondary-border: #3b82f6;
+  --color-accent-button: #6366f1;
+  --color-success: #10b981;
+  --color-warning: #fbbf24;
+  --color-error: #ef4444;
+}
+
+@media (min-width: 768px) {
+  :root {
+    font-size: 18px;
+  }
+}
+
+/* Dark mode support */
+.dark {
+  --color-bg-primary: #111827;
+  --color-bg-secondary: #1f2937;
+  --color-text-primary: #f9fafb;
+  --color-text-secondary: #d1d5db;
+  --color-border: #374151;
+  --color-accent: #60a5fa;
+  --color-accent-hover: #3b82f6;
+  --color-primary: #60a5fa;
+  --color-primary-hover: #3b82f6;
+  --color-secondary: #374151;
+  --color-secondary-border: #60a5fa;
+  --color-accent-button: #818cf8;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+}
+
+/* Apply colors to common elements */
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Dark mode utility classes */
+.dark .dark\:bg-gray-900 {
+  background-color: var(--color-bg-primary);
+}
+
+.dark .dark\:text-white {
+  color: var(--color-text-primary);
+}
+
+.dark .dark\:bg-gray-800 {
+  background-color: var(--color-bg-secondary);
+}
+
+.dark .dark\:text-gray-300 {
+  color: var(--color-text-primary);
+}
+
+.dark .dark\:border-gray-700 {
+  border-color: var(--color-border);
+}
+
+/* Ensure smooth transitions */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Star Rating - Force yellow colors */
+.star-rating button[style*="color: #f59e0b"] {
+  color: #f59e0b !important;
+}
+
+.star-rating button[style*="color: #9ca3af"] {
+  color: #9ca3af !important;
+}
+
+/* Ensure stars are visible in all themes */
+.star-rating button {
+  color: inherit;
+}
+
+/* Star color classes */
+.star-filled {
+  color: #f59e0b !important;
+}
+
+.star-unfilled {
+  color: #9ca3af !important;
+}
+
+/* Remove all focus rings and outlines from buttons */
+button:focus,
+button:focus-visible,
+button:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  ring: none !important;
+}
+
+/* Ensure no focus rings on any button elements */
+button {
+  outline: none !important;
+}
+
+/* Remove focus rings from all interactive elements */
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}

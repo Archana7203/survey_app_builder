@@ -1,0 +1,12 @@
+// Helper function to build full API URLs
+export function buildApiUrl(endpoint: string): string {
+  // In development, use relative URLs which will go through Vite proxy
+  // In production, you might want to use an absolute URL
+  if (import.meta.env.DEV) {
+    return endpoint;
+  }
+  
+  // For production, you can configure the API base URL
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  return `${apiBaseUrl}${endpoint}`;
+}

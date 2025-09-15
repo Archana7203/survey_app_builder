@@ -1,0 +1,48 @@
+[
+  {
+    "id": "customer-feedback",
+    "title": "Customer Feedback Survey",
+    "description": "Collect feedback from your customers to improve your products and services",
+    "category": "Business",
+    "thumbnail": "📊",
+    "estimatedTime": "5 min",
+    "pages": [
+      {
+        "questions": [
+          {
+            "id": "satisfaction",
+            "type": "ratingStar",
+            "title": "How satisfied are you with our product/service?",
+            "description": "Please rate your overall satisfaction",
+            "required": true,
+            "settings": {
+              "maxRating": 5
+            }
+          },
+          {
+            "id": "recommend",
+            "type": "singleChoice",
+            "title": "Would you recommend us to others?",
+            "description": "Please select your answer",
+            "required": true,
+            "options": [
+              { "id": "definitely", "text": "Definitely yes" },
+              { "id": "probably", "text": "Probably yes" },
+              { "id": "maybe", "text": "Maybe" },
+              { "id": "probably-not", "text": "Probably not" },
+              { "id": "definitely-not", "text": "Definitely not" }
+            ]
+          },
+          {
+            "id": "improvements",
+            "type": "textLong",
+            "title": "What could we improve?",
+            "description": "Please share your suggestions for improvement",
+            "required": false
+          }
+        ]
+      }
+    ]
+  }
+]
+
