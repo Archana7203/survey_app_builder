@@ -3,6 +3,11 @@
   "workspaces": [
     "apps/*"
   ],
+  "engines": {
+  "node": "18.x",
+  "npm": "9.x"
+},
+
   "scripts": {
     "dev": "concurrently -k \"npm:dev:*\"",
     "dev:web": "npm --workspace apps/web run dev",

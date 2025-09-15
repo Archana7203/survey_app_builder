@@ -18,9 +18,12 @@ dotenv.config();
 
 const app = express();
 const server = createServer(app);
+
+// Use env-based CORS (comma-separated URLs), falls back to allowing same-origin
+const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: allowedOrigins.length ? allowedOrigins : undefined,
     credentials: true,
   },
 });
@@ -41,7 +44,7 @@ mongoose.connect(mongoUri)
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'], // Frontend URLs
+  origin: allowedOrigins.length ? allowedOrigins : undefined,
   credentials: true,
 }));
 app.use(express.json());
@@ -80,6 +83,14 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
+});
+
+// Serve React build (single-app deployment)
+import path from 'path';
+const webDist = path.resolve(__dirname, '../../web/dist');
+app.use(express.static(webDist));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(webDist, 'index.html'));
 });
 
 server.listen(PORT, () => {

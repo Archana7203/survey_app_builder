@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://changes-screen-employee-varying.trycloudflare.com',  
+        target: 'https://problem-thomas-caribbean-lanka.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
