@@ -15,7 +15,7 @@ export default defineConfig({
       },
     },
     allowedHosts: [
-      'clearing-entertaining-quit-dicke.trycloudflare.com' 
+      'medline-comparison-carry-freeware.trycloudflare.com' 
     ],
   },
 });

@@ -70,3 +70,5 @@ storybook-static
 .next
 .nuxt
 .output
+
+__tests__/
