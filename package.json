@@ -4,10 +4,9 @@
     "apps/*"
   ],
   "engines": {
-  "node": "18.x",
-  "npm": "9.x"
-},
-
+    "node": "18.x",
+    "npm": "9.x"
+  },
   "scripts": {
     "dev": "concurrently -k \"npm:dev:*\"",
     "dev:web": "npm --workspace apps/web run dev",
@@ -20,12 +19,8 @@
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "concurrently": "^8.2.2",
+    "copyfiles": "^2.4.1",
     "eslint": "^9.32.0",
     "prettier": "^3.6.2"
   }
 }
-
-
-
-
-
