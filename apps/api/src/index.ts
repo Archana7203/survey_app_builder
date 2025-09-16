@@ -103,7 +103,7 @@ io.on('connection', (socket) => {
 // --- Serve React frontend (if bundled together) ---
 const webDist = path.resolve(__dirname, '../../web/dist');
 app.use(express.static(webDist));
-app.get('/{*any}', (_req, res) => {
+app.get('/*', (_req, res) => {
   res.sendFile(path.join(webDist, 'index.html'));
 });
 
