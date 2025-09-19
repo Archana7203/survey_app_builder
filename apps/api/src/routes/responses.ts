@@ -2,19 +2,29 @@ import express from 'express';
 import { Response } from '../models/Response';
 import { Survey } from '../models/Survey';
 import { validateRespondent, RespondentRequest } from '../middleware/validateRespondent';
+import { requireAuth, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
-// GET /api/responses - Get all responses for overview/analytics
-router.get('/', async (req, res) => {
+// GET /api/responses - Get responses for overview/analytics scoped to current user's surveys
+router.get('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const responses = await Response.find()
+    // Get IDs of surveys created by current user
+    const userSurveyIds = await Survey.find({ createdBy: req.user!._id }).distinct('_id');
+
+    if (userSurveyIds.length === 0) {
+      return res.json({ responses: [], totalResponses: 0, completedResponses: 0, recentResponses: [] });
+    }
+
+    const filter = { survey: { $in: userSurveyIds } } as const;
+
+    const responses = await Response.find(filter)
       .populate('survey', 'title status')
       .sort({ createdAt: -1 })
       .limit(50); // Limit to recent responses for overview
-    
-    const totalResponses = await Response.countDocuments();
-    const completedResponses = await Response.countDocuments({ status: 'Completed' });
+
+    const totalResponses = await Response.countDocuments(filter);
+    const completedResponses = await Response.countDocuments({ ...filter, status: 'Completed' });
     
     res.json({
       responses,
