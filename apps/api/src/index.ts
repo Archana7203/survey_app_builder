@@ -35,7 +35,7 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3001;
-const mongoUri = process.env.MONGO_URI;
+const mongoUri = process.env.MONGODB_URI;
 
 // --- Connect to MongoDB ---
 if (!mongoUri) {
@@ -104,8 +104,9 @@ io.on('connection', (socket) => {
 const webDist = path.resolve(__dirname, '../../web/dist');
 app.use(express.static(webDist));
 app.get('/{*any}', (_req, res) => {
-  res.sendFile(path.join(webDist, 'index.html'));
+res.sendFile(path.join(webDist, 'index.html'));
 });
+
 
 // --- Start server ---
 server.listen(PORT, () => {
