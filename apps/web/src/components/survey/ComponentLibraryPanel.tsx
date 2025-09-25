@@ -2,14 +2,14 @@ import { useDraggable } from '@dnd-kit/core';
 import Card from '../ui/Card';
 
 interface QuestionType {
-  type: string;
-  name: string;
-  description: string;
-  icon: string;
-  category: string;
+  readonly type: string;
+  readonly name: string;
+  readonly description: string;
+  readonly icon: string;
+  readonly category: string;
 }
 
-function DraggableQuestionType({ questionType, disabled = false }: { questionType: QuestionType; disabled?: boolean }) {
+function DraggableQuestionType({ questionType, disabled = false }: { readonly questionType: QuestionType; readonly disabled?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `new-${questionType.type}`,
     data: {
@@ -57,8 +57,8 @@ function DraggableQuestionType({ questionType, disabled = false }: { questionTyp
 }
 
 interface ComponentLibraryPanelProps {
-  questionTypes: QuestionType[];
-  disabled?: boolean;
+  readonly questionTypes: QuestionType[];
+  readonly disabled?: boolean;
 }
 
 export default function ComponentLibraryPanel({ 

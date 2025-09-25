@@ -27,11 +27,11 @@ interface Survey {
 }
 
 interface InspectorPanelProps {
-  selectedQuestion: Question | null;
-  survey: Survey;
-  onSurveyUpdate: (updates: Partial<Survey>) => void;
-  onQuestionUpdate: (questionId: string, updates: Partial<Question>) => void;
-  onEditQuestion: (question: Question) => void;
+  readonly selectedQuestion: Question | null;
+  readonly survey: Survey;
+  readonly onSurveyUpdate: (updates: Partial<Survey>) => void;
+  readonly onQuestionUpdate: (questionId: string, updates: Partial<Question>) => void;
+  readonly onEditQuestion: (question: Question) => void;
 }
 
 function QuestionInspector({ 
@@ -39,9 +39,9 @@ function QuestionInspector({
   onUpdate, 
   onEdit 
 }: { 
-  question: Question; 
-  onUpdate: (updates: Partial<Question>) => void;
-  onEdit: (question: Question) => void;
+  readonly question: Question; 
+  readonly onUpdate: (updates: Partial<Question>) => void;
+  readonly onEdit: (question: Question) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -53,7 +53,7 @@ function QuestionInspector({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => { try { onEdit(question); } catch (err) { console.error('Callback error'); } }}
+          onClick={() => onEdit(question)}
           className="text-xs text-blue-600 dark:text-blue-400"
         >
           Advanced Settings →
@@ -65,14 +65,14 @@ function QuestionInspector({
         <Input
           label="Title"
           value={question.title || ''}
-          onChange={(e) => { try { onUpdate({ title: e.target.value }); } catch (err) { console.error('Callback error'); } }}
+          onChange={(e) => onUpdate({ title: e.target.value })}
           placeholder="Enter question"
         />
 
         <Input
           label="Help Text"
           value={question.description || ''}
-          onChange={(e) => { try { onUpdate({ description: e.target.value }); } catch (err) { console.error('Callback error'); } }}
+          onChange={(e) => onUpdate({ description: e.target.value })} 
           placeholder="Optional help text"
         />
 
@@ -80,7 +80,7 @@ function QuestionInspector({
           <input
             type="checkbox"
             checked={question.required || false}
-            onChange={(e) => { try { onUpdate({ required: e.target.checked }); } catch (err) { console.error('Callback error'); } }}
+            onChange={(e) => onUpdate({ required: e.target.checked })}
             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -92,7 +92,7 @@ function QuestionInspector({
       {/* Type-specific Settings */}
       {(question.type === 'single_choice' || question.type === 'multi_choice' || question.type === 'dropdown') && (
         <div className="space-y-2 pt-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor={`option-0`} className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Options
           </label>
           <div className="space-y-2">
@@ -102,13 +102,12 @@ function QuestionInspector({
                   {index + 1}
                 </div>
                 <Input
+                  id={`option-${index}`}
                   value={option.text}
                   onChange={(e) => {
-                    try {
                       const newOptions = [...(question.options || [])];
                       newOptions[index] = { ...option, text: e.target.value };
                       onUpdate({ options: newOptions });
-                    } catch (err) { console.error('Callback error'); }
                   }}
                   placeholder="Enter option"
                   className="flex-1"
@@ -117,10 +116,8 @@ function QuestionInspector({
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    try {
                       const newOptions = (question.options || []).filter((_, i) => i !== index);
                       onUpdate({ options: newOptions });
-                    } catch (err) { console.error('Callback error'); }
                   }}
                   className="text-gray-400 hover:text-red-500"
                 >
@@ -132,13 +129,11 @@ function QuestionInspector({
               variant="ghost"
               size="sm"
               onClick={() => {
-                try {
                   const newOptions = [...(question.options || []), {
                     id: `opt_${Date.now()}`,
                     text: '',
                   }];
                   onUpdate({ options: newOptions });
-                } catch (err) { console.error('Callback error'); }
               }}
               className="w-full text-[var(--color-primary)] dark:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 dark:hover:bg-[var(--color-primary)]/20"
             >
@@ -150,22 +145,21 @@ function QuestionInspector({
 
       {question.type === 'rating_number' && (
         <div className="space-y-3 pt-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="maxRating" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Number Rating
           </label>
           <Input
+            id="maxRating"
             label="Maximum Rating"
             type="number"
             value={(question.settings?.maxRating as number) || 10}
             onChange={(e) => {
-              try {
-                let maxRating = parseInt(e.target.value);
+                let maxRating = Number.parseInt(e.target.value, 10);
                 // Enforce limit: 1-10 for number ratings
                 maxRating = Math.min(Math.max(maxRating, 1), 10);
                 onUpdate({ 
                   settings: { ...question.settings, maxRating }
                 });
-              } catch (err) { console.error('Callback error'); }
             }}
             min={1}
             max={10}
@@ -175,22 +169,21 @@ function QuestionInspector({
 
       {question.type === 'rating_star' && (
         <div className="space-y-3 pt-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="starRating" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Star Rating
           </label>
           <Input
+            id="starRating"
             label="Number of Stars"
             type="number"
             value={(question.settings?.maxRating as number) || 5}
             onChange={(e) => {
-              try {
-                let maxRating = parseInt(e.target.value);
+                let maxRating = Number.parseInt(e.target.value, 10);
                 // Enforce limit: 1-10 for star ratings
                 maxRating = Math.min(Math.max(maxRating, 1), 10);
                 onUpdate({ 
                   settings: { ...question.settings, maxRating }
                 });
-              } catch (err) { console.error('Callback error'); }
             }}
             min={1}
             max={10}
@@ -200,22 +193,21 @@ function QuestionInspector({
 
       {question.type === 'ratingSmiley' && (
         <div className="space-y-3 pt-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor='smileyRating' className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Smiley Rating
           </label>
           <Input
+            id="smileyRating"
             label="Number of Smileys"
             type="number"
             value={(question.settings?.maxRating as number) || 5}
             onChange={(e) => {
-              try {
-                let maxRating = parseInt(e.target.value);
+                let maxRating = Number.parseInt(e.target.value, 10);
                 // Enforce limit: 3-5 for smiley ratings
                 maxRating = Math.min(Math.max(maxRating, 3), 5);
                 onUpdate({ 
                   settings: { ...question.settings, maxRating }
                 });
-              } catch (err) { console.error('Callback error'); }
             }}
             min={3}
             max={5}
@@ -235,8 +227,8 @@ function GlobalInspector({
   survey, 
   onUpdate 
 }: { 
-  survey: Survey; 
-  onUpdate: (updates: Partial<Survey>) => void;
+  readonly survey: Survey; 
+  readonly onUpdate: (updates: Partial<Survey>) => void;
 }) {
   const backgroundColor = survey.backgroundColor || '#ffffff';
   const textColor = survey.textColor || '#1f2937';
@@ -264,7 +256,7 @@ function GlobalInspector({
 
       {/* Theme */}
       <div className="pt-2">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label htmlFor="theme-picker" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Theme
         </label>
         <ThemePicker
@@ -275,11 +267,12 @@ function GlobalInspector({
 
       {/* Colors */}
       <div className="pt-2 space-y-3">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label htmlFor="background-color" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Colors
         </label>
         <div className="grid grid-cols-2 gap-3">
           <Input
+            id="background-color"
             label="Background"
             type="color"
             value={backgroundColor}
@@ -319,9 +312,9 @@ function getContrastRatio(color1: string, color2: string): number {
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
+      r: Number.parseInt(result[1], 16),
+      g: Number.parseInt(result[2], 16),
+      b: Number.parseInt(result[3], 16)
     } : null;
   };
 

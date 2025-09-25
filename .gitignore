@@ -71,4 +71,11 @@ storybook-static
 .nuxt
 .output
 
+# Tests
+__tests__/
+**/__tests__/
+
+
  
+# Ignore test directories
+**/__tests__/**

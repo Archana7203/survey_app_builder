@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import QuestionRenderer, { type QuestionProps as RendererQuestionProps } from '../questions/QuestionRenderer';
@@ -53,10 +53,10 @@ interface Survey {
 }
 
 interface PreviewAreaProps {
-  survey: Survey;
-  previewResponses: Record<string, RendererQuestionProps['value'] | undefined>;
-  onPreviewResponseChange: (questionId: string, value: RendererQuestionProps['value'] | undefined) => void;
-  activePageIndex?: number;
+  readonly survey: Survey;
+  readonly previewResponses: Record<string, RendererQuestionProps['value'] | undefined>;
+  readonly onPreviewResponseChange: (questionId: string, value: RendererQuestionProps['value'] | undefined) => void;
+  readonly activePageIndex?: number;
 }
 
 export default function PreviewArea({
@@ -81,14 +81,26 @@ export default function PreviewArea({
     setPagesVisited([activePageIndex]);
   }, [activePageIndex]);
 
+  // Add unique keys to pages to help React with rendering
+  const pagesWithKeys = useMemo(
+    () => survey.pages.map(page => ({ ...page, _key: crypto.randomUUID() })),
+    [survey.pages]
+  );
+
+  const getPageDotClass = (index: number) => {
+    if (index === currentPageIndex) return 'bg-current';
+    if (pagesVisited.includes(index)) return 'bg-current opacity-40';
+    return 'bg-current opacity-20';
+};
+
   // Helper: extract visibility rules from a question
   const getVisibilityRules = useCallback((question: Question): BranchingRule[] => {
-    const settings = (question.settings || {}) as Record<string, unknown>;
-    const fromSettings = (settings.visibleWhen || (settings.visibility as any)?.rules) as BranchingRule[] | undefined;
+    const settings = (question.settings ?? {}) as Record<string, unknown>;
+    const fromSettings = (settings.visibleWhen ?? (settings.visibility as any)?.rules) as BranchingRule[] | undefined;
     return (
-      question.visibilityRules ||
-      question.visibleWhen ||
-      fromSettings ||
+      question.visibilityRules ??
+      question.visibleWhen ??
+      fromSettings ??
       []
     );
   }, []);
@@ -106,13 +118,13 @@ export default function PreviewArea({
       if (typeof val === 'number') return val;
       if (typeof val === 'string' && smileyOrder[val] !== undefined) return smileyOrder[val];
       const n = Number(val);
-      return Number.isNaN(n) ? NaN : n;
+      return Number.isNaN(n) ? Number.NaN : n;
     };
     switch (operator) {
       case 'equals': {
         // If response is an array (e.g., multi-select), treat equals as "contains" semantics
         if (Array.isArray(responseValue)) {
-          return responseValue.map(v => String(v)).includes(String(condValue));
+          return responseValue.map(String).includes(String(condValue));
         }
         // Support numeric comparison including smiley ordinal mapping when cond is numeric
         const respNum = coerceNumeric(responseValue);
@@ -136,130 +148,138 @@ export default function PreviewArea({
         return false;
     }
   };
+  // Helper: evaluate a group of rules
+  const evaluateRuleGroup = (groupRules: BranchingRule[]): boolean => {
+    return groupRules.reduce<boolean | null>((combined, r, idx) => {
+      const resp = previewResponsesState[r.questionId];
+      const conditionMet = resp !== undefined && evaluateCondition(r.condition.operator, r.condition.value, resp);
+
+      if (combined === null) return conditionMet;
+
+      const prevLogical = groupRules[idx - 1].logical ?? 'OR';
+      return prevLogical === 'AND' ? (combined && conditionMet) : (combined || conditionMet);
+    }, null) ?? false;
+  };
 
   // Helper: is a question visible under current responses?
-  const isQuestionVisible = useCallback((question: Question): boolean => {
-    const rules = getVisibilityRules(question);
-    if (!rules || rules.length === 0) return true; // default visible when no rules
+  const isQuestionVisible = useCallback(
+    (question: Question): boolean => {
+      const rules = getVisibilityRules(question);
+      if (!rules?.length) return true;
 
-    // If none of the dependent questions have been answered yet, keep the question hidden by default
-    const anyDependencyAnswered = rules.some(r => previewResponsesState[r.questionId] !== undefined);
-    if (!anyDependencyAnswered) return false;
+      const anyDependencyAnswered = rules.some(r => previewResponsesState[r.questionId] !== undefined);
+      if (!anyDependencyAnswered) return false;
 
-    // Group rules by groupIndex
-    const byGroup: Record<number, BranchingRule[]> = {};
-    for (const rule of rules) {
-      const gi = rule.groupIndex ?? 0;
-      if (!byGroup[gi]) byGroup[gi] = [];
-      byGroup[gi].push(rule);
-    }
-    const orderedGroups = Object.keys(byGroup).map(n => Number(n)).sort((a, b) => a - b);
+      // Group rules by groupIndex
+      const byGroup = rules.reduce((acc: Record<number, BranchingRule[]>, rule) => {
+        const gi = rule.groupIndex ?? 0;
+        if (!acc[gi]) acc[gi] = [];
+        acc[gi].push(rule);
+        return acc;
+      }, {});
 
-    // A question is visible if ANY group evaluates to true
-    for (const gi of orderedGroups) {
-      const groupRules = byGroup[gi];
-      let combined: boolean | null = null;
-
-      for (let idx = 0; idx < groupRules.length; idx++) {
-        const r = groupRules[idx];
-        const resp = previewResponsesState[r.questionId];
-        const conditionMet = resp !== undefined && evaluateCondition(r.condition.operator, r.condition.value, resp);
-
-        if (combined === null) {
-          combined = conditionMet;
-        } else {
-          const prevRule = groupRules[idx - 1];
-          const prevLogical = prevRule.logical ?? 'OR';
-          combined = prevLogical === 'AND' ? (combined && conditionMet) : (combined || conditionMet);
-        }
-      }
-
-      if (combined) return true;
-    }
-
-    return false;
-  }, [getVisibilityRules, previewResponsesState]);
+      // Evaluate each group: visible if ANY group evaluates to true
+      return Object.keys(byGroup)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .some(gi => evaluateRuleGroup(byGroup[gi]));
+    },
+    [getVisibilityRules, previewResponsesState]
+  );
 
   // Get visible questions for current page
-  const getVisibleQuestions = useCallback((page: SurveyPage): Question[] => {
-    return page.questions.filter(isQuestionVisible);
-  }, [isQuestionVisible]);
+  const getVisibleQuestions = useCallback(
+    (page: SurveyPage): Question[] => page.questions.filter(isQuestionVisible),
+    [isQuestionVisible]
+  );
 
-  // Handle response change and check for branching
-  const handleResponseChange = useCallback((questionId: string, value: RendererQuestionProps['value'] | undefined) => {
-    const newResponses = { ...previewResponsesState, [questionId]: value };
-    setPreviewResponsesState(newResponses);
-    try { onPreviewResponseChange(questionId, value); } catch (err) { console.error('Callback error'); }
+  // Handle response changes
+  const handleResponseChange = useCallback(
+    (questionId: string, value: RendererQuestionProps['value'] | undefined) => {
+      const newResponses = { ...previewResponsesState, [questionId]: value };
+      setPreviewResponsesState(newResponses);
+      onPreviewResponseChange(questionId, value);
 
-    // Check for branching rules
-    const pageData = survey.pages[currentPageIndex];
-    const question = pageData?.questions.find(q => q.id === questionId);
-    if (question) {
+      const pageData = survey.pages[currentPageIndex];
+      const question = pageData?.questions.find(q => q.id === questionId);
+      if (!question) return;
+
       const rules = getVisibilityRules(question);
-      for (const rule of rules) {
-        if (rule.questionId === questionId) {
-          const conditionMet = value !== undefined && evaluateCondition(rule.condition.operator, rule.condition.value, value);
-          if (conditionMet) {
-            if (rule.action.type === 'skip_to_page' && rule.action.targetPageIndex !== undefined) {
-              const target = Math.min(Math.max(0, rule.action.targetPageIndex), survey.pages.length - 1);
-              setCurrentPageIndex(target);
-              setPagesVisited(prev => [...prev, target]);
-              return;
-            }
-            if (rule.action.type === 'end_survey') {
-              setCurrentPageIndex(survey.pages.length - 1);
-              setPagesVisited(prev => [...prev, survey.pages.length - 1]);
-              return;
-            }
-          }
+      const triggeredRule = rules.find(
+        rule =>
+          rule.questionId === questionId &&
+          value !== undefined &&
+          evaluateCondition(rule.condition.operator, rule.condition.value, value)
+      );
+      if (!triggeredRule) return;
+
+      switch (triggeredRule.action.type) {
+        case 'skip_to_page': {
+          const target = Math.min(
+            Math.max(0, triggeredRule.action.targetPageIndex ?? 0),
+            survey.pages.length - 1
+          );
+          setCurrentPageIndex(target);
+          setPagesVisited(prev => [...prev, target]);
+          break;
+        }
+        case 'end_survey': {
+          const lastPage = survey.pages.length - 1;
+          setCurrentPageIndex(lastPage);
+          setPagesVisited(prev => [...prev, lastPage]);
+          break;
         }
       }
-    }
-  }, [previewResponsesState, onPreviewResponseChange, currentPageIndex, survey.pages, getVisibilityRules, evaluateCondition]);
+    },
+    [
+      previewResponsesState,
+      onPreviewResponseChange,
+      currentPageIndex,
+      survey.pages,
+      getVisibilityRules,
+      evaluateCondition,
+    ]
+  );
 
-  // Navigation functions
-  const goToNextPage = useCallback(() => {
-    if (currentPageIndex < survey.pages.length - 1) {
-      const nextPage = currentPageIndex + 1;
-      setCurrentPageIndex(nextPage);
-      setPagesVisited(prev => [...prev, nextPage]);
-    }
-  }, [currentPageIndex, survey.pages.length]);
+// Navigation functions
+const goToNextPage = useCallback(() => {
+  const nextPage = Math.min(currentPageIndex + 1, survey.pages.length - 1);
+  if (nextPage !== currentPageIndex) {
+    setCurrentPageIndex(nextPage);
+    setPagesVisited(prev => [...prev, nextPage]);
+  }
+}, [currentPageIndex, survey.pages.length]);
 
-  const goToPreviousPage = useCallback(() => {
-    if (currentPageIndex > 0) {
-      const prevPage = currentPageIndex - 1;
-      setCurrentPageIndex(prevPage);
-      setPagesVisited(prev => [...prev, prevPage]);
-    }
-  }, [currentPageIndex]);
+const goToPreviousPage = useCallback(() => {
+  const prevPage = Math.max(currentPageIndex - 1, 0);
+  if (prevPage !== currentPageIndex) {
+    setCurrentPageIndex(prevPage);
+    setPagesVisited(prev => [...prev, prevPage]);
+  }
+}, [currentPageIndex]);
 
   const resetPreview = useCallback(() => {
     setCurrentPageIndex(activePageIndex);
     setPagesVisited([activePageIndex]);
     setPreviewResponsesState({});
     // Reset parent responses too
-    Object.keys(previewResponsesState).forEach(key => {
-      try { onPreviewResponseChange(key, undefined); } catch (err) { console.error('Callback error'); }
-    });
+    for (const key of Object.keys(previewResponsesState)) {
+      onPreviewResponseChange(key, undefined); 
+    };
   }, [previewResponsesState, onPreviewResponseChange, activePageIndex]);
 
   // Open preview in new tab
   const openInNewTab = useCallback(() => {
     // Clean up old preview data (older than 1 hour)
     const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    Object.keys(sessionStorage).forEach(key => {
+    for (const key of Object.keys(sessionStorage)){
       if (key.startsWith('survey_preview_temp_')) {
-        try {
-          const timestamp = parseInt(key.split('_')[2]);
-          if (timestamp && timestamp < oneHourAgo) {
-            sessionStorage.removeItem(key);
-          }
-        } catch (e) {
-          // Ignore parsing errors
+        const timestamp = Number.parseInt(key.split('_')[2], 10);
+        if (timestamp && timestamp < oneHourAgo) {
+          sessionStorage.removeItem(key);
         }
       }
-    });
+    }
 
     // Always create a temporary preview ID to ensure we show unsaved changes
     const previewId = `temp_${Date.now()}`;
@@ -461,16 +481,10 @@ export default function PreviewArea({
                 
                 {/* Page Progress */}
                 <div className="mt-3 flex items-center justify-center space-x-2">
-                  {survey.pages.map((_, index) => (
+                  {pagesWithKeys.map((page, index) => (
                     <div
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentPageIndex
-                          ? 'bg-current'
-                          : pagesVisited.includes(index)
-                          ? 'bg-current opacity-40'
-                          : 'bg-current opacity-20'
-                      }`}
+                      key={page._key}
+                      className={`w-2 h-2 rounded-full transition-colors ${getPageDotClass(index)}`}
                       style={{ backgroundColor: survey.textColor || '#111827' }}
                     />
                   ))}
@@ -548,7 +562,7 @@ export default function PreviewArea({
                       size="sm"
                       onClick={goToNextPage}
                       disabled={!canGoNext}
-                      className={`text-xs ${!canGoNext ? 'opacity-50' : ''}`}
+                      className={`text-xs ${canGoNext ? '' : 'opacity-50'}`}
                     >
                       Next →
                     </Button>
@@ -559,7 +573,7 @@ export default function PreviewArea({
                       variant="primary"
                       size="sm"
                       disabled={!canGoNext}
-                      className={`text-xs ${!canGoNext ? 'opacity-50' : ''}`}
+                      className={`text-xs ${canGoNext ? '' : 'opacity-50'}`}
                     >
                       Submit
                     </Button>
@@ -576,7 +590,7 @@ export default function PreviewArea({
             Interactive Preview
             {viewMode === 'mobile' && (
               <>
-                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                <span className="w-1 h-1 rounded-full bg-gray-300"></span>{' '}
                 Mobile View
               </>
             )}

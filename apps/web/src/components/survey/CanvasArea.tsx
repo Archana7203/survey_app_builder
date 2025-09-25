@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import Card from '../ui/Card';
 import QuestionRenderer, { type QuestionProps as RendererQuestionProps } from '../questions/QuestionRenderer';
-
+//SonarQube: interactive div is necessary for drag-and-drop, accessibility handled via role and keyboard listeners
 interface Question {
   id: string;
   type: string;
@@ -19,16 +19,15 @@ interface Question {
 }
 
 interface CanvasQuestionProps {
-  question: Question;
-  index: number;
-  isSelected: boolean;
-  onSelect: (question: Question) => void;
-  onEdit: (question: Question) => void;
-  onDelete: (questionId: string) => void;
-  previewResponses: Record<string, RendererQuestionProps['value'] | undefined>;
-  onPreviewResponseChange: (questionId: string, value: RendererQuestionProps['value'] | undefined) => void;
+  readonly question: Question;
+  readonly index: number;
+  readonly isSelected: boolean;
+  readonly onSelect: (question: Question) => void;
+  readonly onEdit: (question: Question) => void;
+  readonly onDelete: (questionId: string) => void;
+  readonly previewResponses: Record<string, RendererQuestionProps['value'] | undefined>;
+  readonly onPreviewResponseChange: (questionId: string, value: RendererQuestionProps['value'] | undefined) => void;
 }
-
 function CanvasQuestion({
   question,
   index,
@@ -52,12 +51,13 @@ function CanvasQuestion({
     transform: CSS.Transform.toString(transform),
     transition,
   };
-
   return (
     <div ref={setNodeRef} style={style} className="group">
       <div 
-        onClick={() => {
-          try { onSelect(question); } catch (err) { console.error('Selection error'); }
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(question)} 
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onSelect(question); }
         }}
         className={`
           relative rounded-lg transition-all duration-200 
@@ -103,7 +103,7 @@ function CanvasQuestion({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    try { onEdit(question); } catch (err) { console.error('Callback error'); }
+                    onEdit(question);
                   }}
                   className="p-1.5 rounded-full text-gray-500 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 dark:hover:bg-[var(--color-primary)]/20"
                 >
@@ -114,7 +114,7 @@ function CanvasQuestion({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    try { onDelete(question.id); } catch (err) { console.error('Callback error'); }
+                    onDelete(question.id); 
                   }}
                   className="p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
@@ -142,7 +142,7 @@ function CanvasQuestion({
               <QuestionRenderer
                 question={question}
                 value={previewResponses[question.id]}
-                onChange={(value) => { try { onPreviewResponseChange(question.id, value); } catch (err) { console.error('Preview error'); } }}
+                onChange={(value) => onPreviewResponseChange(question.id, value) }
                 disabled={false}
               />
             </div>
@@ -154,13 +154,13 @@ function CanvasQuestion({
 }
 
 interface CanvasAreaProps {
-  questions: Question[];
-  onSelectQuestion: (question: Question | null) => void;
-  selectedQuestion: Question | null;
-  onEditQuestion: (question: Question) => void;
-  onDeleteQuestion: (questionId: string) => void;
-  previewResponses: Record<string, RendererQuestionProps['value'] | undefined>;
-  onPreviewResponseChange: (questionId: string, value: RendererQuestionProps['value'] | undefined) => void;
+  readonly questions: Question[];
+  readonly onSelectQuestion: (question: Question | null) => void;
+  readonly selectedQuestion: Question | null;
+  readonly onEditQuestion: (question: Question) => void;
+  readonly onDeleteQuestion: (questionId: string) => void;
+  readonly previewResponses: Record<string, RendererQuestionProps['value'] | undefined>;
+  readonly onPreviewResponseChange: (questionId: string, value: RendererQuestionProps['value'] | undefined) => void;
 }
 
 export default function CanvasArea({
@@ -190,16 +190,18 @@ export default function CanvasArea({
             </p>
           </div>
           <div className="text-xs text-gray-400 dark:text-gray-500">
-            {questions.length} question{questions.length !== 1 ? 's' : ''}
+            {questions.length} question{questions.length === 1 ? '' : 's'}
           </div>
         </div>
       </div>
-
       {/* Drop Zone */}
       <div 
         ref={setNodeRef}
+        role="button"
+        tabIndex={0}
         className="flex-1 overflow-y-auto p-4"
-        onClick={() => { try { onSelectQuestion(null); } catch (err) { console.error('Selection error'); } }}
+        onClick={() => onSelectQuestion(null)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onSelectQuestion(null); } }}
       >
         {questions.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
