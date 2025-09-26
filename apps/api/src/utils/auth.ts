@@ -15,9 +15,12 @@ export const comparePassword = async (
 };
 
 export const generateAccessToken = (userId: string): string => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET!, {
-    expiresIn: '15m',
-  });
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not defined');
+  }
+
+  return jwt.sign({ userId }, secret, { expiresIn: '15m' });
 };
 
 export const generateRefreshToken = (userId: string): string => {
@@ -29,7 +32,12 @@ export const generateRefreshToken = (userId: string): string => {
 };
 
 export const verifyAccessToken = (token: string): { userId: string } => {
-  return jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+
+  return jwt.verify(token, secret) as { userId: string };
 };
 
 export const verifyRefreshToken = (token: string): { userId: string } => {
@@ -40,9 +48,14 @@ export const verifyRefreshToken = (token: string): { userId: string } => {
 // Token for respondents to access a specific survey without account login
 // Encodes surveyId and respondent email in a short-lived token
 export const generateRespondentToken = (surveyId: string, email: string): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+
   return jwt.sign(
     { surveyId, email },
-    process.env.JWT_SECRET!,
+    secret,
     { expiresIn: '7d' }
   );
 };

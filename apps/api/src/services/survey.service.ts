@@ -1,13 +1,12 @@
 import { SurveyRepository } from '../repository/survey.repository';
 import { ResponseRepository } from '../repository/response.repository';
-import { AuthRequest } from '../middleware/auth';
 import { generateUniqueSlug } from '../utils/slug';
 import { generateSurveyToken, sendSurveyInvite } from '../utils/email';
 import mongoose from 'mongoose';
 
 export class SurveyService {
-  private repo = new SurveyRepository();
-  private responseRepo = new ResponseRepository();
+  private readonly repo = new SurveyRepository();
+  private readonly responseRepo = new ResponseRepository();
 
   // 1. Get all surveys for authenticated user
   async getAllSurveys(userId: string, page = 1, limit = 10) {

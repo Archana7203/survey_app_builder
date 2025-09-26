@@ -70,7 +70,7 @@ export async function loadConfig(): Promise<AppConfig> {
     };
     
     config = defaultConfig;
-    return config!;
+    return config;
   }
 }
 

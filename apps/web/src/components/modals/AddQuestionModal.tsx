@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { buildApiUrl } from '../../utils/apiConfig';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
@@ -52,27 +52,40 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({
   const [newOptionText, setNewOptionText] = useState('');
   const [settings, setSettings] = useState<Record<string, unknown>>({});
 
+  // Helper function to populate form with editing question data
+  const populateFormWithEditingQuestion = useCallback(() => {
+    if (!editingQuestion) return;
+    
+    setSelectedType(editingQuestion.type);
+    setTitle(editingQuestion.title || '');
+    setDescription(editingQuestion.description || '');
+    setRequired(!!editingQuestion.required);
+    setOptions(editingQuestion.options || []);
+    setSettings(editingQuestion.settings || {});
+  }, [editingQuestion]);
+
+  // Helper function to reset form to initial state
+  const resetFormToDefaults = useCallback(() => {
+    setSelectedType(null);
+    setTitle('');
+    setDescription('');
+    setRequired(false);
+    setOptions([]);
+    setSettings({});
+  }, []);
+
+  // Reduced complexity useEffect - now just handles modal open/close logic
   useEffect(() => {
-    if (isOpen) {
-      fetchQuestionTypes();
-      if (editingQuestion) {
-        setSelectedType(editingQuestion.type);
-        setTitle(editingQuestion.title || '');
-        setDescription(editingQuestion.description || '');
-        setRequired(!!editingQuestion.required);
-        setOptions(editingQuestion.options || []);
-        setSettings(editingQuestion.settings || {});
-      } else {
-        setSelectedType(null);
-        setTitle('');
-        setDescription('');
-        setRequired(false);
-        setOptions([]);
-        setSettings({});
-      }
+    if (!isOpen) return;
+    
+    fetchQuestionTypes();
+    
+    if (editingQuestion) {
+      populateFormWithEditingQuestion();
+    } else {
+      resetFormToDefaults();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, editingQuestion]);
+  }, [isOpen, editingQuestion, populateFormWithEditingQuestion, resetFormToDefaults]);
 
   const fetchQuestionTypes = async () => {
     try {
@@ -97,75 +110,92 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({
     ? questionTypes 
     : questionTypes.filter(type => type.category === selectedCategory);
 
+  // Helper function to get default options for choice-based question types
+  const getDefaultOptionsForType = (type: string) => {
+    const choiceTypes = ['singleChoice', 'multiChoice', 'dropdown'];
+    return choiceTypes.includes(type) 
+      ? [{ id: '1', text: 'Option 1' }, { id: '2', text: 'Option 2' }] 
+      : [];
+  };
 
+  // Helper function to get default settings for different question types
+  const getDefaultSettingsForType = (type: string) => {
+    const settingsMap: Record<string, Record<string, unknown>> = {
+      slider: { scaleMin: 0, scaleMax: 10, scaleStep: 1 },
+      ratingStar: { maxRating: 5 },
+      ratingSmiley: { maxRating: 5 },
+      ratingNumber: { maxRating: 10 }
+    };
+    
+    return settingsMap[type] || {};
+  };
 
+  // Simplified previewQuestion computation
   const previewQuestion = useMemo(() => {
     const type = selectedType || hoveredType || 'textShort';
-    const q: Question = {
+    const baseQuestion: Question = {
       id: 'preview',
       type,
       title: title || 'Preview Question',
       description: description,
       required,
-      options: (type === 'singleChoice' || type === 'multiChoice' || type === 'dropdown') && options.length === 0
-        ? [ { id: '1', text: 'Option 1' }, { id: '2', text: 'Option 2' } ]
-        : options,
-      settings: settings,
+      options: [],
+      settings: {},
     };
-    // Ensure slider defaults when type is slider
-    if (type === 'slider') {
-      q.settings = { scaleMin: 0, scaleMax: 10, scaleStep: 1, ...q.settings };
+
+    // Set options for choice-based questions
+    const choiceTypes = ['singleChoice', 'multiChoice', 'dropdown'];
+    if (choiceTypes.includes(type)) {
+      baseQuestion.options = options.length === 0 
+        ? getDefaultOptionsForType(type)
+        : options;
     }
-    if (type === 'ratingStar' && (q.settings as any)?.maxRating == null) {
-      q.settings = { maxRating: 5, ...q.settings };
-    }
-    if (type === 'ratingSmiley' && (q.settings as any)?.maxRating == null) {
-      q.settings = { maxRating: 5, ...q.settings };
-    }
-    if (type === 'ratingNumber' && (q.settings as any)?.maxRating == null) {
-      q.settings = { maxRating: 10, ...q.settings };
-    }
-    return q;
+
+    // Set default settings based on type
+    baseQuestion.settings = { ...getDefaultSettingsForType(type), ...settings };
+
+    return baseQuestion;
   }, [selectedType, hoveredType, title, description, required, options, settings]);
 
   const handleChooseType = (type: string) => {
     setSelectedType(type);
-    // Initialize sensible defaults per type when no editing state
-    if (!editingQuestion) {
-      if (type === 'singleChoice' || type === 'multiChoice' || type === 'dropdown') {
-        setOptions([ { id: '1', text: 'Option 1' }, { id: '2', text: 'Option 2' } ]);
-      } else {
-        setOptions([]);
-      }
-      if (type === 'slider') {
-        setSettings({ scaleMin: 0, scaleMax: 10, scaleStep: 1 });
-      } else if (type === 'ratingStar') {
-        setSettings({ maxRating: 5 });
-      } else if (type === 'ratingSmiley') {
-        setSettings({ maxRating: 5 });
-      } else if (type === 'ratingNumber') {
-        setSettings({ maxRating: 10 });
-      } else {
-        setSettings({});
-      }
-      if (!title) setTitle('New Question');
+    
+    // Only set defaults when not editing
+    if (editingQuestion) return;
+    
+    setOptions(getDefaultOptionsForType(type));
+    setSettings(getDefaultSettingsForType(type));
+    
+    if (!title) {
+      setTitle('New Question');
     }
   };
 
   const handleSave = () => {
     const type = selectedType || hoveredType;
     if (!type) return;
+    
     const question: Question = {
       id: editingQuestion?.id || `q_${Date.now()}`,
       type,
       title: title || 'Untitled Question',
       description,
       required,
-      options: (type === 'singleChoice' || type === 'multiChoice' || type === 'dropdown') ? options : undefined,
+      options: getDefaultOptionsForType(type).length > 0 ? options : undefined,
       settings,
     };
-    try { onSubmit(question); } catch (err) { console.error('Submit error'); }
-    try { onClose(); } catch (err) { console.error('Close error'); }
+    
+    try { 
+      onSubmit(question); 
+    } catch (err) { 
+      console.error(err); 
+    }
+    
+    try { 
+      onClose(); 
+    } catch (err) { 
+      console.error(err); 
+    }
   };
 
   return (

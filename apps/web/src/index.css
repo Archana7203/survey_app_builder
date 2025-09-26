@@ -108,7 +108,6 @@ button:focus-visible,
 button:focus-within {
   outline: none !important;
   box-shadow: none !important;
-  ring: none !important;
 }
 
 /* Ensure no focus rings on any button elements */
