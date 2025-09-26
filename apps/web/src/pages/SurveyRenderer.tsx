@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { buildApiUrl } from '../utils/apiConfig';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
@@ -80,7 +80,7 @@ export default function SurveyRenderer() {
 
   // Helper: extract visibility rules from a question (supports multiple locations for flexibility)
   const getVisibilityRules = useCallback((question: Question): Array<BranchingRule & { groupIndex?: number }> => {
-    const settings = (question.settings || {}) as Record<string, unknown>;
+    const settings = (question.settings || {});
     const fromSettings = (settings.visibleWhen || (settings.visibility as any)?.rules) as Array<BranchingRule & { groupIndex?: number }> | undefined;
     return (
       question.visibilityRules ||
@@ -137,48 +137,43 @@ export default function SurveyRenderer() {
   // Helper: is a question visible under current responses?
   const isQuestionVisible = useCallback((question: Question): boolean => {
     const rules = getVisibilityRules(question);
-    if (!rules || rules.length === 0) return true; // default visible when no rules
+    if (!rules || rules.length === 0) return true;
 
-    // If none of the dependent questions have been answered yet, keep the question hidden by default
-    const anyDependencyAnswered = rules.some(r => responses[(r as any).questionId] !== undefined);
+    // Check if any dependent question has been answered
+    const anyDependencyAnswered = rules.some(r => responses[r.questionId] !== undefined);
     if (!anyDependencyAnswered) return false;
 
     // Group rules by groupIndex
-    const byGroup: Record<number, Array<BranchingRule & { groupIndex?: number }>> = {};
-    for (const rule of rules) {
+    const groups: Record<number, typeof rules> = {};
+    rules.forEach(rule => {
       const gi = (rule as any).groupIndex ?? 0;
-      if (!byGroup[gi]) byGroup[gi] = [];
-      byGroup[gi].push(rule as any);
-    }
-    const orderedGroups = Object.keys(byGroup).map(n => Number(n)).sort((a, b) => a - b);
+      if (!groups[gi]) groups[gi] = [];
+      groups[gi].push(rule);
+    });
+
+  // Helper: evaluate a group of rules
+    const evaluateGroup = (groupRules: typeof rules) =>
+      groupRules.reduce((acc, rule, idx) => {
+        const resp = responses[rule.questionId];
+        const conditionMet = resp !== undefined && evaluateCondition(rule.condition.operator, rule.condition.value, resp);
+
+        if (idx === 0) return conditionMet;
+
+        const prevLogical = (groupRules[idx - 1].logical as 'AND' | 'OR') ?? 'OR';
+        return prevLogical === 'AND' ? acc && conditionMet : acc || conditionMet;
+      }, false);
 
     // A question is visible if ANY group evaluates to true
-    for (const gi of orderedGroups) {
-      const groupRules = byGroup[gi];
-      let combined: boolean | null = null;
-
-      for (let idx = 0; idx < groupRules.length; idx++) {
-        const r = groupRules[idx];
-        const resp = responses[r.questionId];
-        const conditionMet = resp !== undefined && evaluateCondition(r.condition.operator, r.condition.value, resp);
-
-        if (combined === null) {
-          combined = conditionMet;
-        } else {
-          const prevRule = groupRules[idx - 1];
-          const prevLogical = (prevRule.logical as ('AND' | 'OR') | undefined) ?? 'OR';
-          combined = prevLogical === 'AND' ? (combined && conditionMet) : (combined || conditionMet);
-        }
-      }
-
-      if (combined) return true;
-    }
-
-    return false;
+    return Object.values(groups).some(evaluateGroup);
   }, [getVisibilityRules, responses]);
+
 
   // Get token from URL
   const token = new URLSearchParams(window.location.search).get('token');
+  const pagesWithKeys = useMemo(() => {
+    if (!survey) return [];
+    return survey.pages.map(page => ({ ...page, _key: crypto.randomUUID() }));
+  }, [survey]);
 
   const fetchSurvey = useCallback(async () => {
     try {
@@ -795,17 +790,16 @@ export default function SurveyRenderer() {
           <div className="mb-6">
             {/* Page Dots Indicator (like preview) */}
             <div className="mt-3 flex items-center justify-center space-x-2">
-              {survey.pages.map((_, index) => (
+              {pagesWithKeys.map((page, index) => (
                 <div
-                  key={index}
+                  key={page._key}
                   className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentPageIndex
-                      ? 'bg-current'
-                      : 'bg-current opacity-20'
+                    index === currentPageIndex ? 'bg-current' : 'bg-current opacity-20'
                   }`}
                   style={{ backgroundColor: surveyTextColor || themeColors.color }}
                 />
               ))}
+
             </div>
             <p className="text-xs opacity-70 mt-1 text-center" style={{ color: surveyTextColor }}>
               Page {currentPageIndex + 1} of {survey.pages.length}

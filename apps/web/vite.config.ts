@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://consultants-bouquet-joan-can.trycloudflare.com',  
+        target: 'https://notebook-makers-jose-serial.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'sublime-series-subsequent-brands.trycloudflare.com' 
+      'legs-emotions-marker-roll.trycloudflare.com' 
     ],
   },
 });
