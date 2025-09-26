@@ -1,5 +1,4 @@
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -55,7 +54,17 @@ function SortableQuestionItem({
   return (
     <div ref={setNodeRef} style={style} className="mb-4">
       <Card className={`${isDragging ? 'shadow-lg' : ''}`}>
-        <div className="p-4 cursor-pointer text-gray-700 hover:ring-1 hover:ring-gray-200 dark:text-gray-300 dark:hover:ring-gray-600 transition-all duration-200" onClick={() => { try { onSelect(question); } catch (err) { console.error('Callback error'); } }}>
+        <button
+          type="button"
+          className="w-full text-left p-4 cursor-pointer text-gray-700 hover:ring-1 hover:ring-gray-200 dark:text-gray-300 dark:hover:ring-gray-600 transition-all duration-200"
+          onClick={() => onSelect(question)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSelect(question);
+            }
+          }}
+        >
           {/* Drag Handle */}
           <div className="flex items-start space-x-3">
             <button
@@ -95,7 +104,7 @@ function SortableQuestionItem({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => { try { onDelete(question.id); } catch (err) { console.error('Callback error'); } }}
+                    onClick={() => onDelete(question.id) } 
                     className="text-red-600 hover:text-red-800"
                     disabled={disabled}
                   >
@@ -139,7 +148,7 @@ function SortableQuestionItem({
               
             </div>
           </div>
-        </div>
+        </button>
       </Card>
     </div>
   );
@@ -158,7 +167,7 @@ export default function ReorderableQuestions({
   onDeleteQuestion,
   onSelectQuestion,
   disabled = false,
-}: Omit<ReorderableQuestionsProps, 'onReorder'>) {
+}: Readonly<Omit<ReorderableQuestionsProps, 'onReorder'>>) {
   // Sorting is handled by the parent Dnd context; this component only renders Sortable items
 
   return (

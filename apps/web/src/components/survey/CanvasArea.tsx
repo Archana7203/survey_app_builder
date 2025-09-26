@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import Card from '../ui/Card';
 import QuestionRenderer, { type QuestionProps as RendererQuestionProps } from '../questions/QuestionRenderer';
-//SonarQube: interactive div is necessary for drag-and-drop, accessibility handled via role and keyboard listeners
+//SonarQube: interactive div is necessary for drag-and-drop, accessibility handled via role and keyboard listeners*/
 interface Question {
   id: string;
   type: string;
@@ -53,14 +53,11 @@ function CanvasQuestion({
   };
   return (
     <div ref={setNodeRef} style={style} className="group">
-      <div 
-        role="button"
-        tabIndex={0}
+      <button 
+        type="button"
         onClick={() => onSelect(question)} 
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onSelect(question); }
-        }}
         className={`
-          relative rounded-lg transition-all duration-200 
+          relative rounded-lg transition-all duration-200 w-full text-left
           ${isDragging ? 'opacity-50' : 'opacity-100'}
           ${isSelected ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
         `}
@@ -148,7 +145,7 @@ function CanvasQuestion({
             </div>
           </div>
         </Card>
-      </div>
+      </button>
     </div>
   );
 }
@@ -195,13 +192,11 @@ export default function CanvasArea({
         </div>
       </div>
       {/* Drop Zone */}
-      <div 
+      <button 
         ref={setNodeRef}
-        role="button"
-        tabIndex={0}
-        className="flex-1 overflow-y-auto p-4"
+        type="button"
+        className="flex-1 overflow-y-auto p-4 w-full text-left"
         onClick={() => onSelectQuestion(null)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onSelectQuestion(null); } }}
       >
         {questions.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
@@ -236,7 +231,7 @@ export default function CanvasArea({
             </div>
           </SortableContext>
         )}
-      </div>
+      </button>
     </div>
   );
 }

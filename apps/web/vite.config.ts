@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://problem-thomas-caribbean-lanka.trycloudflare.com',  
+        target: 'https://consultants-bouquet-joan-can.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'medline-comparison-carry-freeware.trycloudflare.com' 
+      'sublime-series-subsequent-brands.trycloudflare.com' 
     ],
   },
 });

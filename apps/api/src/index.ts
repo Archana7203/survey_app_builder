@@ -3,9 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
-import { createServer } from 'http';
+import { createServer } from 'node:http';
 import { Server } from 'socket.io';
-import path from 'path';
+import path from 'node:path';
 
 import authRoutes from './routes/auth';
 import surveyRoutes from './routes/surveys';

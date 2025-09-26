@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from 'mongoose';
-// import { z } from 'zod'; // Commented out until zod is installed
 
 export enum QuestionType {
   SINGLE_CHOICE = 'singleChoice',

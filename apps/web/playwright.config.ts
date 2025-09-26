@@ -25,7 +25,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: __env.FRONTEND_URL || 'https://medline-comparison-carry-freeware.trycloudflare.com',
+    baseURL: __env.FRONTEND_URL || 'https://sublime-series-subsequent-brands.trycloudflare.com',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',

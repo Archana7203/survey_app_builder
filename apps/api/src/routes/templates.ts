@@ -1,19 +1,16 @@
 import express from 'express';
-import { Template } from '../models/Template';
-import { Survey } from '../models/Survey';
 import { requireAuth, AuthRequest } from '../middleware/auth';
-import { generateUniqueSlug } from '../utils/slug';
 import type { ITemplate } from '../models/Template';
+import { TemplateService } from '../services/template.service';
 
 const router = express.Router();
+
+const service = new TemplateService();
 
 // GET /api/templates - List all available templates
 router.get('/', async (req, res) => {
   try {
-    const templates = await Template.find({})
-      .select('id title description category thumbnail estimatedTime pages')
-      .sort({ category: 1, title: 1 });
-
+    const templates = await service.listTemplates();
     res.json(templates);
   } catch (error) {
     console.error('Template fetch error:', error);
@@ -24,11 +21,7 @@ router.get('/', async (req, res) => {
 // GET /api/templates/:id - Get single template details
 router.get('/:id', async (req, res) => {
   try {
-    const template = await Template.findOne({ id: req.params.id });
-
-    if (!template) {
-      return res.status(404).json({ error: 'Template not found' });
-    }
+    const template = await service.getTemplate(req.params.id);
 
     res.json(template);
   } catch (error) {
@@ -40,28 +33,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/templates/:id/instantiate - Create survey from template
 router.post('/:id/instantiate', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const template = await Template.findOne({ id: req.params.id });
-
-    if (!template) {
-      return res.status(404).json({ error: 'Template not found' });
-    }
-
-    // Generate unique slug and title for the new survey
-    const slug = await generateUniqueSlug(template.title);
-
-    // Create new survey from template
-    const newSurvey = new Survey({
-      title: template.title,
-      description: template.description,
-      slug,
-      theme: 'default',
-      status: 'draft',
-      pages: template.pages, // Use template's pages structure
-      createdBy: req.user._id,
-    });
-
-    await newSurvey.save();
-
+    const newSurvey = await service.instantiateTemplate(req.user._id.toString(), req.params.id);
     res.status(201).json({
       id: newSurvey._id,
       title: newSurvey.title,
@@ -73,7 +45,7 @@ router.post('/:id/instantiate', requireAuth, async (req: AuthRequest, res) => {
       pages: newSurvey.pages,
       createdAt: newSurvey.createdAt,
       updatedAt: newSurvey.updatedAt,
-      templateId: template.id,
+      templateId: req.params.id,
     });
   } catch (error) {
     console.error('Template instantiation error:', error);
@@ -114,17 +86,18 @@ const ensureSampleTemplates = async () => {
     },
   ];
 
-  for (const tpl of samples) {
-    await Template.updateOne({ id: tpl.id }, { $setOnInsert: tpl }, { upsert: true });
-  }
+  const { TemplateRepository } = await import('../repository/template.repository');
+  const repo = new TemplateRepository();
+  await repo.upsertMany(samples);
 };
 
 // POST /api/templates/ensure-samples - Upsert sample templates (creator-only)
 router.post('/ensure-samples', requireAuth, async (_req: AuthRequest, res) => {
   try {
     await ensureSampleTemplates();
-    const updated = await Template.find({ id: { $in: ['covid-19-vaccination', 'impact-of-social-media'] } })
-      .select('id title category');
+    const { TemplateRepository } = await import('../repository/template.repository');
+    const repo = new TemplateRepository();
+    const updated = await repo.findManyByIds(['covid-19-vaccination', 'impact-of-social-media']);
     res.json({ updated });
   } catch (error) {
     console.error('Ensure samples error:', error);

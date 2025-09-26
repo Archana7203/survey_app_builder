@@ -4,7 +4,7 @@ dotenv.config();
 
 import express from 'express';
 import { Survey } from '../models/Survey';
-import { Response } from '../models/Response';
+import { SurveyService } from '../services/survey.service';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { ensureSurveyEditable } from '../middleware/ensureSurveyEditable';
 import { generateUniqueSlug } from '../utils/slug';
@@ -30,54 +30,9 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
     );
     const skip = (page - 1) * limit;
 
-    // Use aggregation to get surveys with response counts in a single query
-    const surveysWithResponses = await Survey.aggregate([
-      { $match: { createdBy: req.user._id } },
-      {
-        $lookup: {
-          from: 'responses',
-          localField: '_id',
-          foreignField: 'survey',
-          as: 'responses'
-        }
-      },
-      {
-        $addFields: {
-          responseCount: {
-            $size: {
-              $filter: {
-                input: '$responses',
-                cond: { $eq: ['$$this.status', 'Completed'] }
-              }
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          description: 1,
-          slug: 1,
-          status: 1,
-          closeDate: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          responseCount: 1,
-          allowedRespondents: 1,
-          locked: 1
-        }
-      },
-      { $sort: { updatedAt: -1 } },
-      { $skip: skip },
-      { $limit: limit }
-    ]);
-
-    // Get total count for pagination
-    const totalSurveys = await Survey.countDocuments({ createdBy: req.user._id });
-
-    // Map to frontend-friendly shape
-    const mapped = surveysWithResponses.map((survey) => ({
+    const service = new SurveyService();
+    const { surveysWithResponses, totalSurveys } = await service.getAllSurveys(req.user._id.toString(), page, limit);
+    const mapped = surveysWithResponses.map((survey: any) => ({
       id: survey._id.toString(),
       title: survey.title,
       description: survey.description,
@@ -139,26 +94,8 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
       }
     }
 
-    // Generate unique slug
-    const slug = await generateUniqueSlug(title);
-    console.log('Generated slug:', slug);
-
-    // Create new survey
-    const survey = new Survey({
-      title,
-      description: description || '',
-      slug,
-      theme: theme || 'default',
-      backgroundColor,
-      textColor,
-      pages: pages || [{ questions: [], branching: [] }],
-      status: 'draft',
-      allowedRespondents: [],
-      createdBy: req.user._id,
-    });
-
-    await survey.save();
-
+    const service = new SurveyService();
+    const survey = await service.createSurvey(req.user._id.toString(), { title, description, theme, backgroundColor, textColor, pages });
     res.status(201).json({
       id: survey._id,
       title: survey.title,
@@ -184,11 +121,8 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
 router.get('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found or you do not have permission to view this survey' });
-    }
+    const service = new SurveyService();
+    const survey = await service.getSurveyById(req.user._id.toString(), surveyId);
 
     res.json({
       id: survey._id,
@@ -215,11 +149,8 @@ router.get('/by-slug/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
     console.log('By-slug route accessed with slug:', slug);
-    
-    const survey = await Survey.findOne({ slug });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
+    const service = new SurveyService();
+    const survey = await service.getSurveyBySlug(slug);
 
     res.json({
       id: survey._id,
@@ -243,16 +174,8 @@ router.get('/by-id/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log('By-id route accessed with id:', id);
-    
-    // Validate MongoDB ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid survey ID format' });
-    }
-    
-    const survey = await Survey.findById(id);
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
+    const service = new SurveyService();
+    const survey = await service.getSurveyByObjectId(id);
 
     res.json({
       id: survey._id,
@@ -276,16 +199,8 @@ router.get('/public/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
     console.log('Public route accessed with slug:', slug);
-    
-    const survey = await Survey.findOne({ slug, status: 'published' });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found or not accessible' });
-    }
-
-    // Check if survey is closed (has close date in the past)
-    if (survey.closeDate && new Date() > new Date(survey.closeDate)) {
-      return res.status(400).json({ error: 'This survey is closed' });
-    }
+    const service = new SurveyService();
+    const survey = await service.getPublicSurvey(slug);
 
     res.json({
       id: survey._id,
@@ -308,13 +223,9 @@ router.get('/public/:slug', async (req, res) => {
 router.get('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    res.json({ allowedRespondents: survey.allowedRespondents || [] });
+    const service = new SurveyService();
+    const allowedRespondents = await service.getRespondents(req.user._id.toString(), surveyId);
+    res.json({ allowedRespondents });
   } catch (error) {
     console.error('Error fetching respondents:', error);
     res.status(500).json({ error: 'Failed to fetch respondents' });
@@ -326,34 +237,9 @@ router.post('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res)
   try {
     const { surveyId } = req.params;
     const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    // Check if email is already in allowedRespondents
-    if (survey.allowedRespondents?.includes(email)) {
-      return res.status(400).json({ error: 'Email already added to this survey' });
-    }
-
-    // Add email to allowedRespondents (without sending email yet)
-    if (!survey.allowedRespondents) {
-      survey.allowedRespondents = [];
-    }
-    survey.allowedRespondents.push(email);
-    await survey.save();
-
-    res.json({ message: 'Respondent added successfully' });
+    const service = new SurveyService();
+    const result = await service.addRespondent(req.user._id.toString(), surveyId, email);
+    res.json(result);
   } catch (error) {
     console.error('Error adding respondent:', error);
     res.status(500).json({ error: 'Failed to add respondent' });
@@ -364,19 +250,9 @@ router.post('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res)
 router.delete('/:surveyId/respondents/:email', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId, email } = req.params;
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    // Remove email from allowedRespondents
-    if (survey.allowedRespondents) {
-      survey.allowedRespondents = survey.allowedRespondents.filter(e => e !== email);
-      await survey.save();
-    }
-
-    res.json({ message: 'Respondent removed successfully' });
+    const service = new SurveyService();
+    const result = await service.removeRespondent(req.user._id.toString(), surveyId, email);
+    res.json(result);
   } catch (error) {
     console.error('Error removing respondent:', error);
     res.status(500).json({ error: 'Failed to remove respondent' });
@@ -387,37 +263,13 @@ router.delete('/:surveyId/respondents/:email', requireAuth, async (req: AuthRequ
 router.post('/:surveyId/respondents/send-invitations', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    if (!survey.allowedRespondents || survey.allowedRespondents.length === 0) {
-      return res.status(400).json({ error: 'No respondents to send invitations to' });
-    }
-
-    // Send invitations to all respondents
-    const emailPromises = survey.allowedRespondents.map(async (email) => {
-      try {
-        const token = generateSurveyToken(surveyId, email);
-        const frontendUrl = process.env.FRONTEND_URL || 'https://located-supervision-weblogs-daddy.trycloudflare.com';
-        const surveyLink = `${frontendUrl}/s/${survey.slug}?token=${token}`;
-        await sendSurveyInvite(email, survey.title, surveyLink);
-        return { email, success: true };
-      } catch (error) {
-        console.error(`Failed to send invitation to ${email}:`, error);
-        return { email, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-    });
-
-    const results = await Promise.allSettled(emailPromises);
-    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-    const failed = results.filter(r => r.status === 'fulfilled' && !r.value.success).length;
-
+    const service = new SurveyService();
+    const results = await service.sendInvitations(req.user._id.toString(), surveyId);
+    const successful = results.filter((r: any) => r.success).length;
+    const failed = results.length - successful;
     res.json({ 
       message: `Invitations sent successfully to ${successful} respondents${failed > 0 ? `, ${failed} failed` : ''}`,
-      results: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: 'Promise rejected' })
+      results
     });
   } catch (error) {
     console.error('Error sending invitations:', error);
@@ -438,109 +290,9 @@ router.get('/:surveyId/respondent-progress', requireAuth, async (req: AuthReques
     );
     const skip = (page - 1) * limit;
 
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    // Get all responses for this survey
-    const allResponses = await Response.find({ survey: surveyId })
-      .select('respondentEmail status startedAt metadata responses');
-
-    // Create a map of responses by email for quick lookup
-    const responseMap = new Map();
-    allResponses.forEach(response => {
-      responseMap.set(response.respondentEmail, response);
-    });
-
-    // Get all allowed respondents and merge with responses
-    const allowedRespondents = survey.allowedRespondents || [];
-    const allRespondents = allowedRespondents.map(email => {
-      const response = responseMap.get(email);
-      
-      if (response) {
-        // Respondent has a response - calculate progress
-        let progress = 0;
-        let completionPercentage = 0;
-        
-        if (response.status === 'Completed') {
-          progress = survey.pages.length;
-          completionPercentage = 100;
-        } else if (response.status === 'InProgress') {
-          progress = (response.metadata?.lastPageIndex || 0) + 1;
-          completionPercentage = Math.round((progress / survey.pages.length) * 100);
-        } else {
-          progress = 0;
-          completionPercentage = 0;
-        }
-        
-        return {
-          email: email,
-          status: response.status,
-          startedAt: response.startedAt,
-          lastUpdated: response.startedAt,
-          progress: progress,
-          totalPages: survey.pages.length,
-          timeSpent: response.metadata?.timeSpent || 0,
-          pagesVisited: response.metadata?.pagesVisited || [],
-          completionPercentage: completionPercentage
-        };
-      } else {
-        // Respondent hasn't started yet
-        return {
-          email: email,
-          status: 'Not Started',
-          startedAt: null,
-          lastUpdated: null,
-          progress: 0,
-          totalPages: survey.pages.length,
-          timeSpent: 0,
-          pagesVisited: [],
-          completionPercentage: 0
-        };
-      }
-    });
-
-    // Sort by status priority: Completed > InProgress > Not Started, then by lastUpdated
-    allRespondents.sort((a, b) => {
-      const statusPriority: Record<string, number> = { 'Completed': 3, 'InProgress': 2, 'Not Started': 1 };
-      const aPriority = statusPriority[a.status] || 0;
-      const bPriority = statusPriority[b.status] || 0;
-      
-      if (aPriority !== bPriority) {
-        return bPriority - aPriority;
-      }
-      
-      // If same status, sort by lastUpdated (most recent first)
-      if (a.lastUpdated && b.lastUpdated) {
-        return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
-      }
-      
-      // Not started respondents go to the end
-      return a.lastUpdated ? -1 : 1;
-    });
-
-    // Apply pagination
-    const totalRespondents = allRespondents.length;
-    const paginatedRespondents = allRespondents.slice(skip, skip + limit);
-
-    res.json({
-      survey: {
-        id: survey._id,
-        title: survey.title,
-        totalPages: survey.pages.length,
-        totalRespondents: totalRespondents
-      },
-      respondentProgress: paginatedRespondents,
-      pagination: {
-        page,
-        limit,
-        total: totalRespondents,
-        totalPages: Math.ceil(totalRespondents / limit),
-        hasNext: page * limit < totalRespondents,
-        hasPrev: page > 1
-      }
-    });
+    const service = new SurveyService();
+    const result = await service.getRespondentProgress(req.user._id.toString(), surveyId, page, limit);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching respondent progress:', error);
     res.status(500).json({ error: 'Failed to fetch respondent progress' });
@@ -580,40 +332,8 @@ router.put('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequ
       }
     }
 
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    // Only allow updating certain fields for security
-    const allowedUpdates = ['status', 'title', 'description', 'closeDate', 'theme', 'backgroundColor', 'textColor', 'pages'];
-    
-    // Filter out any fields that aren't in the allowed list
-    const filteredUpdates: any = {};
-    Object.keys(updateData).forEach(key => {
-      if (allowedUpdates.includes(key)) {
-        filteredUpdates[key] = updateData[key];
-      }
-    });
-
-    // Store original status before updating
-    const originalStatus = survey.status;
-    
-    // Update the survey with filtered updates first
-    Object.assign(survey, filteredUpdates);
-    
-    // Handle publish/unpublish logic AFTER status update
-    if (survey.status === 'published' && originalStatus !== 'published') {
-      // Publishing: remove close date and lock survey
-      survey.locked = true;
-      survey.closeDate = undefined;
-    } else if (survey.status === 'draft' && originalStatus === 'published') {
-      // Unpublishing: set close date to current time to prevent access
-      survey.closeDate = new Date();
-    }
-    
-    await survey.save();
-
+    const service = new SurveyService();
+    const survey = await service.updateSurvey(req.user._id.toString(), surveyId, updateData);
     res.json({ 
       message: 'Survey updated successfully',
       survey: {
@@ -641,26 +361,9 @@ router.put('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequ
 router.delete('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    // Check if survey has any responses
-    const Response = mongoose.model('Response');
-    const responseCount = await Response.countDocuments({ survey: surveyId });
-    
-    if (responseCount > 0) {
-      return res.status(400).json({ 
-        error: `Cannot delete survey with ${responseCount} response(s). Please delete responses first.` 
-      });
-    }
-
-    // Delete the survey
-    await Survey.findByIdAndDelete(surveyId);
-
-    res.json({ message: 'Survey deleted successfully' });
+    const service = new SurveyService();
+    const result = await service.deleteSurvey(req.user._id.toString(), surveyId);
+    res.json(result);
   } catch (error) {
     console.error('Error deleting survey:', error);
     res.status(500).json({ error: 'Failed to delete survey' });
@@ -671,32 +374,8 @@ router.delete('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
 router.post('/:surveyId/duplicate', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    // Generate unique slug for the duplicated survey
-    const slug = await generateUniqueSlug(`${survey.title} (Copy)`);
-
-    // Create new survey with copied data
-    const duplicatedSurvey = new Survey({
-      title: `${survey.title} (Copy)`,
-      description: survey.description,
-      slug,
-      theme: survey.theme,
-      backgroundColor: survey.backgroundColor,
-      textColor: survey.textColor,
-      pages: survey.pages,
-      status: 'draft',
-      allowedRespondents: [],
-      createdBy: req.user._id,
-      locked: false, // New survey starts unlocked
-    });
-
-    await duplicatedSurvey.save();
-
+    const service = new SurveyService();
+    const duplicatedSurvey = await service.duplicateSurvey(req.user._id.toString(), surveyId);
     res.status(201).json({
       id: duplicatedSurvey._id,
       title: duplicatedSurvey.title,
@@ -722,28 +401,12 @@ router.post('/:surveyId/duplicate', requireAuth, async (req: AuthRequest, res) =
 router.post('/:surveyId/export', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-
-    const survey = await Survey.findOne({ _id: surveyId, createdBy: req.user._id });
-    if (!survey) {
-      return res.status(404).json({ error: 'Survey not found' });
-    }
-
-    // Prepare export data
-    const exportData = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      survey: {
-        title: survey.title,
-        description: survey.description,
-        theme: survey.theme,
-        pages: survey.pages,
-      }
-    };
-
-    // Set response headers for file download
+    const service = new SurveyService();
+    const exportData = await service.exportSurvey(req.user._id.toString(), surveyId);
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="${survey.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${Date.now()}.json"`);
-    
+    // Use safe title if possible
+    const safeTitle = (exportData.survey.title || 'survey').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}-${Date.now()}.json"`);
     res.json(exportData);
   } catch (error) {
     console.error('Error exporting survey:', error);
