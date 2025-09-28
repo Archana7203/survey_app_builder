@@ -153,91 +153,101 @@ export const exportReport = (survey: Survey, analytics: AnalyticsData) => {
   pdfMake.createPdf(docDefinition as any).download(`survey-report-${survey.title.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.pdf`);
 };
 
-function buildChoiceContent(question: QuestionAnalytics) {
-  if (!question.analytics?.values?.length) return [];
-
-  return [{
-    table: {
-      widths: ['*', 'auto', 'auto'],
-      headerRows: 1,
-      body: [
-        ['Option', 'Count', 'Percentage'],
-        ...question.analytics.values.map(item => [
-          item.label,
-          item.value.toString(),
-          `${item.percentage.toFixed(1)}%`
-        ])
-      ]
-    },
-    layout: 'lightHorizontalLines',
-    margin: [0, 0, 0, 10] as [number, number, number, number]
-  }];
-}
-
-function buildNumericContent(question: QuestionAnalytics) {
-  const stats = question.analytics?.stats;
-  if (!stats) return [];
-
-  const body = [
-    ...(stats.min !== undefined ? [['Minimum', stats.min.toString()]] : []),
-    ...(stats.max !== undefined ? [['Maximum', stats.max.toString()]] : []),
-    ...(stats.average !== undefined ? [['Average', stats.average.toFixed(2)]] : []),
-    ...(stats.responses !== undefined ? [['Total Responses', stats.responses.toString()]] : [])
-  ];
-
-  return body.length === 0 ? [] : [{
-    table: { widths: ['*', '*'], body },
-    layout: 'lightHorizontalLines',
-    margin: [0, 0, 0, 10] as [number, number, number, number]
-  }];
-}
-
-function buildTextContent(question: QuestionAnalytics) {
-  const responses = question.analytics?.textResponses ?? [];
-  if (responses.length === 0) return [];
-
-  const displayResponses = responses.slice(0, 10);
-
-  const blocks: Array<Record<string, unknown>> = [
-    {
-      text: 'Text Responses:',
-      style: 'small',
-      bold: true,
-      margin: [0, 0, 0, 5] as [number, number, number, number]
-    },
-    {
-      ul: displayResponses.map(response => ({ text: response, style: 'small' })),
-      margin: [0, 0, 0, 5] as [number, number, number, number]
+function getQuestionContent(question: QuestionAnalytics): Array<Record<string, unknown>> {
+  const content: Array<Record<string, unknown>> = [];
+  
+  if (question.analytics) {
+    switch (question.analytics.type) {
+      case 'choice':
+        if (question.analytics.values && question.analytics.values.length > 0) {
+          content.push({
+            table: {
+              widths: ['*', 'auto', 'auto'],
+              headerRows: 1,
+              body: [
+                ['Option', 'Count', 'Percentage'],
+                ...question.analytics.values.map(item => [
+                  item.label,
+                  item.value.toString(),
+                  `${item.percentage.toFixed(1)}%`
+                ])
+              ]
+            },
+            layout: 'lightHorizontalLines',
+            margin: [0, 0, 0, 10] as [number, number, number, number]
+          });
+        }
+        break;
+        
+      case 'numeric':
+        if (question.analytics.stats) {
+          const stats = question.analytics.stats;
+          content.push({
+            table: {
+              widths: ['*', '*'],
+              body: [
+                ...(stats.min !== undefined ? [['Minimum', stats.min.toString()]] : []),
+                ...(stats.max !== undefined ? [['Maximum', stats.max.toString()]] : []),
+                ...(stats.average !== undefined ? [['Average', stats.average.toFixed(2)]] : []),
+                ...(stats.responses !== undefined ? [['Total Responses', stats.responses.toString()]] : [])
+              ]
+            },
+            layout: 'lightHorizontalLines',
+            margin: [0, 0, 0, 10] as [number, number, number, number]
+          });
+        }
+        break;
+        
+      case 'text':
+        if (question.analytics.textResponses && question.analytics.textResponses.length > 0) {
+          content.push({
+            text: 'Text Responses:',
+            style: 'small',
+            bold: true,
+            margin: [0, 0, 0, 5] as [number, number, number, number]
+          });
+          
+          // Show up to 10 text responses
+          const displayResponses = question.analytics.textResponses.slice(0, 10);
+          content.push({
+            ul: displayResponses.map(response => ({
+              text: response,
+              style: 'small'
+            })),
+            margin: [0, 0, 0, 5] as [number, number, number, number]
+          });
+          
+          if (question.analytics.textResponses.length > 10) {
+            content.push({
+              text: `... and ${question.analytics.textResponses.length - 10} more responses`,
+              style: 'small',
+              italics: true,
+              margin: [0, 0, 0, 10] as [number, number, number, number]
+            });
+          }
+        }
+        break;
+        
+      case 'matrix':
+      case 'grid':
+        if (question.analytics.data) {
+          content.push({
+            text: 'Matrix/Grid responses are visualized in charts and cannot be fully represented in this text format.',
+            style: 'small',
+            italics: true,
+            margin: [0, 0, 0, 10] as [number, number, number, number]
+          });
+        }
+        break;
+        
+      default:
+        content.push({
+          text: 'Analytics data available in the dashboard.',
+          style: 'small',
+          margin: [0, 0, 0, 10] as [number, number, number, number]
+        });
     }
-  ];
-
-  if (responses.length > 10) {
-    blocks.push({
-      text: `... and ${responses.length - 10} more responses`,
-      style: 'small',
-      italics: true,
-      margin: [0, 0, 0, 10] as [number, number, number, number]
-    });
   }
-
-  return blocks;
-}
-
-function buildDefaultContent() {
-  return [{
-    text: 'Analytics data available in the dashboard.',
-    style: 'small',
-    margin: [0, 0, 0, 10] as [number, number, number, number]
-  }];
-}
-
-export function getQuestionContent(question: QuestionAnalytics): Array<Record<string, unknown>> {
-  if (!question.analytics) return [];
-
-  switch (question.analytics.type) {
-    case 'choice': return buildChoiceContent(question);
-    case 'numeric': return buildNumericContent(question);
-    case 'text': return buildTextContent(question);
-    default: return buildDefaultContent();
-  }
+  
+  return content;
 }
