@@ -3,6 +3,8 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
+import crypto from 'crypto';
+
 type ValueType = string | number | boolean;
 
 interface BranchingRule {
@@ -68,8 +70,10 @@ export default function BranchingModal({
 }: BranchingModalProps) {
   const [groups, setGroups] = useState<UIRuleGroup[]>([]);
 
-  // Generate unique IDs for conditions
-  const generateConditionId = () => `branch-cond-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const generateConditionId = (): string => {
+    const randomHex = crypto.randomBytes(4).toString('hex'); // 8 characters of secure randomness
+    return `branch-cond-${Date.now()}-${randomHex}`;
+  };
 
   // Build a default group for the question
   const createEmptyGroup = useCallback((questionId: string, groupIndex: number): UIRuleGroup => ({

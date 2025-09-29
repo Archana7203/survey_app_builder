@@ -79,3 +79,8 @@ __tests__/
  
 # Ignore test directories
 **/__tests__/**
+# Existing content...
+
+# E2E Tests
+/apps/web/e2e/
+/apps/web/e2e/test-utils.ts

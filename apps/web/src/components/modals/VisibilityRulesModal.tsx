@@ -3,6 +3,8 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
+import crypto from 'crypto';
+
 type ValueType = string | number | boolean;
 
 interface VisibilityRule {
@@ -54,7 +56,10 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
   const firstCandidateId = candidateQuestions?.[0]?.id || '';
 
   // Generate unique IDs for conditions
-  const generateConditionId = () => `condition-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  const generateConditionId = (): string => {
+    const randomHex = crypto.randomBytes(4).toString('hex'); // 8 characters of secure randomness
+    return `branch-cond-${Date.now()}-${randomHex}`;
+  };
 
   const createEmptyGroup = useCallback((groupIndex: number): UIRuleGroup => ({
     conditions: [
