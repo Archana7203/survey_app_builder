@@ -3,7 +3,7 @@ import { ResponseRepository } from '../repository/response.repository';
 import { generateUniqueSlug } from '../utils/slug';
 import { generateSurveyToken, sendSurveyInvite } from '../utils/email';
 import mongoose from 'mongoose';
-
+import validator from 'validator';
 //Helper
 function validateSurveyUpdate(updateData: any): void {
   if (updateData.title !== undefined) {
@@ -104,8 +104,8 @@ export class SurveyService {
   // 8. Add respondent (without sending email)
   async addRespondent(userId: string, surveyId: string, email: string) {
     if (!email) throw new Error('Email is required');
-    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-    if (!emailRegex.test(email)) throw new Error('Invalid email format');
+
+    if (!validator.isEmail(email)) throw new Error('Invalid email format');
 
     const survey = await this.repo.findByIdAndCreator(surveyId, userId);
     if (!survey) throw new Error('Survey not found');
