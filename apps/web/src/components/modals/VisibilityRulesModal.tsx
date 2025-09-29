@@ -3,12 +3,13 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
+type ValueType = string | number | boolean;
 
 interface VisibilityRule {
   questionId: string;
   condition: {
     operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
-    value: string | number | boolean;
+    value: ValueType
   };
   logical?: 'AND' | 'OR';
   groupIndex?: number;
@@ -26,6 +27,7 @@ interface Question {
 }
 
 interface UICondition {
+  id: string; // unique identifier for stable keys
   questionId: string; // depends on this (previous) question
   operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
   value: string | number | boolean;
@@ -38,12 +40,12 @@ interface UIRuleGroup {
 }
 
 interface VisibilityRulesModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  question: Question | null;
-  existingRules: VisibilityRule[];
-  candidateQuestions: Question[]; // only previous questions
-  onSave: (rules: VisibilityRule[]) => void;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly question: Question | null;
+  readonly existingRules: VisibilityRule[];
+  readonly candidateQuestions: Question[]; // only previous questions
+  readonly onSave: (rules: VisibilityRule[]) => void;
 }
 
 export default function VisibilityRulesModal({ isOpen, onClose, question, existingRules, candidateQuestions, onSave }: VisibilityRulesModalProps) {
@@ -51,9 +53,12 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
 
   const firstCandidateId = candidateQuestions?.[0]?.id || '';
 
+  // Generate unique IDs for conditions
+  const generateConditionId = () => `condition-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
   const createEmptyGroup = useCallback((groupIndex: number): UIRuleGroup => ({
     conditions: [
-      { questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' },
+      { id: generateConditionId(), questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' },
     ],
     groupIndex,
   }), [firstCandidateId]);
@@ -86,6 +91,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
         byGroupIndex.set(key, group);
       }
       group.conditions.push({
+        id: generateConditionId(),
         questionId: rule.questionId,
         operator: rule.condition.operator,
         value: rule.condition.value as string | number | boolean,
@@ -107,28 +113,56 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     { value: 'less_than', label: 'Less than' },
   ];
 
-  function updateCondition(groupIndex: number, conditionIndex: number, updates: Partial<UICondition>) {
-    setGroups(prev => prev.map((g, gi) => (
-      gi !== groupIndex
-        ? g
-        : { ...g, conditions: g.conditions.map((c, ci) => (ci === conditionIndex ? { ...c, ...updates } : c)) }
-    )));
+  function updateCondition(
+    groupIndex: number,
+    conditionIndex: number,
+    updates: Partial<UICondition>
+  ) {
+    setGroups(prev => prev.map((g, gi) => updateGroupCondition(g, gi, groupIndex, conditionIndex, updates)));
   }
+
+  function updateGroupCondition(
+    group: UIRuleGroup,
+    gi: number,
+    targetGroupIndex: number,
+    conditionIndex: number,
+    updates: Partial<UICondition>
+  ): UIRuleGroup {
+    if (gi !== targetGroupIndex) return group;
+
+    return {
+      ...group,
+      conditions: group.conditions.map((c, ci) =>
+        ci === conditionIndex ? { ...c, ...updates } : c
+      ),
+    };
+  }
+
 
   function addCondition(groupIndex: number) {
     setGroups(prev => prev.map((g, gi) => (
       gi !== groupIndex
         ? g
-        : { ...g, conditions: [...g.conditions, { questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' }] }
+        : { ...g, conditions: [...g.conditions, { id: generateConditionId(), questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' }] }
     )));
   }
 
   function removeCondition(groupIndex: number, conditionIndex: number) {
-    setGroups(prev => prev.map((g, gi) => (
-      gi !== groupIndex
-        ? g
-        : { ...g, conditions: g.conditions.filter((_, ci) => ci !== conditionIndex) }
-    )));
+    setGroups(prev => prev.map((g, gi) => updateGroupConditions(g, gi, groupIndex, conditionIndex)));
+  }
+
+  function updateGroupConditions(
+    group: UIRuleGroup,
+    gi: number,
+    targetGroupIndex: number,
+    conditionIndex: number
+  ): UIRuleGroup {
+    if (gi !== targetGroupIndex) return group;
+
+    return {
+      ...group,
+      conditions: group.conditions.filter((_, ci) => ci !== conditionIndex),
+    };
   }
 
   function addGroup() {
@@ -153,8 +187,8 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
       });
     }
 
-    try { onSave(flattened); } catch (err) { console.error('Save error'); }
-    try { onClose(); } catch (err) { console.error('Close error'); }
+    try { onSave(flattened); } catch (err) { console.error(err); }
+    try { onClose(); } catch (err) { console.error(err); }
   }
 
   function getValueInputType(depQ: Question | undefined) {
@@ -179,6 +213,10 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     return depQ.options.map(option => ({ value: option.value || option.text, label: option.text }));
   }
 
+  function removeGroup(groupIndex: number) {
+    setGroups(prev => prev.filter((_, i) => i !== groupIndex));
+  }
+
   if (!question) return null;
 
   return (
@@ -189,11 +227,23 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
         </div>
 
         {groups.map((group, groupIndex) => (
-          <div key={groupIndex} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
+          <div
+            key={group.groupIndex}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4"
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Rule Group {groupIndex + 1}</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Rule Group {groupIndex + 1}
+              </h3>
               {groups.length > 1 && (
-                <Button variant="ghost" size="sm" onClick={() => setGroups(prev => prev.filter((_, i) => i !== groupIndex))} className="text-red-600">Remove Group</Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeGroup(groupIndex)}
+                  className="text-red-600"
+                >
+                  Remove Group
+                </Button>
               )}
             </div>
 
@@ -203,7 +253,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                 const valueOptions = getValueOptions(depQ);
                 const valueInputType = getValueInputType(depQ);
                 return (
-                <div key={condIndex} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div key={cond.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                   <div className="md:col-span-4">
                     <Select
                       label={condIndex === 0 ? 'Based on question' : 'And also based on'}
@@ -264,7 +314,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
         <Button variant="outline" onClick={addGroup} className="w-full">+ Add Another Rule Group</Button>
 
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button variant="outline" onClick={() => { try { onClose(); } catch (err) { console.error('Close error'); } }}>Cancel</Button>
+          <Button variant="outline" onClick={() => { try { onClose(); } catch (err) { console.error(err); } }}>Cancel</Button>
           <Button variant="primary" onClick={handleSave}>Save Visibility Rules</Button>
         </div>
       </div>

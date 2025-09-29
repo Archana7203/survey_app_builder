@@ -19,8 +19,19 @@ export class SurveyService {
 
   // 2. Create new survey
   async createSurvey(userId: string, data: any) {
-    if (!data.title) throw new Error('Title is required');
-    if (data.pages && !Array.isArray(data.pages)) throw new Error('Pages must be an array');
+    // Validation
+    if (!data.title || typeof data.title !== 'string' || data.title.trim() === '') {
+      throw new Error('Validation: Title is required');
+    }
+    if (data.pages !== undefined) {
+      if (!Array.isArray(data.pages)) throw new Error('Validation: Pages must be an array');
+      for (let i = 0; i < data.pages.length; i++) {
+        const page = data.pages[i];
+        if (!page || typeof page !== 'object') throw new Error(`Validation: Invalid page data at index ${i}`);
+        if (!Array.isArray(page.questions)) throw new Error(`Validation: Questions must be an array at page ${i + 1}`);
+        if (!Array.isArray(page.branching)) throw new Error(`Validation: Branching must be an array at page ${i + 1}`);
+      }
+    }
 
     const slug = await generateUniqueSlug(data.title);
     const survey = await this.repo.createSurvey({
@@ -198,6 +209,22 @@ export class SurveyService {
   async updateSurvey(userId: string, surveyId: string, updateData: any) {
     const survey = await this.repo.findByIdAndCreator(surveyId, userId);
     if (!survey) throw new Error('Survey not found');
+
+    // Validation
+    if (updateData.title !== undefined) {
+      if (!updateData.title || typeof updateData.title !== 'string' || updateData.title.trim() === '') {
+        throw new Error('Validation: Title cannot be empty');
+      }
+    }
+    if (updateData.pages !== undefined) {
+      if (!Array.isArray(updateData.pages)) throw new Error('Validation: Pages must be an array');
+      for (let i = 0; i < updateData.pages.length; i++) {
+        const page = updateData.pages[i];
+        if (!page || typeof page !== 'object') throw new Error(`Validation: Invalid page data at index ${i}`);
+        if (!Array.isArray(page.questions)) throw new Error(`Validation: Questions must be an array at page ${i + 1}`);
+        if (!Array.isArray(page.branching)) throw new Error(`Validation: Branching must be an array at page ${i + 1}`);
+      }
+    }
 
     // Only allow certain fields
     const allowedUpdates = ['status', 'title', 'description', 'closeDate', 'theme', 'backgroundColor', 'textColor', 'pages'];

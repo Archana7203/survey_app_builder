@@ -3,12 +3,13 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
+type ValueType = string | number | boolean;
 
 interface BranchingRule {
   questionId: string;
   condition: {
     operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
-    value: string | number | boolean;
+    value: ValueType;
   };
   logical?: 'AND' | 'OR';
   action: {
@@ -30,8 +31,9 @@ interface Question {
 
 // UI types to support chaining conditions within a single rule block
 interface UICondition {
+  id: string; // unique identifier for stable keys
   operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
-  value: string | number | boolean;
+  value: ValueType;
   logical?: 'AND' | 'OR'; // join with next condition
 }
 
@@ -46,13 +48,13 @@ interface UIRuleGroup {
 }
 
 interface BranchingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  question: Question | null;
-  totalPages: number;
-  currentPageIndex: number;
-  existingRules: BranchingRule[];
-  onSave: (rules: BranchingRule[]) => void;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly question: Question | null;
+  readonly totalPages: number;
+  readonly currentPageIndex: number;
+  readonly existingRules: BranchingRule[];
+  readonly onSave: (rules: BranchingRule[]) => void;
 }
 
 export default function BranchingModal({
@@ -66,11 +68,15 @@ export default function BranchingModal({
 }: BranchingModalProps) {
   const [groups, setGroups] = useState<UIRuleGroup[]>([]);
 
+  // Generate unique IDs for conditions
+  const generateConditionId = () => `branch-cond-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
   // Build a default group for the question
   const createEmptyGroup = useCallback((questionId: string, groupIndex: number): UIRuleGroup => ({
     questionId,
     conditions: [
       {
+        id: generateConditionId(),
         operator: 'equals',
         value: '',
         logical: 'OR',
@@ -103,6 +109,7 @@ export default function BranchingModal({
       const existing = byGroupIndex.get(groupIndex);
       if (existing) {
         existing.conditions.push({
+          id: generateConditionId(),
           operator: rule.condition.operator,
           value: rule.condition.value,
           logical: rule.logical,
@@ -111,6 +118,7 @@ export default function BranchingModal({
         byGroupIndex.set(groupIndex, {
           questionId: rule.questionId,
           conditions: [{
+            id: generateConditionId(),
             operator: rule.condition.operator,
             value: rule.condition.value,
             logical: rule.logical,
@@ -132,6 +140,7 @@ export default function BranchingModal({
           conditions: [
             ...group.conditions,
             {
+              id: generateConditionId(),
               operator: 'equals',
               value: '',
               logical: 'OR',
@@ -144,20 +153,28 @@ export default function BranchingModal({
   }, []);
 
   const removeCondition = useCallback((groupIndex: number, conditionIndex: number) => {
-    setGroups(prev => prev.map(group => {
-      if (group.groupIndex === groupIndex) {
-        const newConditions = group.conditions.filter((_, index) => index !== conditionIndex);
-        if (newConditions.length === 0) {
-          return null; // Remove group if no conditions left
-        }
-        return {
-          ...group,
-          conditions: newConditions,
-        };
-      }
-      return group;
-    }).filter(Boolean) as UIRuleGroup[]);
+    setGroups(prev => prev
+      .map(group => processRemoveCondition(group, groupIndex, conditionIndex))
+      .filter(Boolean) as UIRuleGroup[]
+    );
   }, []);
+
+  function processRemoveCondition(
+    group: UIRuleGroup,
+    targetGroupIndex: number,
+    conditionIndex: number
+  ): UIRuleGroup | null {
+    if (group.groupIndex !== targetGroupIndex) return group;
+
+    const newConditions = group.conditions.filter((_, index) => index !== conditionIndex);
+
+    if (newConditions.length === 0) return null; // remove group if no conditions left
+
+    return {
+      ...group,
+      conditions: newConditions,
+    };
+  }
 
   const updateCondition = useCallback((
     groupIndex: number,
@@ -165,24 +182,29 @@ export default function BranchingModal({
     field: keyof UICondition,
     value: string | number | boolean
   ) => {
-    setGroups(prev => prev.map(group => {
-      if (group.groupIndex === groupIndex) {
-        return {
-          ...group,
-          conditions: group.conditions.map((condition, index) => {
-            if (index === conditionIndex) {
-              return {
-                ...condition,
-                [field]: value,
-              };
-            }
-            return condition;
-          }),
-        };
-      }
-      return group;
-    }));
+    setGroups(prev =>
+      prev.map(group => applyConditionUpdate(group, groupIndex, conditionIndex, field, value))
+    );
   }, []);
+
+  function applyConditionUpdate(
+    group: UIRuleGroup,
+    targetGroupIndex: number,
+    conditionIndex: number,
+    field: keyof UICondition,
+    value: string | number | boolean
+  ): UIRuleGroup {
+    if (group.groupIndex !== targetGroupIndex) return group;
+
+    const updatedConditions = group.conditions.map((condition, index) =>
+      index === conditionIndex ? { ...condition, [field]: value } : condition
+    );
+
+    return {
+      ...group,
+      conditions: updatedConditions,
+    };
+  }
 
   const updateAction = useCallback((groupIndex: number, action: UIRuleGroup['action']) => {
     setGroups(prev => prev.map(group => {
@@ -225,8 +247,8 @@ export default function BranchingModal({
       });
     });
 
-    try { onSave(rules); } catch (err) { console.error('Save error'); }
-    try { onClose(); } catch (err) { console.error('Close error'); }
+    try { onSave(rules); } catch (err) { console.error(err); }
+    try { onClose(); } catch (err) { console.error(err); }
   }, [groups, question, onSave, onClose]);
 
   if (!question) return null;
@@ -311,7 +333,7 @@ export default function BranchingModal({
 
             <div className="space-y-4">
               {group.conditions.map((condition, conditionIndex) => (
-                <div key={conditionIndex} className="flex items-center space-x-3">
+                <div key={condition.id} className="flex items-center space-x-3">
                   {conditionIndex > 0 && (
                     <Select
                       value={condition.logical || 'OR'}
@@ -392,7 +414,7 @@ export default function BranchingModal({
         </Button>
 
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button variant="ghost" onClick={() => { try { onClose(); } catch (err) { console.error('Close error'); } }}>
+          <Button variant="ghost" onClick={() => { try { onClose(); } catch (err) { console.error(err); } }}>
             Cancel
           </Button>
           <Button variant="primary" onClick={handleSave}>

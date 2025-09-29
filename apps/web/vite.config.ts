@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://notebook-makers-jose-serial.trycloudflare.com',  
+        target: 'https://bluetooth-pan-fee-next.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'legs-emotions-marker-roll.trycloudflare.com' 
+      'him-assure-filing-registrar.trycloudflare.com' 
     ],
   },
 });

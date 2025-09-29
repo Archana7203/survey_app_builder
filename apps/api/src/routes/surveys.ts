@@ -3,13 +3,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
-import { Survey } from '../models/Survey';
 import { SurveyService } from '../services/survey.service';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { ensureSurveyEditable } from '../middleware/ensureSurveyEditable';
-import { generateUniqueSlug } from '../utils/slug';
-import { generateSurveyToken, sendSurveyInvite } from '../utils/email';
-import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -28,7 +24,6 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       parseInt(req.query.limit as string) || defaultSurveyLimit,
       maxSurveyLimit // Maximum limit
     );
-    const skip = (page - 1) * limit;
 
     const service = new SurveyService();
     const { surveysWithResponses, totalSurveys } = await service.getAllSurveys(req.user._id.toString(), page, limit);
@@ -66,36 +61,8 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
 // POST /api/surveys - Create new survey
 router.post('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { title, description, theme, backgroundColor, textColor, pages } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ error: 'Title is required' });
-    }
-
-    // Validate pages structure if provided
-    if (pages !== undefined) {
-      if (!Array.isArray(pages)) {
-        return res.status(400).json({ error: 'Pages must be an array' });
-      }
-      
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i];
-        if (!page || typeof page !== 'object') {
-          return res.status(400).json({ error: `Invalid page data at index ${i}` });
-        }
-        
-        if (!Array.isArray(page.questions)) {
-          return res.status(400).json({ error: `Questions must be an array at page ${i + 1}` });
-        }
-        
-        if (!Array.isArray(page.branching)) {
-          return res.status(400).json({ error: `Branching must be an array at page ${i + 1}` });
-        }
-      }
-    }
-
     const service = new SurveyService();
-    const survey = await service.createSurvey(req.user._id.toString(), { title, description, theme, backgroundColor, textColor, pages });
+    const survey = await service.createSurvey(req.user._id.toString(), req.body);
     res.status(201).json({
       id: survey._id,
       title: survey.title,
@@ -268,7 +235,7 @@ router.post('/:surveyId/respondents/send-invitations', requireAuth, async (req: 
     const successful = results.filter((r: any) => r.success).length;
     const failed = results.length - successful;
     res.json({ 
-      message: `Invitations sent successfully to ${successful} respondents${failed > 0 ? `, ${failed} failed` : ''}`,
+      message: 'Invitations sent successfully to ' + successful + ' respondents' + (failed > 0 ? ', ' + failed + ' failed' : ''),
       results
     });
   } catch (error) {
@@ -288,7 +255,6 @@ router.get('/:surveyId/respondent-progress', requireAuth, async (req: AuthReques
       parseInt(req.query.limit as string) || defaultRespondentProgressLimit,
       maxRespondentProgressLimit // Maximum limit
     );
-    const skip = (page - 1) * limit;
 
     const service = new SurveyService();
     const result = await service.getRespondentProgress(req.user._id.toString(), surveyId, page, limit);
@@ -304,34 +270,6 @@ router.put('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequ
   try {
     const { surveyId } = req.params;
     const updateData = req.body;
-
-    // Validate required fields
-    if (updateData.title !== undefined && (!updateData.title || updateData.title.trim() === '')) {
-      return res.status(400).json({ error: 'Title cannot be empty' });
-    }
-
-    // Validate pages structure if provided
-    if (updateData.pages !== undefined) {
-      if (!Array.isArray(updateData.pages)) {
-        return res.status(400).json({ error: 'Pages must be an array' });
-      }
-      
-      for (let i = 0; i < updateData.pages.length; i++) {
-        const page = updateData.pages[i];
-        if (!page || typeof page !== 'object') {
-          return res.status(400).json({ error: `Invalid page data at index ${i}` });
-        }
-        
-        if (!Array.isArray(page.questions)) {
-          return res.status(400).json({ error: `Questions must be an array at page ${i + 1}` });
-        }
-        
-        if (!Array.isArray(page.branching)) {
-          return res.status(400).json({ error: `Branching must be an array at page ${i + 1}` });
-        }
-      }
-    }
-
     const service = new SurveyService();
     const survey = await service.updateSurvey(req.user._id.toString(), surveyId, updateData);
     res.json({ 
