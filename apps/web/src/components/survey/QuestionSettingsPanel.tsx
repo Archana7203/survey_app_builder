@@ -1,6 +1,7 @@
 import React from 'react';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
+import crypto from 'crypto';
 
 interface Question {
   id: string;
@@ -67,7 +68,8 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
 
   const addOption = () => {
     if (!selectedQuestion) return;
-    const newOption = { id: Math.random().toString(36).substr(2, 9), text: '' };
+
+    const newOption = { id: crypto.randomBytes(4).toString('hex'), text: '' }; // 8-char secure ID
     const updatedOptions = [...(selectedQuestion.options || []), newOption];
     updateQuestion({ options: updatedOptions });
   };
@@ -171,12 +173,13 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
   if (isChoiceType) {
     return (
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label htmlFor="option" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Options
         </label>
         {question.options?.map((option: any, index: number) => (
           <div key={option.id} className="flex items-center gap-2">
             <Input
+              id="option"
               value={option.text}
               onChange={(e) => updateOption(index, e.target.value)}
               placeholder={`Option ${index + 1}`}

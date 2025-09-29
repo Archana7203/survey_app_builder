@@ -4,6 +4,26 @@ import { generateUniqueSlug } from '../utils/slug';
 import { generateSurveyToken, sendSurveyInvite } from '../utils/email';
 import mongoose from 'mongoose';
 
+//Helper
+function validateSurveyUpdate(updateData: any): void {
+  if (updateData.title !== undefined) {
+    if (!updateData.title || typeof updateData.title !== 'string' || updateData.title.trim() === '') {
+      throw new Error('Validation: Title cannot be empty');
+    }
+  }
+
+  if (updateData.pages !== undefined) {
+    if (!Array.isArray(updateData.pages)) throw new Error('Validation: Pages must be an array');
+
+    updateData.pages.forEach((page: any, i: number) => {
+      if (!page || typeof page !== 'object') throw new Error(`Validation: Invalid page data at index ${i}`);
+      if (!Array.isArray(page.questions)) throw new Error(`Validation: Questions must be an array at page ${i + 1}`);
+      if (!Array.isArray(page.branching)) throw new Error(`Validation: Branching must be an array at page ${i + 1}`);
+    });
+  }
+}
+
+
 export class SurveyService {
   private readonly repo = new SurveyRepository();
   private readonly responseRepo = new ResponseRepository();
@@ -84,7 +104,8 @@ export class SurveyService {
   // 8. Add respondent (without sending email)
   async addRespondent(userId: string, surveyId: string, email: string) {
     if (!email) throw new Error('Email is required');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Invalid email format');
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (!emailRegex.test(email)) throw new Error('Invalid email format');
 
     const survey = await this.repo.findByIdAndCreator(surveyId, userId);
     if (!survey) throw new Error('Survey not found');
@@ -210,21 +231,8 @@ export class SurveyService {
     const survey = await this.repo.findByIdAndCreator(surveyId, userId);
     if (!survey) throw new Error('Survey not found');
 
-    // Validation
-    if (updateData.title !== undefined) {
-      if (!updateData.title || typeof updateData.title !== 'string' || updateData.title.trim() === '') {
-        throw new Error('Validation: Title cannot be empty');
-      }
-    }
-    if (updateData.pages !== undefined) {
-      if (!Array.isArray(updateData.pages)) throw new Error('Validation: Pages must be an array');
-      for (let i = 0; i < updateData.pages.length; i++) {
-        const page = updateData.pages[i];
-        if (!page || typeof page !== 'object') throw new Error(`Validation: Invalid page data at index ${i}`);
-        if (!Array.isArray(page.questions)) throw new Error(`Validation: Questions must be an array at page ${i + 1}`);
-        if (!Array.isArray(page.branching)) throw new Error(`Validation: Branching must be an array at page ${i + 1}`);
-      }
-    }
+    // Use the helper instead of inline validation
+    validateSurveyUpdate(updateData);
 
     // Only allow certain fields
     const allowedUpdates = ['status', 'title', 'description', 'closeDate', 'theme', 'backgroundColor', 'textColor', 'pages'];
@@ -246,7 +254,6 @@ export class SurveyService {
     await this.repo.updateSurvey(surveyId, survey);
     return survey;
   }
-
   // 13. Delete survey
   async deleteSurvey(userId: string, surveyId: string) {
     const survey = await this.repo.findByIdAndCreator(surveyId, userId);
