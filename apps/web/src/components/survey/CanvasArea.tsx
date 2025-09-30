@@ -196,6 +196,11 @@ export default function CanvasArea({
         ref={setNodeRef}
         className="flex-1 overflow-y-auto p-4 w-full text-left"
         onClick={() => onSelectQuestion(null)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onSelectQuestion(null);
+          }
+        }}
       >
         {questions.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8">

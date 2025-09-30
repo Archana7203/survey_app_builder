@@ -7,10 +7,10 @@ export const generateSlug = (title: string): string => {
   }
 
   return title
-    .toLowerCase()
-    .replace(/[^\w]+/g, '-')   // Replace sequences of non-word characters with single hyphen
-    .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
-};
+  .toLowerCase()
+  .replace(/[^\w]+/g, '-')         // Replace sequences of non-word characters with single hyphen
+  .replace(/(^-+)|(-+$)/g, '');    // Remove leading/trailing hyphens
+}
 
 export const generateUniqueSlug = async (title: string): Promise<string> => {
   // Handle null, undefined, or non-string inputs
