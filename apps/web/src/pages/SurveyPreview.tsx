@@ -62,10 +62,9 @@ export default function SurveyPreview() {
   
   // Debug logging for URL handling
   console.log('🔍 SurveyPreview - Component mounted with slug:', slug);
-  console.log('🔍 SurveyPreview - Current URL:', window.location.href);
-  console.log('🔍 SurveyPreview - Hostname:', window.location.hostname);
-  console.log('🔍 SurveyPreview - Pathname:', window.location.pathname);
-  
+  console.log('🔍 SurveyPreview - Current URL:', globalThis.location.href);
+  console.log('🔍 SurveyPreview - Hostname:', globalThis.location.hostname);
+  console.log('🔍 SurveyPreview - Pathname:', globalThis.location.pathname);
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +73,7 @@ export default function SurveyPreview() {
 
   // Helper: extract visibility rules from a question
   const getVisibilityRules = useCallback((question: Question): Array<BranchingRule & { groupIndex?: number }> => {
-    const settings = (question.settings || {}) as Record<string, unknown>;
+    const settings = (question.settings || {});
     const fromSettings = (settings.visibleWhen || (settings.visibility as any)?.rules) as Array<BranchingRule & { groupIndex?: number }> | undefined;
     return (
       question.visibilityRules ||
@@ -235,15 +234,6 @@ export default function SurveyPreview() {
   const visibleQuestions = currentPage?.questions.filter(isQuestionVisible) || [];
   const canGoNext = visibleQuestions.length > 0 && visibleQuestions.every(q => !q.required || responses[q.id]);
   
-  const getThemeStyle = () => {
-    const pageBg = currentPage?.backgroundColor || survey.backgroundColor;
-    const pageTextColor = survey.textColor || '#111827';
-    return {
-      backgroundColor: pageBg || '#ffffff',
-      color: pageTextColor,
-    } as React.CSSProperties;
-  };
-
   const getPageStyle = () => {
     const pageBg = currentPage?.backgroundColor || survey.backgroundColor;
     const pageTextColor = survey.textColor || '#111827';
@@ -274,7 +264,7 @@ export default function SurveyPreview() {
 
         
         <div className="rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 md:p-5 survey-content" style={getThemeStyle()}>
+          <div className="p-4 md:p-5 survey-content" style={getPageStyle()}>
             {/* Add theme CSS - match inline preview exactly */}
             <style>
               {`
@@ -425,7 +415,7 @@ export default function SurveyPreview() {
                     size="sm"
                     onClick={goToNextPage}
                     disabled={!canGoNext}
-                    className={`text-xs ${!canGoNext ? 'opacity-50' : ''}`}
+                    className={`text-xs ${canGoNext ? '' : 'opacity-50'}`}
                   >
                     Next →
                   </Button>
@@ -434,7 +424,7 @@ export default function SurveyPreview() {
                     variant="primary"
                     size="sm"
                     disabled={!canGoNext}
-                    className={`text-xs ${!canGoNext ? 'opacity-50' : ''}`}
+                    className={`text-xs ${canGoNext ? '' : 'opacity-50'}`}
                   >
                     Preview Complete
                   </Button>
