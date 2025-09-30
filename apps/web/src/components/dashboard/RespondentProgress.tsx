@@ -36,7 +36,7 @@ interface RespondentProgressData {
 }
 
 interface Props {
-  surveyId: string;
+  readonly surveyId: string;
 }
 
 export default function RespondentProgress({ surveyId }: Props) {
@@ -257,8 +257,8 @@ export default function RespondentProgress({ surveyId }: Props) {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {respondentProgress.map((respondent, index) => (
-                    <tr key={index} className="text-gray-700 hover:ring-1 hover:ring-gray-200 dark:text-gray-300 dark:hover:ring-gray-600 transition-all duration-200">
+                  {respondentProgress.map((respondent) => (
+                    <tr key={respondent.email} className="text-gray-700 hover:ring-1 hover:ring-gray-200 dark:text-gray-300 dark:hover:ring-gray-600 transition-all duration-200">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {respondent.email}
                       </td>
@@ -304,10 +304,10 @@ export default function RespondentProgress({ surveyId }: Props) {
                 </span>
                 
                 <div className="flex items-center space-x-2">
-                  <label className="text-sm text-gray-600 dark:text-gray-400">Show:</label>
+                  <label htmlFor="page-no" className="text-sm text-gray-600 dark:text-gray-400">Show:</label>
                   <select
                     value={pagination.limit}
-                    onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+                    onChange={(e) => handleLimitChange(Number.parseInt(e.target.value))}
                     className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
                     <option value={5}>5</option>

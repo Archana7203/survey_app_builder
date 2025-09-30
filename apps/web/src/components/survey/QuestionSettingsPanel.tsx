@@ -1,7 +1,7 @@
 import React from 'react';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 interface Question {
   id: string;
@@ -216,7 +216,7 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
           label="Maximum Rating"
           value={question.settings?.maxRating || 5}
           onChange={(e) => {
-            let maxRating = parseInt(e.target.value);
+            let maxRating = Number.parseInt(e.target.value);
             
             // Enforce limits based on question type
             if (question.type === 'ratingSmiley') {
@@ -242,21 +242,21 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
           type="number"
           label="Minimum Value"
           value={question.settings?.scaleMin || 0}
-          onChange={(e) => updateQuestionSettings({ scaleMin: parseInt(e.target.value) })}
+          onChange={(e) => updateQuestionSettings({ scaleMin: Number.parseInt(e.target.value) })}
           disabled={isDisabled}
         />
         <Input
           type="number"
           label="Maximum Value"
           value={question.settings?.scaleMax || 100}
-          onChange={(e) => updateQuestionSettings({ scaleMax: parseInt(e.target.value) })}
+          onChange={(e) => updateQuestionSettings({ scaleMax: Number.parseInt(e.target.value) })}
           disabled={isDisabled}
         />
         <Input
           type="number"
           label="Step Size"
           value={question.settings?.scaleStep || 1}
-          onChange={(e) => updateQuestionSettings({ scaleStep: parseInt(e.target.value) })}
+          onChange={(e) => updateQuestionSettings({ scaleStep: Number.parseInt(e.target.value) })}
           min={1}
           disabled={isDisabled}
         />

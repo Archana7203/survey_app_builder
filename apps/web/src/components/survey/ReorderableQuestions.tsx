@@ -54,8 +54,9 @@ function SortableQuestionItem({
   return (
     <div ref={setNodeRef} style={style} className="mb-4">
       <Card className={`${isDragging ? 'shadow-lg' : ''}`}>
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           className="w-full text-left p-4 cursor-pointer text-gray-700 hover:ring-1 hover:ring-gray-200 dark:text-gray-300 dark:hover:ring-gray-600 transition-all duration-200"
           onClick={() => onSelect(question)}
           onKeyDown={(e) => {
@@ -67,20 +68,28 @@ function SortableQuestionItem({
         >
           {/* Drag Handle */}
           <div className="flex items-start space-x-3">
-            <button
+            <div
               {...attributes}
               {...listeners}
+              role="button"
+              tabIndex={0}
+              aria-disabled={disabled}
               className={`mt-1 p-2 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing ${
                 disabled ? 'cursor-not-allowed opacity-50' : ''
               }`}
               title={disabled ? 'Survey is locked' : 'Drag to reorder'}
-              disabled={disabled}
+              onKeyDown={(e) => {
+                if (disabled) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                }
+              }}
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/>
                 <path d="M0 0h24v24H0z" fill="none"/>
               </svg>
-            </button>
+            </div>
 
             {/* Question Content */}
             <div className="flex-1">
@@ -148,7 +157,7 @@ function SortableQuestionItem({
               
             </div>
           </div>
-        </button>
+        </div>
       </Card>
     </div>
   );

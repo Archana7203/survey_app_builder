@@ -41,7 +41,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
         const errorData = await response.json();
         setError(errorData.error || 'Failed to load respondents');
       }
-    } catch (error) {
+    } catch {
       setError('Error loading respondents');
     } finally {
       setLoading(false);
@@ -59,9 +59,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
     try {
       const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondents`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email: newEmail.trim() }),
       });
@@ -74,7 +72,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
         const errorData = await response.json();
         setError(errorData.error || 'Failed to add respondent');
       }
-    } catch (error) {
+    } catch {
       setError('Error adding respondent');
     } finally {
       setAdding(false);
@@ -99,7 +97,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
         const errorData = await response.json();
         setError(errorData.error || 'Failed to remove respondent');
       }
-    } catch (error) {
+    } catch {
       setError('Error removing respondent');
     } finally {
       setDeleting(null);
@@ -125,7 +123,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
         const errorData = await response.json();
         setError(errorData.error || 'Failed to send invitations');
       }
-    } catch (error) {
+    } catch {
       setError('Error sending invitations');
     } finally {
       setSendingInvitations(false);
@@ -133,6 +131,50 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
   };
 
   if (!isOpen) return null;
+
+  // Extracted render logic for clarity
+  const renderRespondentsContent = () => {
+    if (loading) {
+      return (
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+          Loading...
+        </div>
+      );
+    }
+
+    if (!respondents || respondents.length === 0) {
+      return (
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+          No respondents added yet
+        </div>
+      );
+    }
+
+    return (
+      <div className="max-h-60 overflow-y-auto">
+        <ul className="space-y-2">
+          {respondents.map((email) => (
+            <li
+              key={email}
+              className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-md"
+            >
+              <span className="text-sm text-gray-700 dark:text-gray-300">{email}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteRespondent(email)}
+                disabled={deleting === email}
+                className="text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                {deleting === email ? 'Removing...' : 'Remove'}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -143,7 +185,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
               Manage Respondents
             </h2>
             <button
-              onClick={() => { try { onClose(); } catch (err) { console.error('Close error'); } }}
+              onClick={() => { try { onClose(); } catch (err) { console.error(err); } }}
               className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
             >
               ✕
@@ -172,17 +214,13 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
                 className="flex-1"
                 required
               />
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={adding}
-              >
+              <Button type="submit" variant="primary" disabled={adding}>
                 {adding ? 'Adding...' : 'Add Respondent'}
               </Button>
             </div>
           </form>
 
-          {(respondents || []).length > 0 && (
+          {respondents.length > 0 && (
             <div className="mb-4">
               <Button
                 type="button"
@@ -190,7 +228,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
                 onClick={() => setShowConfirmSend(true)}
                 className="w-full"
               >
-                Send Invitations to All Respondents ({(respondents || []).length})
+                Send Invitations to All Respondents ({respondents.length})
               </Button>
             </div>
           )}
@@ -202,45 +240,12 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               Add or remove respondents. Emails will only be sent when you click "Send Invitations".
             </p>
-            {loading ? (
-              <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                Loading...
-              </div>
-            ) : (respondents || []).length === 0 ? (
-              <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                No respondents added yet
-              </div>
-            ) : (
-              <div className="max-h-60 overflow-y-auto">
-                <ul className="space-y-2">
-                  {(respondents || []).map((email) => (
-                    <li
-                      key={email}
-                      className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-md"
-                    >
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {email}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteRespondent(email)}
-                        disabled={deleting === email}
-                        className="text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        {deleting === email ? 'Removing...' : 'Remove'}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {renderRespondentsContent()}
           </div>
         </div>
       </div>
 
-      {/* Confirmation Modal for Sending Invitations */}
+      {/* Confirmation Modal */}
       <Modal
         isOpen={showConfirmSend}
         onClose={() => setShowConfirmSend(false)}
@@ -249,14 +254,14 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       >
         <div className="space-y-4">
           <p className="text-gray-700 dark:text-gray-300">
-            Are you sure you want to send survey invitations to all {(respondents || []).length} respondents? 
+            Are you sure you want to send survey invitations to all {respondents.length} respondents? 
             This action cannot be undone.
           </p>
-          
+
           <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Recipients:</p>
             <div className="max-h-32 overflow-y-auto">
-              {(respondents || []).map((email) => (
+              {respondents.map((email) => (
                 <div key={email} className="text-sm text-gray-700 dark:text-gray-300 py-1">
                   {email}
                 </div>

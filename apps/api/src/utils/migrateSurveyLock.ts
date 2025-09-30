@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import { Survey } from '../models/Survey';
 
 export async function migrateSurveyLock() {

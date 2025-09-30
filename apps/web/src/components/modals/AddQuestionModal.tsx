@@ -180,7 +180,7 @@ const SliderSettings: React.FC<{
           type="number"
           className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
           value={Number((settings as any).scaleMin ?? 0)}
-          onChange={(e) => updateSetting('scaleMin', parseInt(e.target.value || '0', 10))}
+          onChange={(e) => updateSetting('scaleMin', Number.parseInt(e.target.value || '0', 10))}
         />
       </div>
       <div>
@@ -190,7 +190,7 @@ const SliderSettings: React.FC<{
           type="number"
           className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
           value={Number((settings as any).scaleMax ?? 10)}
-          onChange={(e) => updateSetting('scaleMax', parseInt(e.target.value || '0', 10))}
+          onChange={(e) => updateSetting('scaleMax', Number.parseInt(e.target.value || '0', 10))}
         />
       </div>
       <div>
@@ -200,7 +200,7 @@ const SliderSettings: React.FC<{
           type="number"
           className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
           value={Number((settings as any).scaleStep ?? 1)}
-          onChange={(e) => updateSetting('scaleStep', parseInt(e.target.value || '1', 10))}
+          onChange={(e) => updateSetting('scaleStep', Number.parseInt(e.target.value || '1', 10))}
         />
       </div>
     </div>
@@ -225,7 +225,7 @@ const RatingSettings: React.FC<{
   };
 
   const handleMaxRatingChange = (value: string) => {
-    let maxRating = parseInt(value || '0', 10);
+    let maxRating = Number.parseInt(value || '0', 10);
     const { min, max } = getMinMaxRating();
     maxRating = Math.min(Math.max(maxRating, min), max);
     onSettingsChange({ ...settings, maxRating });

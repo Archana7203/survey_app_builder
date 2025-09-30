@@ -8,11 +8,8 @@ export const generateSlug = (title: string): string => {
 
   return title
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/[_\s]+/g, '-') // Replace underscores and spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single
-    .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-    .trim();
+    .replace(/[^\w]+/g, '-')   // Replace sequences of non-word characters with single hyphen
+    .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
 };
 
 export const generateUniqueSlug = async (title: string): Promise<string> => {

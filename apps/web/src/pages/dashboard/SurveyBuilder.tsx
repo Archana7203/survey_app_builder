@@ -59,9 +59,25 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
   const [activeTab, setActiveTab] = useState('general');
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor)
   );
+
+  // Prevent browser navigating on file drops (but don't interfere with in-app DnD)
+  useEffect(() => {
+    const preventIfFileDrag = (e: DragEvent) => {
+      const types = (e.dataTransfer && Array.from(e.dataTransfer.types)) || [];
+      if (types.includes('Files')) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('dragover', preventIfFileDrag);
+    window.addEventListener('drop', preventIfFileDrag);
+    return () => {
+      window.removeEventListener('dragover', preventIfFileDrag);
+      window.removeEventListener('drop', preventIfFileDrag);
+    };
+  }, []);
 
   // Helper variables - with additional safety checks
   const currentPage = survey?.pages?.[activePageIndex] || { questions: [], branching: [] };
@@ -191,12 +207,21 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
 
     // Case 1: dragging from library
     if (active.data.current?.type === "question") {
-      if (!survey) return;
+      if (!survey || !over) return;
       const newQuestion = createNewQuestion(active.data.current.questionType.type);
-
       const updatedPages = [...survey.pages];
-      updatedPages[activePageIndex].questions.push(newQuestion);
 
+      // If dropped over a question id, insert at that index; if over canvas zone, append
+      const questions = updatedPages[activePageIndex].questions;
+      const overId = String(over.id);
+      const overIndex = questions.findIndex((q: Question) => q.id === overId);
+      if (overId === 'canvas-drop-zone' || overIndex === -1) {
+        questions.push(newQuestion);
+      } else {
+        questions.splice(overIndex + 1, 0, newQuestion);
+      }
+
+      updatedPages[activePageIndex].questions = [...questions];
       setSurvey({ ...survey, pages: updatedPages });
       setSelectedQuestion(newQuestion);
       return;
@@ -428,7 +453,12 @@ function SurveyBuilderContent({
       />
 
       {/* Three Panel Layout */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
+      <DndContext 
+        sensors={sensors} 
+        collisionDetection={closestCenter} 
+        onDragEnd={handleDragEnd} 
+        onDragStart={handleDragStart}
+      >
         <div className="grid grid-cols-12 gap-6 h-[600px]">
           {/* Left Panel - Question Library */}
           <div className="col-span-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">

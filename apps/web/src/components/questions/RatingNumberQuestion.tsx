@@ -34,8 +34,11 @@ const RatingNumberQuestion: React.FC<QuestionProps> = ({
         )}
       </div>
 
-      <div className="flex items-center space-x-2" role="group" aria-labelledby={`question-${question.id}`}>
-        {Array.from({ length: maxRating }, (_, index) => {
+        <fieldset className="flex items-center space-x-2 p-0 m-0" aria-labelledby={`question-${question.id}`}>
+          <legend id={`question-${question.id}`} className="sr-only">
+            {question.title}
+          </legend>
+          {Array.from({ length: maxRating }, (_, index) => {
           const ratingValue = index + 1;
           const isSelected = (value as number) === ratingValue;
           
@@ -65,9 +68,9 @@ const RatingNumberQuestion: React.FC<QuestionProps> = ({
             </button>
           );
         })}
-      </div>
+      </fieldset>
 
-      {value && (
+      {!!value && (
         <p className="text-sm" style={{ color: themeColors?.textColor ? `${themeColors.textColor}80` : '#374151' }}>
           You rated this {String(value)} out of {maxRating}
         </p>

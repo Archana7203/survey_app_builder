@@ -8,7 +8,7 @@ import {
 } from '../utils/auth';
 
 export class AuthService {
-  private repo = new AuthRepository();
+  private readonly repo = new AuthRepository();
 
   async register(email: string, password: string, role: 'creator' | 'respondent' = 'respondent') {
     if (!email || !password) throw new Error('Email and password required');
@@ -19,7 +19,7 @@ export class AuthService {
     const passwordHash = await hashPassword(password);
     const user = await this.repo.create({ email, passwordHash, role });
 
-    const userId = (user._id as unknown as string); // ✅ _id fix
+    const userId = (user._id as string); // ✅ _id fix
     const accessToken = generateAccessToken(userId);
     const refreshToken = generateRefreshToken(userId);
 
@@ -34,7 +34,7 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    const userId = (user._id as unknown as string); // ✅ _id fix
+    const userId = (user._id as string); // ✅ _id fix
     const accessToken = generateAccessToken(userId);
     const refreshToken = generateRefreshToken(userId);
 
@@ -47,7 +47,7 @@ export class AuthService {
     const decoded = verifyRefreshToken(refreshToken);
     const user = await this.repo.findById(decoded.userId);
     if (!user) throw new Error('User not found');
-    const userId = (user._id as unknown as string);
+    const userId = (user._id as string);
     const accessToken = generateAccessToken(userId); 
     return { accessToken };
   }

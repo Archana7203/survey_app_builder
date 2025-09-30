@@ -42,8 +42,8 @@ const PieChart: React.FC<PieChartProps> = ({
             dataKey="value"
             label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
           >
-            {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+            {data.map((entry) => (
+              <Cell key={`cell-${entry.name}`} fill={colors[data.indexOf(entry) % colors.length]} />
             ))}
           </Pie>
           <Tooltip />

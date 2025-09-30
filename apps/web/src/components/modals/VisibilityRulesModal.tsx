@@ -3,7 +3,7 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
-import crypto from 'crypto';
+// Use Web Crypto API in the browser instead of node:crypto
 
 type ValueType = string | number | boolean;
 
@@ -50,6 +50,28 @@ interface VisibilityRulesModalProps {
   readonly onSave: (rules: VisibilityRule[]) => void;
 }
 
+function getValueInputType(depQ: Question | undefined) {
+    if (!depQ) return 'text';
+    switch (depQ.type) {
+      case 'ratingNumber':
+      case 'ratingStar':
+      case 'ratingSmiley':
+      case 'slider':
+        return 'number';
+      case 'datePicker':
+        return 'date';
+      case 'email':
+        return 'email';
+      default:
+        return 'text';
+    }
+  }
+
+  function getValueOptions(depQ: Question | undefined) {
+    if (!depQ?.options) return null;
+    return depQ.options.map(option => ({ value: option.value || option.text, label: option.text }));
+  }
+
 export default function VisibilityRulesModal({ isOpen, onClose, question, existingRules, candidateQuestions, onSave }: VisibilityRulesModalProps) {
   const [groups, setGroups] = useState<UIRuleGroup[]>([]);
 
@@ -57,8 +79,16 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
 
   // Generate unique IDs for conditions
   const generateConditionId = (): string => {
-    const randomHex = crypto.randomBytes(4).toString('hex'); // 8 characters of secure randomness
-    return `branch-cond-${Date.now()}-${randomHex}`;
+    // Prefer crypto.getRandomValues when available (browser), fallback to Math.random
+    let randomPart = '';
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const bytes = new Uint8Array(4);
+      window.crypto.getRandomValues(bytes);
+      randomPart = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+      randomPart = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+    }
+    return `branch-cond-${Date.now()}-${randomPart}`;
   };
 
   const createEmptyGroup = useCallback((groupIndex: number): UIRuleGroup => ({
@@ -194,28 +224,6 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
 
     try { onSave(flattened); } catch (err) { console.error(err); }
     try { onClose(); } catch (err) { console.error(err); }
-  }
-
-  function getValueInputType(depQ: Question | undefined) {
-    if (!depQ) return 'text';
-    switch (depQ.type) {
-      case 'ratingNumber':
-      case 'ratingStar':
-      case 'ratingSmiley':
-      case 'slider':
-        return 'number';
-      case 'datePicker':
-        return 'date';
-      case 'email':
-        return 'email';
-      default:
-        return 'text';
-    }
-  }
-
-  function getValueOptions(depQ: Question | undefined) {
-    if (!depQ?.options) return null;
-    return depQ.options.map(option => ({ value: option.value || option.text, label: option.text }));
   }
 
   function removeGroup(groupIndex: number) {

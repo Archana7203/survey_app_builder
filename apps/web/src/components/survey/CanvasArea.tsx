@@ -192,9 +192,8 @@ export default function CanvasArea({
         </div>
       </div>
       {/* Drop Zone */}
-      <button 
+      <div 
         ref={setNodeRef}
-        type="button"
         className="flex-1 overflow-y-auto p-4 w-full text-left"
         onClick={() => onSelectQuestion(null)}
       >
@@ -231,7 +230,7 @@ export default function CanvasArea({
             </div>
           </SortableContext>
         )}
-      </button>
+      </div>
     </div>
   );
 }

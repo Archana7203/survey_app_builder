@@ -19,9 +19,9 @@ const maxRespondentProgressLimit = 200;
 router.get('/', requireAuth, async (req: AuthRequest, res) => {
   try {
     // Parse pagination parameters
-    const page = parseInt(req.query.page as string) || 1;
+    const page = Number.parseInt(req.query.page as string) || 1;
     const limit = Math.min(
-      parseInt(req.query.limit as string) || defaultSurveyLimit,
+      Number.parseInt(req.query.limit as string) || defaultSurveyLimit,
       maxSurveyLimit // Maximum limit
     );
 
@@ -250,9 +250,9 @@ router.get('/:surveyId/respondent-progress', requireAuth, async (req: AuthReques
     const { surveyId } = req.params;
     
     // Parse pagination parameters
-    const page = parseInt(req.query.page as string) || 1;
+    const page = Number.parseInt(req.query.page as string) || 1;
     const limit = Math.min(
-      parseInt(req.query.limit as string) || defaultRespondentProgressLimit,
+      Number.parseInt(req.query.limit as string) || defaultRespondentProgressLimit,
       maxRespondentProgressLimit // Maximum limit
     );
 

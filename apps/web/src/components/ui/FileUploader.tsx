@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 interface FileUploaderProps {
   label?: string;
@@ -8,6 +9,10 @@ interface FileUploaderProps {
   onFileSelect?: (files: File[]) => void;
   error?: string;
   helperText?: string;
+}
+
+interface FileWithId extends File {
+  id: string;
 }
 
 const FileUploader: React.FC<FileUploaderProps> = ({
@@ -21,36 +26,42 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<FileWithId[]>([]);
 
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
-    
-    const fileArray = Array.from(selectedFiles);
-    
-    // Validate file size
+
+    let fileArray: FileWithId[] = Array.from(selectedFiles).map(file => ({
+      ...file,
+      id: uuidv4(),
+    }));
+
     if (maxSize) {
-      const validFiles = fileArray.filter(file => file.size <= maxSize);
-              if (validFiles.length !== fileArray.length) {
-          // Some files were filtered out due to size limit
-        }
-      setFiles(validFiles);
-      onFileSelect?.(validFiles);
-    } else {
-      setFiles(fileArray);
-      onFileSelect?.(fileArray);
+      fileArray = fileArray.filter(file => file.size <= maxSize);
     }
+
+    setFiles(fileArray);
+    onFileSelect?.(fileArray);
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
+    const items = e.dataTransfer?.items;
+    if (items && Array.from(items).some((item) => item.kind === 'file')) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragOver(false);
+      handleFileSelect(e.dataTransfer.files);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
+    const types = e.dataTransfer && Array.from(e.dataTransfer.types);
+    if (types && types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      setDragOver(true);
+    }
   };
 
   const handleDragLeave = () => {
@@ -66,8 +77,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  // Extracted ternary for drop area styling
+  let dropAreaClasses = 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500';
+
+  if (dragOver) {
+    dropAreaClasses = 'border-blue-500 bg-blue-50 dark:bg-blue-900/20';
+  } else if (error) {
+    dropAreaClasses = 'border-red-300 dark:border-red-600 hover:border-red-400 dark:hover:border-red-500';
+  }
+
 
   return (
     <div className="space-y-2">
@@ -76,19 +97,15 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           {label}
         </label>
       )}
-      
-      <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-          dragOver 
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-            : error 
-              ? 'border-red-300 dark:border-red-600 hover:border-red-400 dark:hover:border-red-500'
-              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-        }`}
+
+      {/* Entire drop area as button */}
+      <button
+        type="button"
+        className={`w-full border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${dropAreaClasses}`}
+        onClick={handleClick}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onClick={handleClick}
       >
         <input
           ref={fileInputRef}
@@ -98,7 +115,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           onChange={(e) => handleFileSelect(e.target.files)}
           className="hidden"
         />
-        
+
         <div className="space-y-2">
           <div className="text-gray-500 dark:text-gray-400">
             <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,7 +124,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           </div>
           <div>
             <p className="text-gray-700 dark:text-gray-300">
-              <span className="font-medium text-blue-600 dark:text-blue-400">Click to upload</span> or drag and drop
+              Click to upload or drag and drop
             </p>
             {maxSize && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -116,12 +133,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </button>
 
+      {/* Selected files list */}
       {files.length > 0 && (
         <div className="space-y-1">
-          {files.map((file, index) => (
-            <div key={index} className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+          {files.map((file) => (
+            <div key={file.id} className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
               <span>{file.name}</span>
               <span>{formatFileSize(file.size)}</span>
             </div>
@@ -129,17 +147,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         </div>
       )}
 
-      {error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      )}
-      {helperText && !error && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>
-      )}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {helperText && !error && <p className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>}
     </div>
   );
 };
 
 export default FileUploader;
-
-
-

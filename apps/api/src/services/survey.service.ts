@@ -235,10 +235,10 @@ export class SurveyService {
     validateSurveyUpdate(updateData);
 
     // Only allow certain fields
-    const allowedUpdates = ['status', 'title', 'description', 'closeDate', 'theme', 'backgroundColor', 'textColor', 'pages'];
+    const allowedUpdates = new Set(['status', 'title', 'description', 'closeDate', 'theme', 'backgroundColor', 'textColor', 'pages']);
     const filteredUpdates: any = {};
     Object.keys(updateData).forEach(k => {
-      if (allowedUpdates.includes(k)) filteredUpdates[k] = updateData[k];
+      if (allowedUpdates.has(k)) filteredUpdates[k] = updateData[k];
     });
 
     const originalStatus = survey.status;

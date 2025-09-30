@@ -15,7 +15,7 @@ export const requireAuth = async (
   try {
     // Support cookie or Authorization header bearer token (used in tests sometimes)
     const authHeader = req.headers.authorization;
-    const bearer = authHeader && authHeader.startsWith('Bearer ')
+    const bearer = authHeader?.startsWith('Bearer ')
       ? authHeader.substring('Bearer '.length)
       : undefined;
     const token = req.cookies.accessToken || bearer;
@@ -36,7 +36,7 @@ export const requireAuth = async (
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({error});
   }
 };
 

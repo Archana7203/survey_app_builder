@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../ui/Button';
+import { v4 as uuidv4 } from 'uuid';
 
 interface PageNavigationProps {
   pages: any[];
@@ -16,23 +17,37 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
   onPageChange,
   onAddPage,
   onDeletePage,
-  isDisabled = false
+  isDisabled = false,
 }) => {
+  // Maintain stable keys internally
+  const [keys, setKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    // generate new keys only if pages length changes
+    setKeys((prev) => {
+      if (prev.length === pages.length) return prev;
+      const newKeys = pages.map((_, i) => prev[i] ?? uuidv4());
+      return newKeys;
+    });
+  }, [pages]);
+
   return (
     <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
+        {/* Add Page Button */}
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onAddPage}
           disabled={isDisabled}
         >
           + Add Page
         </Button>
-        
-        {pages.map((_: unknown, index: number) => (
+
+        {/* Page Buttons */}
+        {pages.map((_, index) => (
           <button
-            key={index}
+            key={keys[index] ?? `page-${index}`}
             onClick={() => onPageChange(index)}
             className={`px-3 py-2 text-sm rounded-md transition-all duration-200 ${
               index === activePageIndex
@@ -43,7 +58,8 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
             Page {index + 1}
           </button>
         ))}
-        
+
+        {/* Delete Page Button */}
         {pages.length > 1 && (
           <Button
             variant="ghost"

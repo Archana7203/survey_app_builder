@@ -57,7 +57,10 @@ const RatingSmileyQuestion: React.FC<QuestionProps> = ({
         )}
       </div>
 
-      <div className="flex items-center space-x-4" role="group" aria-labelledby={`question-${question.id}`}>
+      <fieldset className="flex items-center space-x-4 p-0 m-0" aria-labelledby={`question-${question.id}`}>
+        <legend id={`question-${question.id}`} className="sr-only">
+          {question.title}
+        </legend>
         {ratings.map((rating) => (
           <div key={rating.value} className="flex flex-col items-center space-y-2">
             <button
@@ -81,7 +84,7 @@ const RatingSmileyQuestion: React.FC<QuestionProps> = ({
             </span>
           </div>
         ))}
-      </div>
+      </fieldset>
 
       {error && (
         <p id={`error-${question.id}`} className="text-sm text-red-600" role="alert">

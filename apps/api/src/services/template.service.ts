@@ -3,8 +3,8 @@ import { SurveyRepository } from '../repository/survey.repository';
 import { generateUniqueSlug } from '../utils/slug';
 
 export class TemplateService {
-  private repo = new TemplateRepository();
-  private surveyRepo = new SurveyRepository();
+  private readonly repo = new TemplateRepository();
+  private readonly surveyRepo = new SurveyRepository();
 
   async listTemplates() {
     return this.repo.findAll();

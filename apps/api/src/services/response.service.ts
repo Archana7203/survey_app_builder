@@ -2,8 +2,8 @@ import { ResponseRepository } from '../repository/response.repository';
 import { SurveyRepository } from '../repository/survey.repository';
 
 export class ResponseService {
-  private repo = new ResponseRepository();
-  private surveyRepo = new SurveyRepository();
+  private readonly repo = new ResponseRepository();
+  private readonly surveyRepo = new SurveyRepository();
 
   async getOverviewForCreator(userId: string) {
     // Derive the list of survey IDs created by this user
@@ -14,9 +14,9 @@ export class ResponseService {
       return { responses: [], totalResponses: 0, completedResponses: 0, recentResponses: [] };
     }
 
-    const responses = await this.repo.findRecentBySurveys(surveyIds as any, 50);
-    const totalResponses = await (await import('../models/Response')).Response.countDocuments({ survey: { $in: surveyIds as any } });
-    const completedResponses = await (await import('../models/Response')).Response.countDocuments({ survey: { $in: surveyIds as any }, status: 'Completed' });
+    const responses = await this.repo.findRecentBySurveys(surveyIds, 50);
+    const totalResponses = await (await import('../models/Response')).Response.countDocuments({ survey: { $in: surveyIds } });
+    const completedResponses = await (await import('../models/Response')).Response.countDocuments({ survey: { $in: surveyIds }, status: 'Completed' });
 
     return {
       responses,

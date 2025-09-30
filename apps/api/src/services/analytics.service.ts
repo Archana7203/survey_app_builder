@@ -37,7 +37,7 @@ export class AnalyticsService {
         switch (question.type) {
           case 'singleChoice':
           case 'multiChoice':
-          case 'dropdown':
+          case 'dropdown':{
             const counts: Record<string, number> = {};
             questionResponses.forEach(resp => {
               if (Array.isArray(resp.value)) {
@@ -48,12 +48,12 @@ export class AnalyticsService {
             });
             analytics = { type: 'choice', counts };
             break;
-
+          }
           case 'slider':
           case 'ratingStar':
           case 'ratingNumber':
-          case 'ratingSmiley':
-            const values = questionResponses.map(r => Number(r.value)).filter(v => !isNaN(v));
+          case 'ratingSmiley':{
+            const values = questionResponses.map(r => Number(r.value)).filter(v => !Number.isNaN(v));
             if (values.length > 0) {
               const sum = values.reduce((a, b) => a + b, 0);
               const avg = sum / values.length;
@@ -64,9 +64,9 @@ export class AnalyticsService {
               analytics = { type: 'numeric', avg: Math.round(avg * 100)/100, min, max, distribution };
             }
             break;
-
+          }
           case 'textShort':
-          case 'textLong':
+          case 'textLong': {
             const stopWords = new Set([
               'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
               'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
@@ -89,7 +89,7 @@ export class AnalyticsService {
               .map(([word, count]) => ({ word, count }));
             analytics = { type: 'text', topWords };
             break;
-
+          }
           default:
             analytics = { type: 'basic', responseCount: questionResponses.length };
         }

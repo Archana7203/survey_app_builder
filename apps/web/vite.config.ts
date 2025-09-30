@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://bluetooth-pan-fee-next.trycloudflare.com',  
+        target: 'https://accomplish-warriors-understand-assessed.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'him-assure-filing-registrar.trycloudflare.com' 
+      'sunny-supreme-biology-jail.trycloudflare.com' 
     ],
   },
 });

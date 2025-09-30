@@ -34,7 +34,10 @@ const RatingStarQuestion: React.FC<QuestionProps> = ({
         )}
       </div>
 
-      <div className="flex items-center space-x-3 star-rating" role="group" aria-labelledby={`question-${question.id}`}>
+      <fieldset className="flex items-center space-x-3 star-rating p-0 m-0" aria-labelledby={`question-${question.id}`}>
+        <legend id={`question-${question.id}`} className="sr-only">
+          {question.title}
+        </legend>
         {Array.from({ length: maxRating }, (_, index) => {
           const starValue = index + 1;
           const isFilled = (value as number) >= starValue;
@@ -56,9 +59,9 @@ const RatingStarQuestion: React.FC<QuestionProps> = ({
             </button>
           );
         })}
-      </div>
+      </fieldset>
 
-      {value && (
+      {Boolean(value) && (
         <p className="text-sm" style={{ color: themeColors?.textColor ? `${themeColors.textColor}80` : '#374151' }}>
           You rated this {String(value)} out of {maxRating} stars
         </p>

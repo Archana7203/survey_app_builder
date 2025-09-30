@@ -43,15 +43,16 @@ if (!mongoUri) {
   process.exit(1);
 }
 
-mongoose.connect(mongoUri)
-  .then(async () => {
+(async () => {
+  try {
+    await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB');
     await seedTemplates();
-  })
-  .catch((err) => {
+  } catch (err: any) {
     console.error('❌ MongoDB connection failed:', err.message);
-    process.exit(1); // fail fast on prod
-  });
+    process.exit(1);
+  }
+})();
 
 // --- Middleware ---
 app.use(cors({
