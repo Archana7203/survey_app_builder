@@ -81,7 +81,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
   const generateConditionId = (): string => {
     // Prefer crypto.getRandomValues when available (browser), fallback to Math.random
     let randomPart = '';
-    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
       const bytes = new Uint8Array(4);
       window.crypto.getRandomValues(bytes);
       randomPart = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');

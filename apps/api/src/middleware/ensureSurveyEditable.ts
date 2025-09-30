@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { Survey } from '../models/Survey';
 import { AuthRequest } from './auth';
 

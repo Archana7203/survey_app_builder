@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 // Load environment variables
 config();
 
-(async () => {
+async function runMigration() {
   try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/survey_app';
     await mongoose.connect(mongoUri);
@@ -20,4 +20,6 @@ config();
     console.error('Migration failed:', error);
     process.exit(1);
   }
-})();
+}
+
+runMigration();

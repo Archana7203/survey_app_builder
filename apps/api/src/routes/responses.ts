@@ -1,5 +1,4 @@
 import express from 'express';
-import { Response } from '../models/Response';
 import { ResponseService } from '../services/response.service';
 import { validateRespondent, RespondentRequest } from '../middleware/validateRespondent';
 import { requireAuth, AuthRequest } from '../middleware/auth';
