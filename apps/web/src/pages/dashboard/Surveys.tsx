@@ -247,7 +247,7 @@ const Surveys: React.FC = () => {
   };
 
   const handlePublishToggle = async (survey: Survey) => {
-    if (!survey || !survey.id) {
+    if (!survey?.id) {
       setError('Invalid survey data');
       return;
     }
@@ -340,6 +340,12 @@ const Surveys: React.FC = () => {
       </div>
     );
   }
+
+  const getPublishIcon = (survey: Survey, publishingId: string | null) => {
+    if (publishingId === survey.id) return '⏳';
+    if (survey.status === 'published') return '🚫';
+    return '✅';
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -456,7 +462,7 @@ const Surveys: React.FC = () => {
                       }
                       className="text-xs px-2 py-1"
                     >
-                      {publishing === survey.id ? '⏳' : survey.status === 'published' ? '🚫' : '✅'}
+                      {getPublishIcon(survey, publishing)}
                     </Button>
                     <Link to={`/dashboard/results/${survey.id}`}>
                       <Button 
@@ -624,7 +630,7 @@ const Surveys: React.FC = () => {
                             }
                             className="text-xs"
                           >
-                            {publishing === survey.id ? '⏳' : survey.status === 'published' ? '🚫' : '✅'}
+                            {getPublishIcon(survey, publishing)}
                           </Button>
                           <Link to={`/dashboard/results/${survey.id}`}>
                             <Button 

@@ -52,7 +52,7 @@ export const useQuestionUpdates = ({
   }, [survey, setSurvey, activePageIndex, setSelectedQuestion]);
 
   const addQuestion = useCallback((question: Question) => {
-    if (!survey || !survey.pages) return;
+    if (!survey?.pages) return;
     
     const updatedPages = [...survey.pages];
     updatedPages[activePageIndex] = {

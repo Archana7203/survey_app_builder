@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { THEME_PRESETS } from '../components/ui/ThemePicker';
 import type { ThemePreset } from '../components/ui/ThemePicker';
 
@@ -31,16 +31,7 @@ export const SurveyThemeProvider: React.FC<SurveyThemeProviderProps> = ({
     return THEME_PRESETS.find(t => t.id === surveyTheme) || THEME_PRESETS[0];
   });
 
-  const setSurveyTheme = (themeId: string) => {
-    const theme = THEME_PRESETS.find(t => t.id === themeId);
-    if (theme) {
-      setCurrentTheme(theme);
-      // Apply theme to CSS custom properties
-      applyThemeToCSS(theme);
-    }
-  };
-
-  const applyThemeToCSS = (theme: ThemePreset) => {
+  const applyThemeToCSS = useCallback((theme: ThemePreset) => {
     const root = document.documentElement;
     root.style.setProperty('--survey-primary', theme.primary);
     root.style.setProperty('--survey-secondary', theme.secondary);
@@ -48,9 +39,17 @@ export const SurveyThemeProvider: React.FC<SurveyThemeProviderProps> = ({
     root.style.setProperty('--survey-background', theme.background);
     root.style.setProperty('--survey-surface', theme.surface);
     root.style.setProperty('--survey-text', theme.text);
-  };
+  }, []);
 
-  const applyThemeToSurvey = (survey: any) => {
+  const setSurveyTheme = useCallback((themeId: string) => {
+    const theme = THEME_PRESETS.find(t => t.id === themeId);
+    if (theme) {
+      setCurrentTheme(theme);
+      applyThemeToCSS(theme);
+    }
+  }, [applyThemeToCSS]);
+
+  const applyThemeToSurvey = useCallback((survey: any) => {
     if (survey.theme) {
       const theme = THEME_PRESETS.find(t => t.id === survey.theme);
       if (theme) {
@@ -58,7 +57,7 @@ export const SurveyThemeProvider: React.FC<SurveyThemeProviderProps> = ({
         applyThemeToCSS(theme);
       }
     }
-  };
+  }, [applyThemeToCSS]);
 
   useEffect(() => {
     // Apply initial theme
@@ -70,14 +69,16 @@ export const SurveyThemeProvider: React.FC<SurveyThemeProviderProps> = ({
     if (surveyTheme) {
       setSurveyTheme(surveyTheme);
     }
-  }, [surveyTheme]);
+  }, [surveyTheme, setSurveyTheme]);
+
+  // ✅ Memoize the context value so it’s stable
+  const contextValue = useMemo(
+    () => ({ currentTheme, setSurveyTheme, applyThemeToSurvey }),
+    [currentTheme, setSurveyTheme, applyThemeToSurvey]
+  );
 
   return (
-    <SurveyThemeContext.Provider value={{ 
-      currentTheme, 
-      setSurveyTheme, 
-      applyThemeToSurvey 
-    }}>
+    <SurveyThemeContext.Provider value={contextValue}>
       {children}
     </SurveyThemeContext.Provider>
   );

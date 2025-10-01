@@ -48,7 +48,7 @@ export const exportSurveyToFile = async (surveyId: string): Promise<void> => {
     link.download = filename;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     window.URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Export error:', error);
@@ -66,7 +66,7 @@ export const importSurveyFromFile = (file: File): Promise<SurveyExportData> => {
         const surveyData = JSON.parse(content) as SurveyExportData;
         
         // Validate the imported data structure
-        if (!surveyData.survey || !surveyData.survey.title) {
+        if (!surveyData.survey?.title) {
           throw new Error('Invalid survey file format');
         }
         

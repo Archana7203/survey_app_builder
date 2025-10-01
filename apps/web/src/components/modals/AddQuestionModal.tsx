@@ -179,7 +179,7 @@ const SliderSettings: React.FC<{
           id="min"
           type="number"
           className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-          value={Number((settings as any).scaleMin ?? 0)}
+          value={Number((settings).scaleMin ?? 0)}
           onChange={(e) => updateSetting('scaleMin', Number.parseInt(e.target.value || '0', 10))}
         />
       </div>
@@ -189,7 +189,7 @@ const SliderSettings: React.FC<{
           id="max"
           type="number"
           className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-          value={Number((settings as any).scaleMax ?? 10)}
+          value={Number((settings).scaleMax ?? 10)}
           onChange={(e) => updateSetting('scaleMax', Number.parseInt(e.target.value || '0', 10))}
         />
       </div>
@@ -199,7 +199,7 @@ const SliderSettings: React.FC<{
           id="step"
           type="number"
           className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-          value={Number((settings as any).scaleStep ?? 1)}
+          value={Number((settings).scaleStep ?? 1)}
           onChange={(e) => updateSetting('scaleStep', Number.parseInt(e.target.value || '1', 10))}
         />
       </div>
@@ -241,7 +241,7 @@ const RatingSettings: React.FC<{
           id="max-rating"
           type="number"
           className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-          value={Number((settings as any).maxRating ?? getDefaultMaxRating())}
+          value={Number((settings).maxRating ?? getDefaultMaxRating())}
           onChange={(e) => handleMaxRatingChange(e.target.value)}
           min={min}
           max={max}

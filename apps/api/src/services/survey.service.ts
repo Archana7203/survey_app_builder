@@ -4,7 +4,20 @@ import { generateUniqueSlug } from '../utils/slug';
 import { generateSurveyToken, sendSurveyInvite } from '../utils/email';
 import mongoose from 'mongoose';
 import validator from 'validator';
+
 //Helper
+const validatePage = (page: any, index: number) => {
+  if (!page || typeof page !== "object") {
+    throw new Error(`Validation: Invalid page data at index ${index}`);
+  }
+  if (!Array.isArray(page.questions)) {
+    throw new Error(`Validation: Questions must be an array at page ${index + 1}`);
+  }
+  if (!Array.isArray(page.branching)) {
+    throw new Error(`Validation: Branching must be an array at page ${index + 1}`);
+  }
+};
+
 function validateSurveyUpdate(updateData: any): void {
   if (updateData.title !== undefined) {
     if (!updateData.title || typeof updateData.title !== 'string' || updateData.title.trim() === '') {
@@ -15,11 +28,9 @@ function validateSurveyUpdate(updateData: any): void {
   if (updateData.pages !== undefined) {
     if (!Array.isArray(updateData.pages)) throw new Error('Validation: Pages must be an array');
 
-    updateData.pages.forEach((page: any, i: number) => {
-      if (!page || typeof page !== 'object') throw new Error(`Validation: Invalid page data at index ${i}`);
-      if (!Array.isArray(page.questions)) throw new Error(`Validation: Questions must be an array at page ${i + 1}`);
-      if (!Array.isArray(page.branching)) throw new Error(`Validation: Branching must be an array at page ${i + 1}`);
-    });
+    for (const [i, page] of updateData.pages.entries()) {
+      validatePage(page, i);
+    }
   }
 }
 
@@ -235,11 +246,18 @@ export class SurveyService {
     validateSurveyUpdate(updateData);
 
     // Only allow certain fields
-    const allowedUpdates = new Set(['status', 'title', 'description', 'closeDate', 'theme', 'backgroundColor', 'textColor', 'pages']);
+    const allowedUpdates = new Set([
+      'status', 'title', 'description', 'closeDate', 
+      'theme', 'backgroundColor', 'textColor', 'pages'
+    ]);
+
     const filteredUpdates: any = {};
-    Object.keys(updateData).forEach(k => {
-      if (allowedUpdates.has(k)) filteredUpdates[k] = updateData[k];
-    });
+
+    for (const k of Object.keys(updateData)) {
+      if (allowedUpdates.has(k)) {
+        filteredUpdates[k] = updateData[k];
+      }
+    }
 
     const originalStatus = survey.status;
     Object.assign(survey, filteredUpdates);

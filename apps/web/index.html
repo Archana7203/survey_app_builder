@@ -8,11 +8,11 @@
     <script>
       try {
         var saved = localStorage.getItem('theme');
-        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var prefersDark = globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
         var shouldBeDark = saved === 'dark' || (!saved && prefersDark);
         document.documentElement.classList.toggle('dark', shouldBeDark);
         document.body && document.body.classList.toggle('dark', shouldBeDark);
-      } catch (e) {}
+      } catch (e) {console.log(e);}
     </script>
   </head>
   <body>

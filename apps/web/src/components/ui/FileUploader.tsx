@@ -56,7 +56,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
   const handleDragOver = (e: React.DragEvent) => {
     const types = e.dataTransfer && Array.from(e.dataTransfer.types);
-    if (types && types.includes('Files')) {
+    if (types?.includes('Files')) {
       e.preventDefault();
       e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
