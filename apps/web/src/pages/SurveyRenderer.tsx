@@ -103,7 +103,7 @@ export default function SurveyRenderer() {
       if (typeof val === 'number') return val;
       if (typeof val === 'string' && smileyOrder[val] !== undefined) return smileyOrder[val];
       const n = Number(val);
-      return Number.isNaN(n) ? NaN : n;
+      return Number.isNaN(n) ? Number.NaN : n;
     };
     switch (operator) {
       case 'equals': {

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { buildApiUrl } from '../../utils/apiConfig';
 import { DndContext, DragOverlay, closestCenter, PointerSensor, KeyboardSensor, useSensors, useSensor } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -38,12 +37,22 @@ interface Question {
   };
 }
 
-
-
-
 interface SurveyBuilderProps {
   readonly viewMode?: boolean;
 }
+
+// Question type definitions for the library
+const QUESTION_TYPES = [
+  { type: 'single_choice', name: 'Single choice', description: 'Single choice question', icon: '◯', category: 'choice' },
+  { type: 'multi_choice', name: 'Checkboxes', description: 'Multiple choice question', icon: '☑', category: 'choice' },
+  { type: 'dropdown', name: 'Dropdown', description: 'Dropdown selection', icon: '📋', category: 'choice' },
+  { type: 'text_short', name: 'Short text', description: 'Short text input', icon: '✏️', category: 'input' },
+  { type: 'text_long', name: 'Long text', description: 'Long text input', icon: '📝', category: 'input' },
+  { type: 'rating_star', name: 'Star rating', description: 'Star rating question', icon: '⭐', category: 'rating' },
+  { type: 'rating_smiley', name: 'Smiley rating', description: 'Smiley face rating', icon: '😊', category: 'rating' },
+  { type: 'rating_number', name: 'Number rating', description: 'Number rating question', icon: '🔢', category: 'rating' },
+  { type: 'slider', name: 'Slider', description: 'Slider question', icon: '🎯', category: 'rating' },
+] as const;
 
 export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) {
   const { surveyId } = useParams<{ surveyId: string }>();
@@ -58,12 +67,13 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
   const [previewResponses, setPreviewResponses] = useState<Record<string, unknown>>({});
   const [activeTab, setActiveTab] = useState('general');
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor)
   );
 
-  // Prevent browser navigating on file drops (but don't interfere with in-app DnD)
+  // Prevent browser navigating on file drops
   useEffect(() => {
     const preventIfFileDrag = (e: DragEvent) => {
       const types = (e.dataTransfer && Array.from(e.dataTransfer.types)) || [];
@@ -79,7 +89,6 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
     };
   }, []);
 
-  // Helper variables - with additional safety checks
   const currentPage = survey?.pages?.[activePageIndex] || { questions: [], branching: [] };
 
   const saveSurvey = async () => {
@@ -88,7 +97,7 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
     setSaving(true);
     try {
       const isNew = survey.id === "new";
-      const url = buildApiUrl(isNew ? "/api/surveys" : `/api/surveys/${survey.id}`);
+      const url = isNew ? "/api/surveys" : `/api/surveys/${survey.id}`;
       const method = isNew ? "POST" : "PUT";
 
       const pages = survey.pages?.length ? survey.pages : [{ questions: [], branching: [] }];
@@ -124,7 +133,6 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
     }
   };
 
-
   const addPage = () => {
     if (!survey?.pages) return;
     setSurvey({
@@ -155,10 +163,7 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
       questions: [...updatedPages[activePageIndex].questions, question],
     };
     
-    setSurvey({
-      ...survey,
-      pages: updatedPages,
-    });
+    setSurvey({ ...survey, pages: updatedPages });
   };
 
   const updateQuestion = (updatedQuestion: Question) => {
@@ -171,10 +176,7 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
     
     if (questionIndex !== -1) {
       updatedPages[activePageIndex].questions[questionIndex] = updatedQuestion;
-      setSurvey({
-        ...survey,
-        pages: updatedPages,
-      });
+      setSurvey({ ...survey, pages: updatedPages });
     }
   };
 
@@ -205,46 +207,54 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
     const { active, over } = event;
     setActiveDragId(null);
 
-    // Case 1: dragging from library
-    if (active.data.current?.type === "question") {
-      if (!survey || !over) return;
-      const newQuestion = createNewQuestion(active.data.current.questionType.type);
-      const updatedPages = [...survey.pages];
+    if (!survey) return;
 
-      // If dropped over a question id, insert at that index; if over canvas zone, append
-      const questions = updatedPages[activePageIndex].questions;
-      const overId = String(over.id);
-      const overIndex = questions.findIndex((q: Question) => q.id === overId);
-      if (overId === 'canvas-drop-zone' || overIndex === -1) {
-        questions.push(newQuestion);
-      } else {
-        questions.splice(overIndex + 1, 0, newQuestion);
+    // Case 1: Dragging from library to add new question
+    if (active.data.current?.type === "question") {
+      const questionType = active.data.current.questionType;
+      
+      // Extract the type string from the questionType object
+      const typeString = typeof questionType === 'string' ? questionType : questionType?.type;
+      
+      if (!typeString) {
+        console.error('No question type found:', questionType);
+        return;
       }
 
-      updatedPages[activePageIndex].questions = [...questions];
+      const newQuestion = createNewQuestion(typeString);
+
+      const updatedPages = [...survey.pages];
+      updatedPages[activePageIndex] = {
+        ...updatedPages[activePageIndex],
+        questions: [...updatedPages[activePageIndex].questions, newQuestion],
+      };
+
       setSurvey({ ...survey, pages: updatedPages });
       setSelectedQuestion(newQuestion);
       return;
     }
 
-    // Case 2: reorder inside canvas
-    if (!survey || !over) return;
+    // Case 2: Reordering existing questions
+    if (!over) return;
 
     const questions = survey.pages[activePageIndex].questions;
-    const oldIndex = questions.findIndex((q: Question) => q.id === String(active.id));
-    const newIndex = questions.findIndex((q: Question) => q.id === String(over.id));
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    
+    const oldIndex = questions.findIndex((q: Question) => q.id === activeId);
+    const newIndex = questions.findIndex((q: Question) => q.id === overId);
 
     if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
 
     const reordered = arrayMove(questions, oldIndex, newIndex);
     const updatedPages = [...survey.pages];
-    updatedPages[activePageIndex].questions = reordered;
+    updatedPages[activePageIndex] = {
+      ...updatedPages[activePageIndex],
+      questions: reordered
+    };
 
     setSurvey({ ...survey, pages: updatedPages });
   };
-
-
-  // questionTypes was previously used by the library; current implementation passes inline props directly
 
   return (
     <SurveyThemeProvider surveyTheme={survey?.theme}>
@@ -369,7 +379,6 @@ function SurveyBuilderContent({
 }: Readonly<SurveyBuilderContentProps>) {
   const { setSurveyTheme } = useSurveyTheme();
 
-  // Apply theme when survey theme changes
   useEffect(() => {
     if (survey?.theme) {
       setSurveyTheme(survey.theme);
@@ -396,21 +405,18 @@ function SurveyBuilderContent({
 
   return (
     <div className="space-y-6">
-      {/* Error State */}
       {error && (
         <Alert variant="error" onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {/* Locked Survey Banner */}
       {isDisabled && (
         <Alert variant="info">
           {viewMode ? 'Survey Viewer - Read-only mode' : 'Survey locked after first publish - read-only mode'}
         </Alert>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -432,7 +438,6 @@ function SurveyBuilderContent({
         </div>
       </div>
 
-      {/* Survey Details */}
       <SurveyDetailsCard
         survey={survey}
         setSurvey={setSurvey}
@@ -442,7 +447,6 @@ function SurveyBuilderContent({
         isDisabled={isDisabled}
       />
 
-      {/* Page Navigation */}
       <PageNavigation
         pages={survey.pages}
         activePageIndex={activePageIndex}
@@ -452,7 +456,6 @@ function SurveyBuilderContent({
         isDisabled={isDisabled}
       />
 
-      {/* Three Panel Layout */}
       <DndContext 
         sensors={sensors} 
         collisionDetection={closestCenter} 
@@ -460,27 +463,15 @@ function SurveyBuilderContent({
         onDragStart={handleDragStart}
       >
         <div className="grid grid-cols-12 gap-6 h-[600px]">
-          {/* Left Panel - Question Library */}
           <div className="col-span-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
             <div className="p-4">
               <ComponentLibraryPanel
-                questionTypes={[
-                  { type: 'single_choice', name: 'Single choice', description: 'Single choice question', icon: '◯', category: 'choice' },
-                  { type: 'multi_choice', name: 'Checkboxes', description: 'Multiple choice question', icon: '🔲', category: 'choice' },
-                  { type: 'dropdown', name: 'Dropdown', description: 'Dropdown selection', icon: '📋', category: 'choice' },
-                  { type: 'text_short', name: 'Short text', description: 'Short text input', icon: '✏️', category: 'input' },
-                  { type: 'text_long', name: 'Long text', description: 'Long text input', icon: '📝', category: 'input' },
-                  { type: 'rating_star', name: 'Star rating', description: 'Star rating question', icon: '🌟', category: 'rating' },
-                  { type: 'rating_smiley', name: 'Smiley rating', description: 'Smiley face rating', icon: '😊', category: 'rating' },
-                  { type: 'rating_number', name: 'Number rating', description: 'Number rating question', icon: '🔢', category: 'rating' },
-                  { type: 'slider', name: 'Slider', description: 'Slider question', icon: '🎯', category: 'rating' },
-                ]}
+                questionTypes={[...QUESTION_TYPES]}
                 disabled={isDisabled}
               />
             </div>
           </div>
 
-          {/* Center Panel - Canvas Only */}
           <div className="col-span-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-y-auto">
             <div className="p-4">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Question Order</h2>
@@ -492,14 +483,13 @@ function SurveyBuilderContent({
                 <ReorderableQuestions
                   questions={currentPage.questions}
                   onDeleteQuestion={deleteQuestion}
-                  onSelectQuestion={(question) => setSelectedQuestion(question)}
+                  onSelectQuestion={setSelectedQuestion}
                   disabled={isDisabled}
                 />
               )}
             </div>
           </div>
 
-          {/* Right Panel - Question Settings */}
           <div className="col-span-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
             <div className="p-4">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
@@ -517,6 +507,7 @@ function SurveyBuilderContent({
             </div>
           </div>
         </div>
+        
         <DragOverlay>
           {activeDragId ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-lg">
@@ -528,11 +519,9 @@ function SurveyBuilderContent({
         </DragOverlay>
       </DndContext>
 
-      {/* Preview Section (Standalone below layout) */}
       <Card className="mt-6">
         <div className="p-0">
           <div className="h-[600px] w-full bg-white light">
-            {/* Compact interactive preview with visibility rules - No dark mode */}
             <PreviewArea
               survey={survey}
               previewResponses={previewResponses}
@@ -545,7 +534,6 @@ function SurveyBuilderContent({
         </div>
       </Card>
 
-      {/* Modals */}
       {!viewMode && (
         <>
           <VisibilityRulesModal
@@ -556,21 +544,19 @@ function SurveyBuilderContent({
             }}
             question={selectedQuestion}
             candidateQuestions={(function() {
-              if (!selectedQuestion) return [] as any[];
-              const candidates: Question[] = [] as any;
-              // All questions from pages before the current one
+              if (!selectedQuestion) return [];
+              const candidates: Question[] = [];
               for (let p = 0; p < activePageIndex; p++) {
                 candidates.push(...survey.pages[p].questions);
               }
-              // Questions earlier on the current page than the selected question
               const currentQs = survey.pages[activePageIndex].questions;
-              const selIdx = currentQs.findIndex((q: Question) => q.id === (selectedQuestion).id);
+              const selIdx = currentQs.findIndex((q: Question) => q.id === selectedQuestion.id);
               if (selIdx > 0) {
                 candidates.push(...currentQs.slice(0, selIdx));
               }
               return candidates;
             })()}
-            existingRules={(selectedQuestion?.settings)?.visibleWhen || (selectedQuestion)?.visibilityRules || []}
+            existingRules={selectedQuestion?.settings?.visibleWhen || selectedQuestion?.visibilityRules || []}
             onSave={(rules) => {
               if (!survey || !selectedQuestion) return;
               const updatedPages = [...survey.pages];

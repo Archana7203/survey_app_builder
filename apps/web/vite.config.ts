@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://accomplish-warriors-understand-assessed.trycloudflare.com',  
+        target: 'https://ment-pillow-growing-dip.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'sunny-supreme-biology-jail.trycloudflare.com' 
+      'aid-concentration-config-oven.trycloudflare.com' 
     ],
   },
 });
