@@ -11,10 +11,10 @@ const validatePage = (page: any, index: number) => {
     throw new Error(`Validation: Invalid page data at index ${index}`);
   }
   if (!Array.isArray(page.questions)) {
-    throw new Error(`Validation: Questions must be an array at page ${index + 1}`);
+    throw new TypeError(`Validation: Questions must be an array at page ${index + 1}`);
   }
   if (!Array.isArray(page.branching)) {
-    throw new Error(`Validation: Branching must be an array at page ${index + 1}`);
+    throw new TypeError(`Validation: Branching must be an array at page ${index + 1}`);
   }
 };
 
