@@ -41,6 +41,11 @@ export const ensureSurveyEditable = async (
     req.survey = survey;
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Server error checking survey editability' });
+    console.error('Error checking survey editability:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ 
+      error: 'Server error checking survey editability',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 };

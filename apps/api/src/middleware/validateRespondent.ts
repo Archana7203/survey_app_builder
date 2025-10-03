@@ -20,8 +20,13 @@ export const validateRespondent = async (
       return;
     }
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
+    }
+
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { surveyId: string; email: string };
+    const decoded = jwt.verify(token, jwtSecret) as { surveyId: string; email: string };
     
     // Check if this token is for the correct survey
     if (decoded.surveyId !== req.params.surveyId) {
@@ -48,6 +53,7 @@ export const validateRespondent = async (
     if (error instanceof jwt.JsonWebTokenError) {
       res.status(401).json({ error: 'Invalid or expired token' });
     } else {
+      console.error('Error validating respondent:', error);
       res.status(500).json({ error: 'Server error' });
     }
   }

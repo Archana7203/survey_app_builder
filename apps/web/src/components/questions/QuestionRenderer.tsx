@@ -40,7 +40,7 @@ export interface QuestionProps {
 
 const QuestionRenderer: React.FC<QuestionProps> = (props) => {
   const { question, themeColors } = props;
-  const style = (question.settings && (question.settings).backgroundColor) || (question.settings && (question.settings).textColor)
+  const style = (question.settings?.backgroundColor) || (question.settings?.textColor)
     ? {
         backgroundColor: (question.settings).backgroundColor,
         color: (question.settings).textColor,
