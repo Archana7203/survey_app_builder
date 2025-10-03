@@ -100,10 +100,14 @@ const Surveys: React.FC = () => {
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Failed to load surveys');
+        const errorMessage = errorData.error || 'Failed to load surveys';
+        setError(errorMessage);
+        console.error('Failed to fetch surveys:', errorMessage, response.status);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error loading surveys';
       setError('Error loading surveys');
+      console.error('Error loading surveys:', errorMessage, error);
     } finally {
       setLoading(false);
     }
@@ -131,13 +135,10 @@ const Surveys: React.FC = () => {
         body: JSON.stringify(data),
       });
 
-      
-      
       if (response.ok) {
         const newSurvey = await response.json();
         
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setSurveys(prev => [newSurvey as any, ...prev]);
+        setSurveys(prev => [newSurvey, ...prev]);
         setIsModalOpen(false);
         
         // Update pagination to reflect the new total count
@@ -508,9 +509,9 @@ const Surveys: React.FC = () => {
                       variant="ghost" 
                       size="sm"
                       onClick={() => {
-                        const surveyUrl = window.location.hostname.includes('ngrok') 
-                          ? `https://${window.location.hostname}/s/${survey.slug}`
-                          : `${window.location.origin}/s/${survey.slug}`;
+                        const surveyUrl = globalThis.location.hostname.includes('ngrok') 
+                          ? `https://${globalThis.location.hostname}/s/${survey.slug}`
+                          : `${globalThis.location.origin}/s/${survey.slug}`;
                         navigator.clipboard.writeText(surveyUrl);
                       }}
                       title="Copy survey link - Copy the public URL to clipboard"
@@ -676,9 +677,9 @@ const Surveys: React.FC = () => {
                             variant="ghost" 
                             size="sm"
                             onClick={() => {
-                              const surveyUrl = window.location.hostname.includes('ngrok') 
-                                ? `https://${window.location.hostname}/s/${survey.slug}`
-                                : `${window.location.origin}/s/${survey.slug}`;
+                              const surveyUrl = globalThis.location.hostname.includes('ngrok') 
+                                ? `https://${globalThis.location.hostname}/s/${survey.slug}`
+                                : `${globalThis.location.origin}/s/${survey.slug}`;
                               navigator.clipboard.writeText(surveyUrl);
                             }}
                             title="Copy survey link - Copy the public URL to clipboard"
