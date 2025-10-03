@@ -81,9 +81,9 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
   const generateConditionId = (): string => {
     // Prefer crypto.getRandomValues when available (browser), fallback to Math.random
     let randomPart = '';
-    if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+    if (typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues) {
       const bytes = new Uint8Array(4);
-      window.crypto.getRandomValues(bytes);
+      globalThis.crypto.getRandomValues(bytes);
       randomPart = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
     } else {
       randomPart = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
@@ -176,9 +176,9 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
 
   function addCondition(groupIndex: number) {
     setGroups(prev => prev.map((g, gi) => (
-      gi !== groupIndex
-        ? g
-        : { ...g, conditions: [...g.conditions, { id: generateConditionId(), questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' }] }
+      gi === groupIndex
+        ? { ...g, conditions: [...g.conditions, { id: generateConditionId(), questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' }] }
+        : g
     )));
   }
 

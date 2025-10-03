@@ -295,7 +295,7 @@ const goToPreviousPage = useCallback(() => {
     }
 
     // Construct the preview URL
-    const surveyUrl = `${window.location.origin}/preview/${previewId}`;
+    const surveyUrl = `${globalThis.location.origin}/preview/${previewId}`;
     
     try {
       const newWindow = window.open(surveyUrl, '_blank');

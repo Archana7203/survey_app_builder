@@ -109,7 +109,7 @@ export default function SurveyRenderer() {
       case 'equals': {
         // If response is an array (e.g., multi-select), treat equals as "contains" semantics
         if (Array.isArray(responseValue)) {
-          return responseValue.map(v => String(v)).includes(String(condValue));
+          return responseValue.map(String).includes(String(condValue));
         }
         // Support numeric comparison including smiley ordinal mapping when cond is numeric
         const respNum = coerceNumeric(responseValue);
@@ -145,11 +145,11 @@ export default function SurveyRenderer() {
 
     // Group rules by groupIndex
     const groups: Record<number, typeof rules> = {};
-    rules.forEach(rule => {
-      const gi = (rule as any).groupIndex ?? 0;
+    for (const rule of rules) {
+      const gi = rule.groupIndex ?? 0;
       if (!groups[gi]) groups[gi] = [];
       groups[gi].push(rule);
-    });
+    }
 
   // Helper: evaluate a group of rules
     const evaluateGroup = (groupRules: typeof rules) =>
@@ -169,7 +169,7 @@ export default function SurveyRenderer() {
 
 
   // Get token from URL
-  const token = new URLSearchParams(window.location.search).get('token');
+  const token = new URLSearchParams(globalThis.location.search).get('token');
   const pagesWithKeys = useMemo(() => {
     if (!survey) return [];
     return survey.pages.map(page => ({ ...page, _key: crypto.randomUUID() }));
@@ -855,18 +855,7 @@ export default function SurveyRenderer() {
           </div>
           
           <div className="flex items-center space-x-2">
-            {!isLastPage ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={goToNextPage}
-                disabled={submitting}
-                data-variant="primary"
-                className={`text-xs ${submitting ? 'opacity-50' : ''}`}
-              >
-                Next →
-              </Button>
-            ) : (
+            {isLastPage ? (
               <Button
                 variant="primary"
                 size="sm"
@@ -876,6 +865,17 @@ export default function SurveyRenderer() {
                 className={`text-xs ${submitting ? 'opacity-50' : ''}`}
               >
                 {submitting ? 'Submitting...' : 'Submit Survey'}
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={submitting}
+                data-variant="primary"
+                className={`text-xs ${submitting ? 'opacity-50' : ''}`}
+              >
+                Next →
               </Button>
             )}
           </div>

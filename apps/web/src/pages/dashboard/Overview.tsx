@@ -106,7 +106,7 @@ const Overview: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
               <div className="text-center">
                 <div className="text-3xl font-bold text-gray-300 dark:text-gray-600">--</div>

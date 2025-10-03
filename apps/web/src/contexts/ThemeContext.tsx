@@ -23,7 +23,7 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
     // Check localStorage first, then system preference
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
@@ -32,7 +32,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
 
     // Check system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    if (globalThis.matchMedia('(prefers-color-scheme: dark)').matches) {
       console.log('🔧 ThemeContext: Using system dark theme preference');
       return 'dark';
     }
@@ -41,9 +41,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return 'light';
   });
 
-  const setTheme = useCallback((newTheme: Theme) => {
+  const updateTheme = useCallback((newTheme: Theme) => {
     console.log('🔧 ThemeContext: Setting theme to:', newTheme);
-    setThemeState(newTheme);
+    setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
 
     // Apply dark class to document root for Tailwind dark mode
@@ -58,8 +58,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const toggleTheme = useCallback(() => {
     console.log('🔧 ThemeContext: Toggling theme from', theme, 'to', theme === 'light' ? 'dark' : 'light');
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  }, [theme, setTheme]);
+    updateTheme(theme === 'light' ? 'dark' : 'light');
+  }, [theme, updateTheme]);
 
   useEffect(() => {
     // Apply initial theme to document root
@@ -73,10 +73,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   }, [theme]);
 
-  // ✅ Memoize context value so it’s stable
+  // ✅ Memoize context value so it's stable
   const contextValue = useMemo(
-    () => ({ theme, toggleTheme, setTheme }),
-    [theme, toggleTheme, setTheme]
+    () => ({ theme, toggleTheme, setTheme: updateTheme }),
+    [theme, toggleTheme, updateTheme]
   );
 
   return (

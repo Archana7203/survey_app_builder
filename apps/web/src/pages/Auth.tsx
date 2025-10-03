@@ -26,7 +26,7 @@ const AuthPage: React.FC = () => {
       } else {
         await register(email, password);
       }
-      window.location.href = '/dashboard';
+      globalThis.location.href = '/dashboard';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
