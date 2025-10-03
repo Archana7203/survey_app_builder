@@ -40,10 +40,10 @@ export interface QuestionProps {
 
 const QuestionRenderer: React.FC<QuestionProps> = (props) => {
   const { question, themeColors } = props;
-  const style = (question.settings && (question.settings as any).backgroundColor) || (question.settings && (question.settings as any).textColor)
+  const style = (question.settings && (question.settings).backgroundColor) || (question.settings && (question.settings).textColor)
     ? {
-        backgroundColor: (question.settings as any).backgroundColor,
-        color: (question.settings as any).textColor,
+        backgroundColor: (question.settings).backgroundColor,
+        color: (question.settings).textColor,
         borderRadius: '0.5rem',
         padding: '1rem',
       } as React.CSSProperties

@@ -20,6 +20,8 @@ const RatingNumberQuestion: React.FC<QuestionProps> = ({
     onChange?.(rating);
   };
 
+  const numericValue = typeof value === 'number' ? value : 0;
+
   return (
     <div className="space-y-4">
       <div>
@@ -40,7 +42,7 @@ const RatingNumberQuestion: React.FC<QuestionProps> = ({
           </legend>
           {Array.from({ length: maxRating }, (_, index) => {
           const ratingValue = index + 1;
-          const isSelected = (value as number) === ratingValue;
+          const isSelected = numericValue === ratingValue;
           
           return (
             <button
@@ -72,7 +74,7 @@ const RatingNumberQuestion: React.FC<QuestionProps> = ({
 
       {!!value && (
         <p className="text-sm" style={{ color: themeColors?.textColor ? `${themeColors.textColor}80` : '#374151' }}>
-          You rated this {String(value)} out of {maxRating}
+          You rated this {numericValue} out of {maxRating}
         </p>
       )}
 

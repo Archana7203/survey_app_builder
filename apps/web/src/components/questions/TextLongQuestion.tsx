@@ -13,7 +13,7 @@ const TextLongQuestion: React.FC<QuestionProps> = ({
     return (question.settings as { maxLength?: number })?.maxLength || 1000;
   }, [question.settings]);
   
-  const currentLength = (value as string).length;
+  const currentLength = String(value).length;
   const remainingChars = maxLength - currentLength;
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -37,7 +37,7 @@ const TextLongQuestion: React.FC<QuestionProps> = ({
 
       <div className="space-y-2">
         <textarea
-          value={value as string}
+          value={String(value)}
           onChange={handleChange}
           disabled={disabled}
           rows={6}
