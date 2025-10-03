@@ -95,7 +95,7 @@ export const exportReport = (survey: Survey, analytics: AnalyticsData) => {
         margin: [0, 0, 0, 10] as [number, number, number, number]
       },
       
-      ...analytics.questions.map((question, index) => [
+      ...analytics.questions.flatMap((question, index) => [
         {
           text: `${index + 1}. ${question.title}`,
           style: 'questionTitle',
@@ -113,7 +113,7 @@ export const exportReport = (survey: Survey, analytics: AnalyticsData) => {
           style: 'small',
           margin: [0, 0, 0, 10] as [number, number, number, number]
         }])
-      ]).flat()
+      ])
     ],
     
     styles: {
@@ -150,7 +150,7 @@ export const exportReport = (survey: Survey, analytics: AnalyticsData) => {
 
   // Generate and download the PDF
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pdfMake.createPdf(docDefinition as any).download(`survey-report-${survey.title.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.pdf`);
+  pdfMake.createPdf(docDefinition as any).download(`survey-report-${survey.title.replaceAll(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.pdf`);
 };
 
 function buildChoiceContent(question: QuestionAnalytics) {
@@ -179,10 +179,10 @@ function buildNumericContent(question: QuestionAnalytics) {
   if (!stats) return [];
 
   const body = [
-    ...(stats.min !== undefined ? [['Minimum', stats.min.toString()]] : []),
-    ...(stats.max !== undefined ? [['Maximum', stats.max.toString()]] : []),
-    ...(stats.average !== undefined ? [['Average', stats.average.toFixed(2)]] : []),
-    ...(stats.responses !== undefined ? [['Total Responses', stats.responses.toString()]] : [])
+    ...(stats.min === undefined ? [] : [['Minimum', stats.min.toString()]]),
+    ...(stats.max === undefined ? [] : [['Maximum', stats.max.toString()]]),
+    ...(stats.average === undefined ? [] : [['Average', stats.average.toFixed(2)]]),
+    ...(stats.responses === undefined ? [] : [['Total Responses', stats.responses.toString()]])
   ];
 
   return body.length === 0 ? [] : [{

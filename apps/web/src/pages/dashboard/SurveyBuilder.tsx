@@ -81,11 +81,11 @@ export default function SurveyBuilder({ viewMode = false }: SurveyBuilderProps) 
         e.preventDefault();
       }
     };
-    window.addEventListener('dragover', preventIfFileDrag);
-    window.addEventListener('drop', preventIfFileDrag);
+    globalThis.addEventListener('dragover', preventIfFileDrag);
+    globalThis.addEventListener('drop', preventIfFileDrag);
     return () => {
-      window.removeEventListener('dragover', preventIfFileDrag);
-      window.removeEventListener('drop', preventIfFileDrag);
+      globalThis.removeEventListener('dragover', preventIfFileDrag);
+      globalThis.removeEventListener('drop', preventIfFileDrag);
     };
   }, []);
 
@@ -563,7 +563,7 @@ function SurveyBuilderContent({
               const qIndex = updatedPages[activePageIndex].questions.findIndex((q: Question) => q.id === selectedQuestion.id);
               if (qIndex !== -1) {
                 const q = updatedPages[activePageIndex].questions[qIndex];
-                const newSettings = { ...(q.settings || {}), visibleWhen: rules };
+                const newSettings = { ...q.settings, visibleWhen: rules };
                 updatedPages[activePageIndex].questions[qIndex] = { ...q, settings: newSettings };
                 setSurvey({ ...survey, pages: updatedPages });
               }
