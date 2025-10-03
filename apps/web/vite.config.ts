@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://ment-pillow-growing-dip.trycloudflare.com',  
+        target: 'https://cultures-cookies-employee-assembled.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'aid-concentration-config-oven.trycloudflare.com' 
+      'conflicts-ages-advised-monday.trycloudflare.com' 
     ],
   },
 });

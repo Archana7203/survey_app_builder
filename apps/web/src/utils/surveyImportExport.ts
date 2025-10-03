@@ -42,47 +42,39 @@ export const exportSurveyToFile = async (surveyId: string): Promise<void> => {
     const filename = contentDisposition?.match(/filename="(.+)"/)?.[1] || `survey-export-${Date.now()}.json`;
 
     // Create download link
-    const url = window.URL.createObjectURL(blob);
+    const url = globalThis.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(url);
+    globalThis.URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Export error:', error);
     throw error;
   }
 };
 
-export const importSurveyFromFile = (file: File): Promise<SurveyExportData> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+export const importSurveyFromFile = async (file: File): Promise<SurveyExportData> => {
+  try {
+    const content = await file.text();
+    const surveyData = JSON.parse(content) as SurveyExportData;
     
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const surveyData = JSON.parse(content) as SurveyExportData;
-        
-        // Validate the imported data structure
-        if (!surveyData.survey?.title) {
-          throw new Error('Invalid survey file format');
-        }
-        
-        resolve(surveyData);
-      } catch {
-        reject(new Error('Failed to parse survey file'));
-      }
-    };
+    // Validate the imported data structure
+    if (!surveyData.survey?.title) {
+      throw new Error('Invalid survey file format');
+    }
     
-    reader.onerror = () => {
-      reject(new Error('Failed to read file'));
-    };
-    
-    reader.readAsText(file);
-  });
+    return surveyData;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error('Failed to parse survey file');
+    }
+    throw error instanceof Error ? error : new Error('Failed to read file');
+  }
 };
+
 
 interface ImportedSurveyResponse {
   id: string;
