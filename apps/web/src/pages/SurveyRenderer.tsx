@@ -5,7 +5,7 @@ import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Alert from '../components/ui/Alert';
-
+import { evaluateCondition } from '../utils/visibilityHelpers';
 
 interface Question {
   id: string;
@@ -89,50 +89,6 @@ export default function SurveyRenderer() {
       []
     ) as Array<BranchingRule & { groupIndex?: number }>;
   }, []);
-
-  // Helper: evaluate a single condition against a response value
-  const evaluateCondition = (operator: BranchingRule['condition']['operator'], condValue: any, responseValue: any): boolean => {
-    const smileyOrder: Record<string, number> = {
-      very_sad: 1,
-      sad: 2,
-      neutral: 3,
-      happy: 4,
-      very_happy: 5,
-    };
-    const coerceNumeric = (val: any): number => {
-      if (typeof val === 'number') return val;
-      if (typeof val === 'string' && smileyOrder[val] !== undefined) return smileyOrder[val];
-      const n = Number(val);
-      return Number.isNaN(n) ? Number.NaN : n;
-    };
-    switch (operator) {
-      case 'equals': {
-        // If response is an array (e.g., multi-select), treat equals as "contains" semantics
-        if (Array.isArray(responseValue)) {
-          return responseValue.map(String).includes(String(condValue));
-        }
-        // Support numeric comparison including smiley ordinal mapping when cond is numeric
-        const respNum = coerceNumeric(responseValue);
-        const condNum = coerceNumeric(condValue);
-        if (!Number.isNaN(respNum) && !Number.isNaN(condNum)) {
-          return respNum === condNum;
-        }
-        return String(responseValue) === String(condValue);
-      }
-      case 'contains': {
-        if (Array.isArray(responseValue)) {
-          return responseValue.map(v => String(v).toLowerCase()).includes(String(condValue).toLowerCase());
-        }
-        return String(responseValue).toLowerCase().includes(String(condValue).toLowerCase());
-      }
-      case 'greater_than':
-        return coerceNumeric(responseValue) > coerceNumeric(condValue);
-      case 'less_than':
-        return coerceNumeric(responseValue) < coerceNumeric(condValue);
-      default:
-        return false;
-    }
-  };
 
   // Helper: is a question visible under current responses?
   const isQuestionVisible = useCallback((question: Question): boolean => {

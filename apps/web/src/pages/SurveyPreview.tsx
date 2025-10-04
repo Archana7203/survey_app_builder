@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { buildApiUrl } from '../utils/apiConfig';
+import { evaluateCondition } from '../utils/visibilityHelpers';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -82,38 +83,6 @@ export default function SurveyPreview() {
       []
     ) as Array<BranchingRule & { groupIndex?: number }>;
   }, []);
-
-  // Helper: evaluate a single condition against a response value
-  const evaluateCondition = (operator: BranchingRule['condition']['operator'], condValue: any, responseValue: any): boolean => {
-    switch (operator) {
-      case 'equals': {
-        const respIsNumber = typeof responseValue === 'number';
-        const condAsNumber = Number(condValue);
-        if (respIsNumber || !Number.isNaN(condAsNumber)) {
-          return Number(responseValue) === Number(condValue);
-        }
-        return String(responseValue) === String(condValue);
-      }
-      case 'contains': {
-        if (Array.isArray(responseValue)) {
-          return responseValue.map(v => String(v).toLowerCase()).includes(String(condValue).toLowerCase());
-        }
-        return String(responseValue).toLowerCase().includes(String(condValue).toLowerCase());
-      }
-      case 'greater_than': {
-        const respNum = Number(responseValue);
-        const condNum = Number(condValue);
-        return !Number.isNaN(respNum) && !Number.isNaN(condNum) && respNum > condNum;
-      }
-      case 'less_than': {
-        const respNum = Number(responseValue);
-        const condNum = Number(condValue);
-        return !Number.isNaN(respNum) && !Number.isNaN(condNum) && respNum < condNum;
-      }
-      default:
-        return false;
-    }
-  };
 
   // Helper: check if a question should be visible based on visibility rules
   const isQuestionVisible = useCallback((question: Question): boolean => {

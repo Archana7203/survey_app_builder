@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://cultures-cookies-employee-assembled.trycloudflare.com',  
+        target: 'https://commissioner-pastor-magical-followed.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'conflicts-ages-advised-monday.trycloudflare.com' 
+      'demands-nicole-rome-triple.trycloudflare.com', 
     ],
   },
 });

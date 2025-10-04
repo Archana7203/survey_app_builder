@@ -290,8 +290,12 @@ export class SurveyService {
     if (!survey) throw new Error('Survey not found');
 
     const slug = await generateUniqueSlug(`${survey.title} (Copy)`);
+
+    const surveyData = survey.toObject();
+    delete surveyData._id; // remove the original _id
+
     const duplicated = await this.repo.createSurvey({
-      ...survey.toObject(),
+      ...surveyData,
       title: `${survey.title} (Copy)`,
       slug,
       status: 'draft',

@@ -69,7 +69,10 @@ function getValueInputType(depQ: Question | undefined) {
 
   function getValueOptions(depQ: Question | undefined) {
     if (!depQ?.options) return null;
-    return depQ.options.map(option => ({ value: option.value || option.text, label: option.text }));
+    return depQ.options.map(option => ({ 
+      value: option.id,      
+      label: option.text   
+    }));
   }
 
 export default function VisibilityRulesModal({ isOpen, onClose, question, existingRules, candidateQuestions, onSave }: VisibilityRulesModalProps) {

@@ -45,12 +45,14 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
-      <div 
+      <button
+        type="button"
+        aria-label="Close modal"
         className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 transition-opacity"
         onClick={onClose}
       />
       
-      {/* Modal container */}
+      {/* Modal container */}    
       <div className="flex min-h-full items-center justify-center p-4">
         <div className={`relative w-full ${sizeClasses[size]} bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700`}>
           {/* Header */}
@@ -83,4 +85,3 @@ const Modal: React.FC<ModalProps> = ({
 };
 
 export default Modal;
-

@@ -117,6 +117,15 @@ const ThemePicker: React.FC<ThemePickerProps> = ({
   className = '',
   disabled = false,
 }) => {
+  const handleKeyDown = (e: React.KeyboardEvent, themeId: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!disabled) {
+        onThemeChange(themeId);
+      }
+    }
+  };
+
   return (
     <div className={`space-y-4 ${className}`}>
       <h3 className="text-lg font-medium text-gray-900 dark:text-white">
@@ -128,23 +137,40 @@ const ThemePicker: React.FC<ThemePickerProps> = ({
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {THEME_PRESETS.map((theme) => (
-          <div
+          <button
             key={theme.id}
+            type="button"
+            disabled={disabled}
+            onClick={() => onThemeChange(theme.id)}
+            onKeyDown={(e) => handleKeyDown(e, theme.id)}
             className={`
-              relative p-4 border-2 rounded-lg transition-all
-              ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
+              relative p-4 border-2 rounded-lg transition-all text-left w-full
+              ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-gray-300 dark:hover:border-gray-600'}
               ${selectedTheme === theme.id
-                ? 'border-blue-500 ring-2 ring-blue-200'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800'
+                : 'border-gray-200 dark:border-gray-700'
               }
             `}
-            onClick={() => !disabled && onThemeChange(theme.id)}
+            aria-pressed={selectedTheme === theme.id}
+            aria-label={`Select ${theme.name} theme - ${theme.description}`}
           >
             {/* Theme Preview */}
             <div className="flex items-center space-x-2 mb-3">
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.primary }} />
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.secondary }} />
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.accent }} />
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: theme.primary }}
+                aria-hidden="true"
+              />
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: theme.secondary }}
+                aria-hidden="true"
+              />
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: theme.accent }}
+                aria-hidden="true"
+              />
             </div>
             
             {/* Theme Info */}
@@ -159,7 +185,7 @@ const ThemePicker: React.FC<ThemePickerProps> = ({
             
             {/* Selected Indicator */}
             {selectedTheme === theme.id && (
-              <div className="absolute top-2 right-2">
+              <div className="absolute top-2 right-2" aria-hidden="true">
                 <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                   <svg
                     className="w-3 h-3 text-white"
@@ -175,12 +201,12 @@ const ThemePicker: React.FC<ThemePickerProps> = ({
                 </div>
               </div>
             )}
-          </div>
+          </button>
         ))}
       </div>
       
       {/* Preview Section */}
-      <div className="mt-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+      <div className="mt-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <h4 className="font-medium text-gray-900 dark:text-white mb-2">
           Theme Preview
         </h4>
@@ -188,14 +214,29 @@ const ThemePicker: React.FC<ThemePickerProps> = ({
           {(() => {
             const currentTheme = THEME_PRESETS.find(t => t.id === selectedTheme) || THEME_PRESETS[0];
             return (
-              <div className="flex items-center space-x-4">
-                <button className="px-4 py-2 rounded-md text-sm text-white" style={{ backgroundColor: currentTheme.primary }}>
+              <div className="flex items-center space-x-4 flex-wrap gap-2">
+                <button 
+                  type="button"
+                  className="px-4 py-2 rounded-md text-sm text-white" 
+                  style={{ backgroundColor: currentTheme.primary }}
+                >
                   Primary Button
                 </button>
-                <button className="px-4 py-2 rounded-md text-sm border" style={{ backgroundColor: currentTheme.secondary, color: currentTheme.primary, borderColor: currentTheme.primary }}>
+                <button 
+                  type="button"
+                  className="px-4 py-2 rounded-md text-sm border" 
+                  style={{ 
+                    backgroundColor: currentTheme.secondary, 
+                    color: currentTheme.primary, 
+                    borderColor: currentTheme.primary 
+                  }}
+                >
                   Secondary Button
                 </button>
-                <div className="px-3 py-1 rounded-full text-xs text-white" style={{ backgroundColor: currentTheme.accent }}>
+                <div 
+                  className="px-3 py-1 rounded-full text-xs text-white" 
+                  style={{ backgroundColor: currentTheme.accent }}
+                >
                   Accent
                 </div>
               </div>

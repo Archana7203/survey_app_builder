@@ -1,7 +1,6 @@
 import React from 'react';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
-import crypto from 'node:crypto';
 
 interface Question {
   id: string;
@@ -69,7 +68,12 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
   const addOption = () => {
     if (!selectedQuestion) return;
 
-    const newOption = { id: crypto.randomBytes(4).toString('hex'), text: '' }; // 8-char secure ID
+    // Generate a secure random ID using Web Crypto API (works in browser)
+    const randomId = Array.from(
+      globalThis.crypto.getRandomValues(new Uint8Array(4))
+    ).map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    const newOption = { id: `option-${randomId}`, text: '' };
     const updatedOptions = [...(selectedQuestion.options || []), newOption];
     updateQuestion({ options: updatedOptions });
   };
