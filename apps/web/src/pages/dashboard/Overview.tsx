@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { buildApiUrl } from '../../utils/apiConfig';
 import Card from '../../components/ui/Card';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Response {
   _id: string;
@@ -106,8 +107,8 @@ const Overview: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
+          {Array.from({ length: 4 }).map(() => (
+            <Card key={uuidv4()}>
               <div className="text-center">
                 <div className="text-3xl font-bold text-gray-300 dark:text-gray-600">--</div>
                 <div className="text-sm text-gray-400 dark:text-gray-500">Loading...</div>

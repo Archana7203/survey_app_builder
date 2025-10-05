@@ -282,21 +282,29 @@ const Results: React.FC = () => {
               )}
             </div>
 
-            {question.totalResponses === 0 ? (
-              <div className="text-gray-500 dark:text-gray-400 text-center py-8">
-                No responses yet for this question
-              </div>
-            ) : question.analytics ? (
-              <ChartRenderer
-                chartType={chartTypes[question.questionId] || 'Bar'}
-                data={question.analytics}
-                title={question.title}
-              />
-            ) : (
-              <div className="text-gray-500 dark:text-gray-400 text-center py-8">
-                Analytics not available for this question type
-              </div>
-            )}
+            {(() => {
+              if (question.totalResponses === 0) {
+                return (
+                  <div className="text-gray-500 dark:text-gray-400 text-center py-8">
+                    No responses yet for this question
+                  </div>
+                );
+              } else if (question.analytics) {
+                return (
+                  <ChartRenderer
+                    chartType={chartTypes[question.questionId] || 'Bar'}
+                    data={question.analytics}
+                    title={question.title}
+                  />
+                );
+              } else {
+                return (
+                  <div className="text-gray-500 dark:text-gray-400 text-center py-8">
+                    Analytics not available for this question type
+                  </div>
+                );
+              }
+            })()}
           </div>
         </Card>
       ))}

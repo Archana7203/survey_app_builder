@@ -112,14 +112,10 @@ export default function SurveyPreview() {
           throw new Error('Preview session expired or not found. Please return to the Survey Builder and click "Open Preview" again.');
         }
         
-        try {
-          const surveyData = JSON.parse(storedSurvey);
-          console.log('📋 Loaded preview data:', surveyData);
-          setSurvey(surveyData);
-          setError(null);
-        } catch (parseError) {
-          throw new Error('Invalid preview data. Please return to the Survey Builder and try again.');
-        }
+        const surveyData = JSON.parse(storedSurvey);
+        console.log('📋 Loaded preview data:', surveyData);
+        setSurvey(surveyData);
+        setError(null);
         return;
       }
       
@@ -312,9 +308,9 @@ export default function SurveyPreview() {
               
               {/* Page Progress */}
               <div className="mt-3 flex items-center justify-center space-x-2">
-                {survey.pages.map((_, index) => (
+                {survey.pages.map((page, index) => (
                   <div
-                    key={index}
+                    key={page.questions.map(q => q.id).join('-') || `page-${index}`}
                     className={`w-2 h-2 rounded-full transition-colors ${
                       index === currentPageIndex
                         ? 'bg-current'

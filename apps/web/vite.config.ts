@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://commissioner-pastor-magical-followed.trycloudflare.com',  
+        target: 'https://chemicals-wax-seek-astrology.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'demands-nicole-rome-triple.trycloudflare.com', 
+      'atmospheric-bet-peas-civic.trycloudflare.com', 
     ],
   },
 });
