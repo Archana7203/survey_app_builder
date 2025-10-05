@@ -192,18 +192,12 @@ export default function CanvasArea({
         </div>
       </div>
       {/* Drop Zone */}
-      <div 
+      <button
         ref={setNodeRef}
-        className="flex-1 overflow-y-auto p-4 w-full text-left"
+        type="button"
+        className="flex-1 overflow-y-auto p-4 w-full text-left bg-transparent border-none outline-none"
         onClick={() => onSelectQuestion(null)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onSelectQuestion(null);
-          }
-        }}
-        role="button"
-        tabIndex={0}
+        style={{ minHeight: 0, padding: 0 }}
       >
         {questions.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
@@ -238,7 +232,7 @@ export default function CanvasArea({
             </div>
           </SortableContext>
         )}
-      </div>
+      </button>
     </div>
   );
 }

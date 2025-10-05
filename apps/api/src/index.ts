@@ -39,20 +39,22 @@ const mongoUri = process.env.MONGODB_URI;
 
 // --- Connect to MongoDB ---
 if (!mongoUri) {
-  console.error("❌ No MONGODB_URI provided. Please set it in env.");
+  console.error("❌ No MONGO_URI provided. Please set it in env.");
   process.exit(1);
 }
 
-(async () => {
+async function connectDatabase() {
   try {
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(mongoUri as string);
     console.log('✅ Connected to MongoDB');
     await seedTemplates();
   } catch (err: any) {
     console.error('❌ MongoDB connection failed:', err.message);
     process.exit(1);
   }
-})();
+}
+
+connectDatabase();
 
 // --- Middleware ---
 app.use(cors({
@@ -104,9 +106,10 @@ io.on('connection', (socket) => {
 // --- Serve React frontend (if bundled together) ---
 const webDist = path.resolve(__dirname, '../../web/dist');
 app.use(express.static(webDist));
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(webDist, 'index.html'));
+app.get('/{*any}', (_req, res) => {
+res.sendFile(path.join(webDist, 'index.html'));
 });
+
 
 // --- Start server ---
 server.listen(PORT, () => {
