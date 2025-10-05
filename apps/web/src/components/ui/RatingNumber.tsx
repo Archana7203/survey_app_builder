@@ -45,7 +45,7 @@ const RatingNumber: React.FC<RatingNumberProps> = ({
         </label>
       )}
       <div className="flex justify-center items-center space-x-2">
-        {[...Array(maxRating)].map((_, index) => {
+        {[...new Array(maxRating)].map((_, index) => {
           const rating = index + 1;
           const isSelected = rating === value;
           const isHovered = rating === hoveredRating;

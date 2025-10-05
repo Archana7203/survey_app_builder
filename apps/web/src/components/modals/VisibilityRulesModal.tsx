@@ -215,14 +215,16 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     for (const group of groups) {
       const validConds = group.conditions.filter(c => c.value !== '' && c.value !== undefined && c.value !== null);
       if (validConds.length === 0) continue;
-      validConds.forEach((cond, condIndex) => {
+      
+      for (let condIndex = 0; condIndex < validConds.length; condIndex++) {
+        const cond = validConds[condIndex];
         flattened.push({
           questionId: cond.questionId,
           condition: { operator: cond.operator, value: cond.value },
           ...(condIndex < validConds.length - 1 ? { logical: cond.logical || 'OR' } : {}),
           groupIndex: group.groupIndex,
         });
-      });
+      }
     }
 
     try { onSave(flattened); } catch (err) { console.error(err); }

@@ -108,7 +108,7 @@ export default function BranchingModal({
     const byGroupIndex = new Map<number, UIRuleGroup>();
     let nextTempIndex = 1000000; // temporary indices for rules without groupIndex
 
-    rulesForQuestion.forEach((rule) => {
+    for (const rule of rulesForQuestion) {
       const groupIndex = (rule as RuleWithMeta).groupIndex ?? nextTempIndex++;
       const existing = byGroupIndex.get(groupIndex);
       if (existing) {
@@ -131,7 +131,7 @@ export default function BranchingModal({
           action: rule.action,
         });
       }
-    });
+    }
 
     setGroups(Array.from(byGroupIndex.values()));
   }, [question, existingRules, createEmptyGroup]);
@@ -237,8 +237,9 @@ export default function BranchingModal({
 
     // Convert UI groups back to flat rules
     const rules: BranchingRule[] = [];
-    groups.forEach(group => {
-      group.conditions.forEach((condition, index) => {
+    for (const group of groups) {
+      for (let index = 0; index < group.conditions.length; index++) {
+        const condition = group.conditions[index];
         rules.push({
           questionId: group.questionId,
           condition: {
@@ -248,8 +249,8 @@ export default function BranchingModal({
           logical: index < group.conditions.length - 1 ? condition.logical : undefined,
           action: group.action,
         });
-      });
-    });
+      }
+    }
 
     try { onSave(rules); } catch (err) { console.error(err); }
     try { onClose(); } catch (err) { console.error(err); }

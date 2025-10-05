@@ -29,7 +29,7 @@ const DropdownQuestion: React.FC<QuestionProps> = ({
       </div>
 
       <select
-        value={value as string}
+        value={typeof value === 'string' || typeof value === 'number' ? value : ''}
         onChange={handleChange}
         disabled={disabled}
         className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${

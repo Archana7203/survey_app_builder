@@ -82,7 +82,7 @@ const Results: React.FC = () => {
         
         // Set default chart types
         const defaultCharts: Record<string, ChartType> = {};
-        data.questions.forEach((q: ResultsQuestionAnalytics) => {
+        for (const q of data.questions as ResultsQuestionAnalytics[]) {
           switch (q.analytics?.type) {
             case 'choice':
               defaultCharts[q.questionId] = 'Bar';
@@ -100,7 +100,7 @@ const Results: React.FC = () => {
             default:
               defaultCharts[q.questionId] = 'Bar';
           }
-        });
+        }
         setChartTypes(defaultCharts);
       } else {
         const errorText = await response.text();

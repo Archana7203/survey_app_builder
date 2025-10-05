@@ -71,7 +71,7 @@ const DashboardLayout: React.FC = () => {
                 </div>
                 <span className="hidden sm:inline">{user?.email || 'User'}</span>
                 <button 
-                  onClick={() => { try { logout(); } catch (err) { console.error('Logout error'); } }} 
+                  onClick={async () => { try { await logout(); } catch (err) { console.error(err); } }} 
                   className="px-3 py-1 rounded transition-all duration-200 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-300 text-blue-600 dark:text-blue-400"
                 >
                   Logout

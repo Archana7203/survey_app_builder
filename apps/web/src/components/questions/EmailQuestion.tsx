@@ -30,7 +30,7 @@ const EmailQuestion: React.FC<QuestionProps> = ({
 
       <input
         type="email"
-        value={value as string}
+        value={typeof value === 'string' || typeof value === 'number' ? value : ''}
         onChange={handleChange}
         disabled={disabled}
         placeholder="Enter your email address"

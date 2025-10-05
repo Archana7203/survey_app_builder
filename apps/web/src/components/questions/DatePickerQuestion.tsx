@@ -39,7 +39,7 @@ const DatePickerQuestion: React.FC<QuestionProps> = ({
       <div className="space-y-2">
         <input
           type="date"
-          value={value as string}
+          value={typeof value === 'string' || typeof value === 'number' ? value : ''}
           onChange={handleChange}
           disabled={disabled}
           min={minDate}

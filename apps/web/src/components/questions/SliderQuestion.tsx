@@ -34,9 +34,7 @@ const SliderQuestion: React.FC<QuestionProps> = ({
       let newValue = currentValue;
       
       // If no value is set, use the middle of the range
-      if (newValue === undefined || newValue === null) {
-        newValue = defaultValue;
-      }
+      newValue ??= defaultValue;
       
       // Ensure value is within bounds
       if (newValue < min) {
