@@ -45,7 +45,7 @@ const RatingStar: React.FC<RatingStarProps> = ({
         </label>
       )}
       <div className="flex justify-center items-center space-x-2 star-rating">
-        {[...new Array(maxRating)].map((_, index) => {
+        {Array.from({ length: maxRating }, (_, index) => {
           const rating = index + 1;
           const isFilled = rating <= (hoveredRating || value);
           
