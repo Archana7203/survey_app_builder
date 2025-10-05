@@ -19,9 +19,13 @@ const createTransporter = async () => {
 };
 
 export const generateSurveyToken = (surveyId: string, email: string): string => {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET environment variable is not defined');
+  }
   return jwt.sign(
     { surveyId, email },
-    process.env.JWT_SECRET!,
+    jwtSecret,
     { expiresIn: '7d' }
   );
 };
