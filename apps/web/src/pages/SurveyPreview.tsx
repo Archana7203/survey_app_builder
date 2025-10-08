@@ -89,12 +89,22 @@ export default function SurveyPreview() {
     const rules = getVisibilityRules(question);
     if (rules.length === 0) return true;
 
-    return rules.every(rule => {
-      const responseValue = responses[rule.questionId];
-      if (responseValue === undefined) return true; // Show if no response yet
-      
-      const isVisible = evaluateCondition(rule.condition.operator, rule.condition.value, responseValue);
-      return rule.logical === 'OR' ? isVisible : !isVisible; // Invert for OR logic
+    // Group rules by their groupIndex
+    const groupedRules = rules.reduce((acc: { [key: string]: typeof rules }, rule) => {
+      const groupKey = rule.groupIndex?.toString() || 'default';
+      if (!acc[groupKey]) acc[groupKey] = [];
+      acc[groupKey].push(rule);
+      return acc;
+    }, {});
+
+    // Evaluate each group (groups are combined with OR)
+    return Object.values(groupedRules).some(group => {
+      // Within each group, rules are combined with AND
+      return group.every(rule => {
+        const responseValue = responses[rule.questionId];
+        if (responseValue === undefined) return false; // Hide if no response
+        return evaluateCondition(rule.condition.operator, rule.condition.value, responseValue);
+      });
     });
   }, [responses, getVisibilityRules]);
 

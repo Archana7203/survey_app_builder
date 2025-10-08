@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { SurveyRepository } from '../repository/survey.repository';
 import { ResponseRepository } from '../repository/response.repository';
 import { generateUniqueSlug } from '../utils/slug';
@@ -323,4 +326,45 @@ export class SurveyService {
       },
     };
   }
+  // 16. Import survey
+async importSurvey(userId: string, surveyData: any) {
+  // Validate the import data structure
+  if (!surveyData?.surveyData.survey) {
+    throw new Error('Invalid survey data format');
+  }
+
+  const { survey } = surveyData;
+
+  if (!survey.title || typeof survey.title !== 'string' || survey.title.trim() === '') {
+    throw new Error('Validation: Imported survey must have a valid title');
+  }
+
+  // Validate pages if present
+  if (survey.pages) {
+    if (!Array.isArray(survey.pages)) {
+      throw new Error('Validation: Pages must be an array');
+    }
+    for (let i = 0; i < survey.pages.length; i++) {
+      validatePage(survey.pages[i], i);
+    }
+  }
+
+  // Generate a unique slug for the imported survey
+  const slug = await generateUniqueSlug(`${survey.title} (Imported)`);
+
+  // Create the survey with imported data
+  const importedSurvey = await this.repo.createSurvey({
+    title: `${survey.title} (Imported)`,
+    description: survey.description,
+    theme: survey.theme,
+    pages: survey.pages || [],
+    slug,
+    status: 'draft',
+    allowedRespondents: [],
+    createdBy: userId,
+    locked: false,
+  });
+
+  return importedSurvey;
+}
 }

@@ -351,5 +351,31 @@ router.post('/:surveyId/export', requireAuth, async (req: AuthRequest, res) => {
     res.status(500).json({ error: 'Failed to export survey' });
   }
 });
-
+// POST /api/surveys/import - Import survey from JSON
+router.post('/import', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { surveyData } = req.body;
+    const service = new SurveyService();
+    const importedSurvey = await service.importSurvey(req.user._id.toString(), surveyData);
+    res.status(201).json({
+      id: importedSurvey._id,
+      title: importedSurvey.title,
+      description: importedSurvey.description,
+      slug: importedSurvey.slug,
+      status: importedSurvey.status,
+      closeDate: importedSurvey.closeDate,
+      createdAt: importedSurvey.createdAt,
+      updatedAt: importedSurvey.updatedAt,
+      pages: importedSurvey.pages,
+      theme: importedSurvey.theme,
+      backgroundColor: importedSurvey.backgroundColor,
+      textColor: importedSurvey.textColor,
+      allowedRespondents: importedSurvey.allowedRespondents
+    });
+  } catch (error) {
+    console.error('Error importing survey:', error);
+    res.status(500).json({ error: 'Failed to import survey' });
+  }
+});
 export default router;
+
