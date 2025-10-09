@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { buildApiUrl } from '../../utils/apiConfig';
 import Button from '../ui/Button';
 import Alert from '../ui/Alert';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
+import { SURVEYS_API } from '../../api-paths/surveysApi';
 
 interface RespondentsModalProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
 
   const fetchRespondents = async () => {
     try {
-      const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondents`), {
+      const response = await fetch(SURVEYS_API.RESPONDENTS.LIST(surveyId), {
         credentials: 'include',
       });
 
@@ -57,7 +57,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
     setSuccess(null);
 
     try {
-      const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondents`), {
+      const response = await fetch(SURVEYS_API.RESPONDENTS.ADD(surveyId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -85,7 +85,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
     setSuccess(null);
 
     try {
-      const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondents/${encodeURIComponent(email)}`), {
+      const response = await fetch(SURVEYS_API.RESPONDENTS.REMOVE(surveyId, email), {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -110,7 +110,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
     setSuccess(null);
 
     try {
-      const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondents/send-invitations`), {
+      const response = await fetch(SURVEYS_API.RESPONDENTS.SEND_INVITATIONS(surveyId), {
         method: 'POST',
         credentials: 'include',
       });

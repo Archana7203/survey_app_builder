@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { buildApiUrl } from '../../utils/apiConfig';
 import Card from '../ui/Card';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import { loadConfig, getRespondentProgressPaginationConfig } from '../../utils/config';
+import { SURVEYS_API } from '../../api-paths/surveysApi';
 
 interface RespondentProgress {
   email: string;
@@ -84,7 +84,7 @@ export default function RespondentProgress({ surveyId }: Props) {
     try {
       console.log('Fetching progress for surveyId:', surveyId);
       setLoading(true);
-      const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondent-progress?page=${page}&limit=${limit}`), {
+      const response = await fetch(SURVEYS_API.RESPONDENT_PROGRESS(surveyId, page, limit), {
         credentials: 'include',
       });
       

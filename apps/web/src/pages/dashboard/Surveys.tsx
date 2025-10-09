@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { buildApiUrl } from '../../utils/apiConfig';
+import { SURVEYS_API } from '../../api-paths/surveysApi';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Alert from '../../components/ui/Alert';
@@ -74,7 +74,7 @@ const Surveys: React.FC = () => {
   const fetchSurveys = async (page: number = 1, limit: number = 5) => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl(`/api/surveys?page=${page}&limit=${limit}`), {
+      const response = await fetch(SURVEYS_API.LIST(page, limit), {
         credentials: 'include',
       });
       
@@ -126,7 +126,7 @@ const Surveys: React.FC = () => {
     setError(null); // Clear any previous errors
     try {
       
-      const response = await fetch(buildApiUrl('/api/surveys'), {
+      const response = await fetch(SURVEYS_API.CREATE(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,7 +218,7 @@ const Surveys: React.FC = () => {
     setDeleting(surveyId);
     setError(null);
     try {
-      const res = await fetch(buildApiUrl(`/api/surveys/${surveyId}`), {
+      const res = await fetch(SURVEYS_API.DELETE(surveyId), {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -261,7 +261,7 @@ const Surveys: React.FC = () => {
       // Removed automatic closeDate setting when unpublishing
     };
     try {
-      const res = await fetch(buildApiUrl(`/api/surveys/${survey.id}`), {
+      const res = await fetch(SURVEYS_API.UPDATE(survey.id), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

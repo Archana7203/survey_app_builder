@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { buildApiUrl } from '../../utils/apiConfig';
 import io from 'socket.io-client';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import ChartSelector, { type ChartType } from '../../components/charts/ChartSelector';
 import ChartRenderer from '../../components/charts/ChartRenderer';
 import { exportReport } from '../../utils/exportReport';
+import { SURVEYS_API } from '../../api-paths/surveysApi';
+import { ANALYTICS_API } from '../../api-paths/analyticsApi';
 
 interface ResultsQuestionAnalytics {
   questionId: string;
@@ -53,7 +54,7 @@ const Results: React.FC = () => {
 
   const fetchSurvey = useCallback(async () => {
     try {
-      const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}`), {
+      const response = await fetch(SURVEYS_API.GET(surveyId!), {
         credentials: 'include',
       });
 
@@ -71,7 +72,8 @@ const Results: React.FC = () => {
   const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl(`/api/analytics/${surveyId}`), {
+      if (!surveyId) return;
+      const response = await fetch(ANALYTICS_API.GET(surveyId), {
         credentials: 'include',
       });
 

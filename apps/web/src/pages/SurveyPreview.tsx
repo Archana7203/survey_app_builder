@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { buildApiUrl } from '../utils/apiConfig';
 import { evaluateCondition } from '../utils/visibilityHelpers';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-
+import { SURVEYS_API } from '../api-paths/surveysApi';
 
 interface Question {
   id: string;
@@ -132,9 +131,8 @@ export default function SurveyPreview() {
       // If not a temp preview, fetch from API
       // Check if slug is a MongoDB ObjectId (24 hex characters)
       const isObjectId = /^[0-9a-fA-F]{24}$/.test(slug);
-      const endpoint = isObjectId ? `/api/surveys/by-id/${slug}` : `/api/surveys/by-slug/${slug}`;
-      
-      const response = await fetch(buildApiUrl(endpoint));
+      const endpoint = isObjectId ? SURVEYS_API.GET_BY_ID(slug) : SURVEYS_API.GET_BY_SLUG(slug);
+      const response = await fetch(endpoint);
       if (!response.ok) {
         throw new Error('Failed to fetch survey');
       }

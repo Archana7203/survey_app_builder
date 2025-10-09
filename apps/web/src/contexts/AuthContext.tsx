@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { buildApiUrl } from '../utils/apiConfig';
+import { AUTH_API } from '../api-paths/authApi';
 
 interface AuthUser {
   id: string;
@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchMe = useCallback(async () => {
     try {
-      const res = await fetch(buildApiUrl('/api/auth/me'), { credentials: 'include' });
+      const res = await fetch(AUTH_API.ME(), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchMe]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(buildApiUrl('/api/auth/login'), {
+    const res = await fetch(AUTH_API.LOGIN(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
-    const res = await fetch(buildApiUrl('/api/auth/register'), {
+    const res = await fetch(AUTH_API.REGISTER(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch(buildApiUrl('/api/auth/logout'), { method: 'POST', credentials: 'include' });
+    await fetch(AUTH_API.LOGOUT(), { method: 'POST', credentials: 'include' });
     setUser(null);
   }, []);
 

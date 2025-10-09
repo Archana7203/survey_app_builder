@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { buildApiUrl } from '../utils/apiConfig';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Alert from '../components/ui/Alert';
 import { evaluateCondition } from '../utils/visibilityHelpers';
+import { SURVEYS_API } from '../api-paths/surveysApi';
+import { RESPONSES_API } from '../api-paths/responsesApi';
+import { buildApiUrl } from '../api-paths/apiConfig';
 
 interface Question {
   id: string;
@@ -76,8 +78,6 @@ export default function SurveyRenderer() {
 
   const draftKey = `survey_${slug}_draft`;
 
-
-
   // Helper: extract visibility rules from a question (supports multiple locations for flexibility)
   const getVisibilityRules = useCallback((question: Question): Array<BranchingRule & { groupIndex?: number }> => {
     const settings = (question.settings || {});
@@ -133,9 +133,10 @@ export default function SurveyRenderer() {
 
   const fetchSurvey = useCallback(async () => {
     try {
+      if (!slug) return;
       console.log('Fetching survey with slug:', slug);
-      const response = await fetch(buildApiUrl(`/api/surveys/public/${slug}`), {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      const response = await fetch(SURVEYS_API.GET_PUBLIC(slug), {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       });
       
       console.log('Survey response status:', response.status);
@@ -240,7 +241,7 @@ export default function SurveyRenderer() {
 
         if (!survey) return;
         
-        const response = await fetch(buildApiUrl(`/api/responses/${survey.id}/auto-save`), {
+        const response = await fetch(RESPONSES_API.AUTO_SAVE(survey.id), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -361,7 +362,7 @@ export default function SurveyRenderer() {
 
         if (!survey) return;
         
-        const response = await fetch(buildApiUrl(`/api/responses/${survey.id}/auto-save`), {
+        const response = await fetch(RESPONSES_API.AUTO_SAVE(survey.id), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -427,7 +428,7 @@ export default function SurveyRenderer() {
       const timeSpent = Math.round((Date.now() - startTime) / 1000);
       
       // Use survey.id instead of slug for the API endpoint
-      const response = await fetch(buildApiUrl(`/api/responses/${survey.id}/submit`), {
+      const response = await fetch(RESPONSES_API.SUBMIT(survey.id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

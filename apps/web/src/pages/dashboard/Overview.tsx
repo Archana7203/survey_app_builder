@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { buildApiUrl } from '../../utils/apiConfig';
 import Card from '../../components/ui/Card';
 import { v4 as uuidv4 } from 'uuid';
+import { API_BASES } from '../../api-paths/apiConfig';
 
 interface Response {
   _id: string;
@@ -40,9 +40,9 @@ const Overview: React.FC = () => {
       try {
         setLoading(true);
         const [surveysRes, templatesRes, responsesRes] = await Promise.all([
-          fetch(buildApiUrl('/api/surveys'), { credentials: 'include' }),
-          fetch(buildApiUrl('/api/templates'), { credentials: 'include' }),
-          fetch(buildApiUrl('/api/responses'), { credentials: 'include' }),
+          fetch(API_BASES.SURVEYS, { credentials: 'include' }),
+          fetch(API_BASES.TEMPLATES, { credentials: 'include' }),
+          fetch(API_BASES.RESPONSES, { credentials: 'include' }),
         ]);
         
         let total = 0; 
