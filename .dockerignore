@@ -10,3 +10,8 @@ README.md
 **/README.md
 Dockerfile
 docker-compose.yml
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
