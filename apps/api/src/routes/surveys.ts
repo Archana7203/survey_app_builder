@@ -751,4 +751,65 @@ router.post('/:surveyId/export', requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+router.post('/import', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { surveyData } = req.body;
+
+    // Validate survey data
+    if (!surveyData?.survey) {
+      return res.status(400).json({ error: 'Invalid survey data format' });
+    }
+
+    const { survey } = surveyData;
+
+    if (!survey.title || typeof survey.title !== 'string' || survey.title.trim() === '') {
+      return res.status(400).json({ error: 'Survey must have a valid title' });
+    }
+
+    if (survey.pages && !Array.isArray(survey.pages)) {
+      return res.status(400).json({ error: 'Pages must be an array' });
+    }
+
+    // Generate a slug (simple example, customize as needed)
+    const slug = `${survey.title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}`;
+
+    // Create a new survey document in DB
+    const importedSurvey = await Survey.create({
+      title: `${survey.title} (Imported)`,
+      description: survey.description,
+      theme: survey.theme,
+      pages: survey.pages || [],
+      slug,
+      status: 'draft',
+      allowedRespondents: [],
+      createdBy: req.user._id,
+      locked: false,
+    });
+
+    // Respond in same format as export
+    res.status(201).json({
+      version: '1.0',
+      importedAt: new Date().toISOString(),
+      survey: {
+        id: importedSurvey._id,
+        title: importedSurvey.title,
+        description: importedSurvey.description,
+        slug: importedSurvey.slug,
+        status: importedSurvey.status,
+        closeDate: importedSurvey.closeDate,
+        createdAt: importedSurvey.createdAt,
+        updatedAt: importedSurvey.updatedAt,
+        pages: importedSurvey.pages,
+        theme: importedSurvey.theme,
+        backgroundColor: importedSurvey.backgroundColor,
+        textColor: importedSurvey.textColor,
+        allowedRespondents: importedSurvey.allowedRespondents,
+      }
+    });
+
+  } catch (error) {
+    console.error('Error importing survey:', error);
+    res.status(500).json({ error: 'Failed to import survey' });
+  }
+});
 export default router;
