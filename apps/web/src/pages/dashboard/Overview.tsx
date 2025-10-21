@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { buildApiUrl } from '../../utils/apiConfig';
 import Card from '../../components/ui/Card';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Response {
   _id: string;
@@ -21,6 +21,7 @@ interface Stats {
   responses: number;
   templates: number;
   completedResponses: number;
+  uniqueRespondents: number; 
 }
 
 const Overview: React.FC = () => {
@@ -29,7 +30,8 @@ const Overview: React.FC = () => {
     active: 0, 
     responses: 0, 
     templates: 0, 
-    completedResponses: 0 
+    completedResponses: 0,
+    uniqueRespondents: 0 
   });
   const [recentActivity, setRecentActivity] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +41,9 @@ const Overview: React.FC = () => {
       try {
         setLoading(true);
         const [surveysRes, templatesRes, responsesRes] = await Promise.all([
-          fetch(buildApiUrl('/api/surveys'), { credentials: 'include' }),
-          fetch(buildApiUrl('/api/templates'), { credentials: 'include' }),
-          fetch(buildApiUrl('/api/responses'), { credentials: 'include' }),
+          fetch('/api/surveys', { credentials: 'include' }),
+          fetch('/api/templates', { credentials: 'include' }),
+          fetch('/api/responses', { credentials: 'include' }),
         ]);
         
         let total = 0; 
@@ -49,6 +51,7 @@ const Overview: React.FC = () => {
         let templates = 0;
         let responses = 0;
         let completedResponses = 0;
+        let uniqueRespondents = 0;
         
         if (surveysRes.ok) {
           const surveysData = await surveysRes.json();
@@ -68,10 +71,24 @@ const Overview: React.FC = () => {
           const responseData = await responsesRes.json();
           responses = responseData.totalResponses || 0;
           completedResponses = responseData.completedResponses || 0;
-          setRecentActivity(responseData.recentResponses || []);
+          
+          const recentResponses = responseData.recentResponses || [];
+          setRecentActivity(recentResponses);
+
+          const uniqueEmails = new Set(
+            recentResponses.map((r: Response) => r.respondentEmail)
+          );
+          uniqueRespondents = uniqueEmails.size;
         }
         
-        setStats({ total, active, responses, templates, completedResponses });
+        setStats({ 
+          total, 
+          active, 
+          responses, 
+          templates, 
+          completedResponses,
+          uniqueRespondents 
+        });
       } catch (error) {
         console.error('Failed to load overview data:', error);
       } finally {
@@ -106,8 +123,8 @@ const Overview: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
+          {Array.from({ length: 4 }).map(() => (
+            <Card key={uuidv4()}>
               <div className="text-center">
                 <div className="text-3xl font-bold text-gray-300 dark:text-gray-600">--</div>
                 <div className="text-sm text-gray-400 dark:text-gray-500">Loading...</div>
@@ -141,10 +158,11 @@ const Overview: React.FC = () => {
           </div>
         </Card>
 
+        {/* ✅ Changed to show unique respondents instead of total responses */}
         <Card>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.responses}</div>
-            <div className="text-sm text-gray-500 dark:text-white">Total Respondents</div>
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.uniqueRespondents}</div>
+            <div className="text-sm text-gray-500 dark:text-white">Unique Respondents</div>
           </div>
         </Card>
 
@@ -219,5 +237,3 @@ const Overview: React.FC = () => {
 };
 
 export default Overview;
-
-
