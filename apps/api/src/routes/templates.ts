@@ -2,18 +2,28 @@ import express from 'express';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import type { ITemplate } from '../models/Template';
 import { TemplateService } from '../services/template.service';
+import log from '../logger';  // ✅ Import logger
 
 const router = express.Router();
-
 const service = new TemplateService();
 
 // GET /api/templates - List all available templates
 router.get('/', async (req, res) => {
   try {
+    log.info('Fetching templates list', 'GET_TEMPLATES');
+    
     const templates = await service.listTemplates();
+    
+    log.info('Templates fetched successfully', 'GET_TEMPLATES', { 
+      count: templates.length 
+    });
+    
     res.json(templates);
   } catch (error) {
-    console.error('Template fetch error:', error);
+    log.error('Failed to fetch templates', 'GET_TEMPLATES', { 
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -21,11 +31,19 @@ router.get('/', async (req, res) => {
 // GET /api/templates/:id - Get single template details
 router.get('/:id', async (req, res) => {
   try {
-    const template = await service.getTemplate(req.params.id);
+    const templateId = req.params.id;
+    
+    log.info('Fetching template details', 'GET_TEMPLATE', { templateId });
+    
+    const template = await service.getTemplate(templateId);
 
     res.json(template);
   } catch (error) {
-    console.error('Template fetch error:', error);
+    log.error('Failed to fetch template', 'GET_TEMPLATE', { 
+      templateId: req.params.id,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -33,7 +51,23 @@ router.get('/:id', async (req, res) => {
 // POST /api/templates/:id/instantiate - Create survey from template
 router.post('/:id/instantiate', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const newSurvey = await service.instantiateTemplate(req.user._id.toString(), req.params.id);
+    const templateId = req.params.id;
+    const userId = req.user._id.toString();
+    
+    log.info('Instantiating template', 'INSTANTIATE_TEMPLATE', { 
+      templateId,
+      userId 
+    });
+    
+    const newSurvey = await service.instantiateTemplate(userId, templateId);
+    
+    log.info('Template instantiated successfully', 'INSTANTIATE_TEMPLATE', { 
+      templateId,
+      surveyId: String(newSurvey._id),
+      surveyTitle: newSurvey.title,
+      userId 
+    });
+    
     res.status(201).json({
       id: newSurvey._id,
       title: newSurvey.title,
@@ -48,12 +82,15 @@ router.post('/:id/instantiate', requireAuth, async (req: AuthRequest, res) => {
       templateId: req.params.id,
     });
   } catch (error) {
-    console.error('Template instantiation error:', error);
+    log.error('Failed to instantiate template', 'INSTANTIATE_TEMPLATE', { 
+      templateId: req.params.id,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Server error' });
   }
 });
-
-export default router;
 
 // Utility to ensure sample templates exist (idempotent)
 const ensureSampleTemplates = async () => {
@@ -92,16 +129,32 @@ const ensureSampleTemplates = async () => {
 };
 
 // POST /api/templates/ensure-samples - Upsert sample templates (creator-only)
-router.post('/ensure-samples', requireAuth, async (_req: AuthRequest, res) => {
+router.post('/ensure-samples', requireAuth, async (req: AuthRequest, res) => {
   try {
+    log.info('Ensuring sample templates', 'ENSURE_SAMPLES', { 
+      userId: req.user._id.toString() 
+    });
+    
     await ensureSampleTemplates();
+    
     const { TemplateRepository } = await import('../repository/template.repository');
     const repo = new TemplateRepository();
     const updated = await repo.findManyByIds(['covid-19-vaccination', 'impact-of-social-media']);
+    
+    log.info('Sample templates ensured successfully', 'ENSURE_SAMPLES', { 
+      updatedCount: updated.length,
+      userId: req.user._id.toString()
+    });
+    
     res.json({ updated });
   } catch (error) {
-    console.error('Ensure samples error:', error);
+    log.error('Failed to ensure sample templates', 'ENSURE_SAMPLES', { 
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to ensure sample templates' });
   }
 });
 
+export default router;

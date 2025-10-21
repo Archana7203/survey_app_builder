@@ -16,6 +16,10 @@ export class ResponseRepository {
       .limit(limit);
   }
 
+  async deleteMany(filter: { surveyId?: string }) {
+    return Response.deleteMany({ survey: filter.surveyId });
+  }
+
   async upsertAutoSave(surveyId: string, email: string, payload: {
     responses: IResponse['responses'];
     metadata: IResponse['metadata'];

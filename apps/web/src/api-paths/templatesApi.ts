@@ -1,7 +1,22 @@
-import { buildApiUrl, API_BASES} from './apiConfig';
+import { buildApiUrl } from "./apiConfig";
 
-export const TEMPLATES_API_BASE = API_BASES.TEMPLATES;
+export const ensureTemplateSamples = async (): Promise<void> => {
+  try {
+    const response = await fetch(buildApiUrl("/api/templates/ensure-samples"), {
+      method: "POST",
+      credentials: "include",
+    });
 
-export const TEMPLATES_API = {
-  ENSURE_SAMPLES: () => buildApiUrl(`${TEMPLATES_API_BASE}/ensure-samples`),
+    if (!response.ok) {
+      const errorText = await response.text();
+      return Promise.reject(new Error(`${response.status} ${errorText}`));
+    }
+
+    return Promise.resolve(); // Explicit void return
+  } catch (error) {
+    console.error("Failed to ensure template samples:", error);
+    return Promise.reject(
+      error instanceof Error ? error : new Error(String(error))
+    );
+  }
 };

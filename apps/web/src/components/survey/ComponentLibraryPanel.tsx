@@ -9,14 +9,13 @@ interface QuestionType {
   readonly category: string;
 }
 
-function DraggableQuestionType({ questionType, disabled = false }: { readonly questionType: QuestionType; readonly disabled?: boolean }) {
+function DraggableQuestionType({ questionType }: { readonly questionType: QuestionType }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `new-${questionType.type}`,
     data: {
       type: 'question',
       questionType,
     },
-    disabled,
   });
 
   const style = {
@@ -58,12 +57,10 @@ function DraggableQuestionType({ questionType, disabled = false }: { readonly qu
 
 interface ComponentLibraryPanelProps {
   readonly questionTypes: QuestionType[];
-  readonly disabled?: boolean;
 }
 
 export default function ComponentLibraryPanel({ 
   questionTypes,
-  disabled = false,
 }: ComponentLibraryPanelProps) {
   const categories = [
     { id: 'input', name: 'Text & Input', icon: '📝' },
@@ -109,7 +106,6 @@ export default function ComponentLibraryPanel({
                     <DraggableQuestionType
                       key={questionType.type}
                       questionType={questionType}
-                      disabled={disabled}
                     />
                   ))}
                 </div>

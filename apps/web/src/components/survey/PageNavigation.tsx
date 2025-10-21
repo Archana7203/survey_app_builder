@@ -8,7 +8,6 @@ interface PageNavigationProps {
   onPageChange: (index: number) => void;
   onAddPage: () => void;
   onDeletePage: (index: number) => void;
-  isDisabled?: boolean;
 }
 
 const PageNavigation: React.FC<PageNavigationProps> = ({
@@ -17,7 +16,6 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
   onPageChange,
   onAddPage,
   onDeletePage,
-  isDisabled = false,
 }) => {
   // Maintain stable keys internally
   const [keys, setKeys] = useState<string[]>([]);
@@ -39,7 +37,6 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
           variant="outline"
           size="sm"
           onClick={onAddPage}
-          disabled={isDisabled}
         >
           + Add Page
         </Button>
@@ -65,7 +62,6 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => onDeletePage(activePageIndex)}
-            disabled={isDisabled}
             className="text-red-600 hover:ring-1 hover:ring-red-300 dark:text-red-400 dark:hover:ring-red-500"
           >
             Delete Page

@@ -227,46 +227,6 @@ const goToPreviousPage = useCallback(() => {
     };
   }, [previewResponsesState, onPreviewResponseChange, activePageIndex]);
 
-  // Open preview in new tab
-  const openInNewTab = useCallback(() => {
-    // Clean up old preview data (older than 1 hour)
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    for (const key of Object.keys(sessionStorage)){
-      if (key.startsWith('survey_preview_temp_')) {
-        const timestamp = Number.parseInt(key.split('_')[2], 10);
-        if (timestamp && timestamp < oneHourAgo) {
-          sessionStorage.removeItem(key);
-        }
-      }
-    }
-
-    // Always create a temporary preview ID to ensure we show unsaved changes
-    const previewId = `temp_${Date.now()}`;
-
-    // Persist the current survey draft to sessionStorage so the preview tab
-    // can load unsaved changes (theme/colors/pages/questions)
-    try {
-      const storageKey = `survey_preview_${previewId}`;
-      sessionStorage.setItem(storageKey, JSON.stringify(survey));
-      console.log('📋 Preview data stored with key:', storageKey);
-    } catch (err) {
-      console.warn('Failed to store survey preview payload:', err);
-    }
-
-    // Construct the preview URL
-    const surveyUrl = `${globalThis.location.origin}/preview/${previewId}`;
-    
-    try {
-      const newWindow = window.open(surveyUrl, '_blank');
-      if (!newWindow) {
-        alert('Popup blocked! Please allow popups for this site and try again.');
-      }
-    } catch (error) {
-      console.error('Error opening survey preview in new tab:', error);
-      alert('Failed to open survey preview in new tab. Please try again.');
-    }
-  }, [survey]);
-
   const getThemeStyle = () => {
     // Global background color for entire survey page
     const pageBg = currentPageData.backgroundColor || survey.backgroundColor;
@@ -307,17 +267,6 @@ const goToPreviousPage = useCallback(() => {
           </div>
 
           <div className="flex items-center space-x-2">
-            {/* Open in New Tab Button */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={openInNewTab}
-              className="text-xs px-2 py-1"
-              title="Open survey preview in new tab"
-            >
-              Open Preview
-            </Button>
-
             {/* View Mode Toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <button

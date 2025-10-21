@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import Alert from '../ui/Alert';
 import Input from '../ui/Input';
-import Modal from '../ui/Modal';
-import { SURVEYS_API } from '../../api-paths/surveysApi';
+import { fetchRespondentsApi, addRespondentApi, removeRespondentApi } from '../../api-paths/surveysApi';
 
 interface RespondentsModalProps {
   isOpen: boolean;
@@ -19,8 +18,6 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
   const [success, setSuccess] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [sendingInvitations, setSendingInvitations] = useState(false);
-  const [showConfirmSend, setShowConfirmSend] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -30,19 +27,11 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
 
   const fetchRespondents = async () => {
     try {
-      const response = await fetch(SURVEYS_API.RESPONDENTS.LIST(surveyId), {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRespondents(data.allowedRespondents);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to load respondents');
-      }
-    } catch {
-      setError('Error loading respondents');
+      const data = await fetchRespondentsApi(surveyId);
+      setRespondents(data.allowedRespondents);
+    } catch (error: any) {
+      console.error('Fetch respondents error:', error);
+      alert('Error loading respondents');
     } finally {
       setLoading(false);
     }
@@ -57,23 +46,13 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
     setSuccess(null);
 
     try {
-      const response = await fetch(SURVEYS_API.RESPONDENTS.ADD(surveyId), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: newEmail.trim() }),
-      });
-
-      if (response.ok) {
-        setRespondents(prev => [...prev, newEmail.trim()]);
-        setNewEmail('');
-        setSuccess('Respondent added successfully');
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to add respondent');
-      }
-    } catch {
-      setError('Error adding respondent');
+      await addRespondentApi(surveyId, newEmail.trim());
+      setRespondents(prev => [...prev, newEmail.trim()]);
+      setNewEmail('');
+      setSuccess('Respondent added successfully');
+    } catch (error: any) {
+      console.error('Add respondent error:', error);
+      setError(error.message || 'Error adding respondent');
     } finally {
       setAdding(false);
     }
@@ -85,48 +64,14 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
     setSuccess(null);
 
     try {
-      const response = await fetch(SURVEYS_API.RESPONDENTS.REMOVE(surveyId, email), {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        setRespondents(prev => prev.filter(e => e !== email));
-        setSuccess('Respondent removed successfully');
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to remove respondent');
-      }
-    } catch {
-      setError('Error removing respondent');
+      await removeRespondentApi(surveyId, email);
+      setRespondents(prev => prev.filter(e => e !== email));
+      setSuccess('Respondent removed successfully');
+    } catch (error: any) {
+      console.error('Remove respondent error:', error);
+      setError(error.message || 'Error removing respondent');
     } finally {
       setDeleting(null);
-    }
-  };
-
-  const handleSendInvitations = async () => {
-    setSendingInvitations(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const response = await fetch(SURVEYS_API.RESPONDENTS.SEND_INVITATIONS(surveyId), {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSuccess(data.message);
-        setShowConfirmSend(false);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to send invitations');
-      }
-    } catch {
-      setError('Error sending invitations');
-    } finally {
-      setSendingInvitations(false);
     }
   };
 
@@ -220,75 +165,20 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
             </div>
           </form>
 
-          {respondents.length > 0 && (
-            <div className="mb-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowConfirmSend(true)}
-                className="w-full"
-              >
-                Send Invitations to All Respondents ({respondents.length})
-              </Button>
-            </div>
-          )}
-
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Allowed Respondents
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Add or remove respondents. Emails will only be sent when you click "Send Invitations".
-            </p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Automated Email Invitations:</strong> Survey invitations will be automatically sent to all respondents when the survey goes live.
+              </p>
+            </div>
+
             {renderRespondentsContent()}
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal */}
-      <Modal
-        isOpen={showConfirmSend}
-        onClose={() => setShowConfirmSend(false)}
-        title="Confirm Sending Invitations"
-        size="md"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-700 dark:text-gray-300">
-            Are you sure you want to send survey invitations to all {respondents.length} respondents? 
-            This action cannot be undone.
-          </p>
-
-          <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Recipients:</p>
-            <div className="max-h-32 overflow-y-auto">
-              {respondents.map((email) => (
-                <div key={email} className="text-sm text-gray-700 dark:text-gray-300 py-1">
-                  {email}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowConfirmSend(false)}
-              disabled={sendingInvitations}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleSendInvitations}
-              disabled={sendingInvitations}
-            >
-              {sendingInvitations ? 'Sending...' : 'Send Invitations'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };

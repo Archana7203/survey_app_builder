@@ -14,6 +14,7 @@ import responseRoutes from './routes/responses';
 import analyticsRoutes from './routes/analytics';
 import templateRoutes from './routes/templates';
 import { seedTemplates } from './utils/seedTemplates';
+import { log, morganMiddleware } from './logger';
 
 // Load env (only needed locally, Heroku ignores .env)
 dotenv.config();
@@ -39,17 +40,18 @@ const mongoUri = process.env.MONGODB_URI;
 
 // --- Connect to MongoDB ---
 if (!mongoUri) {
-  console.error("❌ No MONGO_URI provided. Please set it in env.");
+  log.error('No MONGO_URI provided. Please set it in env.', 'DB_CONNECTION');
   process.exit(1);
 }
 
 async function connectDatabase() {
   try {
     await mongoose.connect(mongoUri as string);
-    console.log('✅ Connected to MongoDB');
+    log.info('Connected to MongoDB', 'DB_CONNECTION');
     await seedTemplates();
+    log.info('Templates seeded successfully', 'SEED_TEMPLATES');
   } catch (err: any) {
-    console.error('❌ MongoDB connection failed:', err.message);
+    log.error('MongoDB connection failed', 'DB_CONNECTION', { error: err.message, stack: err.stack });
     process.exit(1);
   }
 }
@@ -64,8 +66,12 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Add Morgan middleware for HTTP logging
+app.use(morganMiddleware);
+
 // --- Health Check ---
 app.get('/api/health', (_req, res) => {
+  log.info('Health check endpoint called', 'HEALTH_CHECK');
   res.json({
     status: 'OK',
     message: 'API is running',
@@ -75,6 +81,7 @@ app.get('/api/health', (_req, res) => {
 
 // --- Test Endpoint ---
 app.get('/api/test', (_req, res) => {
+  log.info('Test endpoint called', 'TEST_ENDPOINT');
   res.json({ message: 'Test endpoint working', timestamp: new Date().toISOString() });
 });
 
@@ -91,15 +98,15 @@ app.use('/api/templates', templateRoutes);
 
 // --- Socket.io handlers ---
 io.on('connection', (socket) => {
-  console.log('🔌 Client connected:', socket.id);
+  log.info('Client connected', 'SOCKET_CONNECTION', { socketId: socket.id });
 
   socket.on('join-survey', (surveyId) => {
     socket.join(`survey-${surveyId}`);
-    console.log(`📢 Client ${socket.id} joined survey room: ${surveyId}`);
+    log.info('Client joined survey room', 'SOCKET_JOIN_SURVEY', { socketId: socket.id, surveyId });
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Client disconnected:', socket.id);
+    log.info('Client disconnected', 'SOCKET_DISCONNECT', { socketId: socket.id });
   });
 });
 
@@ -107,11 +114,27 @@ io.on('connection', (socket) => {
 const webDist = path.resolve(__dirname, '../../web/dist');
 app.use(express.static(webDist));
 app.get('/{*any}', (_req, res) => {
-res.sendFile(path.join(webDist, 'index.html'));
+  res.sendFile(path.join(webDist, 'index.html'));
 });
 
+// --- Global Error Handler ---
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  log.error(err.message || 'Internal Server Error', 'ERROR_HANDLER', {
+    stack: err.stack,
+    reqBody: req.body,
+    reqParams: req.params,
+    reqQuery: req.query,
+    url: req.url,
+    method: req.method
+  });
+  
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // --- Start server ---
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  log.info(`Server running on port ${PORT}`, 'SERVER_START', { port: PORT });
 });

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { AUTH_API } from '../api-paths/authApi';
+import { fetchMeApi, loginApi, registerApi, logoutApi} from '../api-paths/authApi';
 
 interface AuthUser {
   id: string;
@@ -29,15 +29,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchMe = useCallback(async () => {
+    setLoading(true);
+
     try {
-      const res = await fetch(AUTH_API.ME(), { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch {
+      const data = await fetchMeApi();
+      setUser(data.user); // data.user exists if API returns user object
+    } catch (error: any) {
+      console.error(error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -49,38 +47,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchMe]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(AUTH_API.LOGIN(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || 'Login failed');
+    try {
+      const data = await loginApi(email, password);
+      setUser(data.user);
+    } catch (error: any) {
+      alert('Login failed'); // optional: use alert instead of state
     }
-    const data = await res.json();
-    setUser(data.user);
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
-    const res = await fetch(AUTH_API.REGISTER(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, password, role: 'creator' }),
-    });
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || 'Register failed');
+    try {
+      const data = await registerApi(email, password);
+      setUser(data.user);
+    } catch (error: any) {
+      alert('Register failed'); // optional: use alert
     }
-    const data = await res.json();
-    setUser(data.user);
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch(AUTH_API.LOGOUT(), { method: 'POST', credentials: 'include' });
-    setUser(null);
+    try {
+      await logoutApi();
+    } catch (error: any) {
+      alert('Logout failed'); // optional: alert for error
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   // ✅ Memoize the context value

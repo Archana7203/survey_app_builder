@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://chemicals-wax-seek-astrology.trycloudflare.com',  
+        target: 'https://just-levels-southeast-topics.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'atmospheric-bet-peas-civic.trycloudflare.com', 
+      'bryan-cst-caused-promised.trycloudflare.com', 
     ],
   },
 });

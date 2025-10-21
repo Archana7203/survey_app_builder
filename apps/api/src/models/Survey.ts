@@ -22,14 +22,17 @@ export interface ISurvey extends Document {
   theme?: string;
   backgroundColor?: string;
   textColor?: string;
-  status: 'draft' | 'published' | 'closed';
+  status: 'draft' | 'published' | 'closed' |'live' | 'archived';
   locked: boolean;
+  startDate?: Date;  
+  endDate?: Date;  
   closeDate?: Date;
   pages: Array<{
     questions: Array<any>;
     branching?: Array<IBranchingRule>;
   }>;
   allowedRespondents: string[];
+  invitationsSent: string[];  // ✅ Already in interface - good!
   createdBy: IUser['_id'];
   createdAt: Date;
   updatedAt: Date;
@@ -66,8 +69,14 @@ const SurveySchema: Schema = new Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'published', 'closed'],
+    enum: ['draft', 'published', 'live', 'closed', 'archived'],
     default: 'draft',
+  },
+  startDate: {           
+    type: Date,
+  },
+  endDate: {           
+    type: Date,
   },
   closeDate: {
     type: Date,
@@ -117,6 +126,18 @@ const SurveySchema: Schema = new Schema({
       }
     ]
   },
+  invitationsSent: {
+    type: [String],
+    default: [],
+    validate: [
+      {
+        validator: function(emails: string[]) {
+          return emails.every(email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+        },
+        message: 'Invalid email format in invitationsSent'
+      }
+    ]
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -131,4 +152,3 @@ const SurveySchema: Schema = new Schema({
 });
 
 export const Survey = mongoose.model<ISurvey>('Survey', SurveySchema);
-

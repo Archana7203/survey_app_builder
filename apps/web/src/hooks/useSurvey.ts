@@ -1,7 +1,6 @@
 // hooks/useSurvey.ts
 import { useEffect, useCallback, useState } from "react";
-import { buildApiUrl } from "../utils/apiConfig";
-
+import { fetchSurveyByIdApi } from "../api-paths/surveysApi";
 export const useSurvey = (surveyId?: string) => {
   const [survey, setSurvey] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -9,18 +8,13 @@ export const useSurvey = (surveyId?: string) => {
 
   const fetchSurvey = useCallback(async () => {
     if (!surveyId) return;
+
     try {
-      const response = await fetch(buildApiUrl(`/api/surveys/${surveyId}`), {
-        credentials: "include",
-      });
-      if (response.ok) {
-        setSurvey(await response.json());
-      } else {
-        setError("Failed to fetch survey");
-      }
+      const data = await fetchSurveyByIdApi(surveyId);
+      setSurvey(data);
     } catch (err) {
-      console.error("Error fetching survey:", err);
-      setError("Error loading survey");
+      console.error('Error fetching survey:', err);
+      setError(err instanceof Error ? err.message : 'Error loading survey');
     } finally {
       setLoading(false);
     }

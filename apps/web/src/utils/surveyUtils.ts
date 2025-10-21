@@ -1,6 +1,3 @@
-// utils/surveyUtils.ts
-
-// Basic shape of Question so utils can compile
 export interface Question {
   id: string;
   type: string;
@@ -18,9 +15,12 @@ export const validateSurveyData = (surveyData: any): string | null => {
 
   for (let i = 0; i < surveyData.pages.length; i++) {
     const page = surveyData.pages[i];
-    if (!page || typeof page !== "object") return `Invalid page data at index ${i}`;
-    if (!Array.isArray(page.questions)) return `Invalid questions array at page ${i + 1}`;
-    if (!Array.isArray(page.branching)) return `Invalid branching array at page ${i + 1}`;
+    if (!page || typeof page !== "object")
+      return `Invalid page data at index ${i}`;
+    if (!Array.isArray(page.questions))
+      return `Invalid questions array at page ${i + 1}`;
+    if (!Array.isArray(page.branching))
+      return `Invalid branching array at page ${i + 1}`;
   }
   return null;
 };
@@ -57,7 +57,9 @@ export const createNewQuestion = (type: string): Question => {
   const mappedType = mapQuestionType(type);
   let settings: Record<string, unknown> = {};
   if (mappedType.startsWith("rating")) {
-    settings = { maxRating: ["ratingSmiley", "ratingStar"].includes(mappedType) ? 5 : 10 };
+    settings = {
+      maxRating: ["ratingSmiley", "ratingStar"].includes(mappedType) ? 5 : 10,
+    };
   } else if (mappedType === "slider") {
     settings = { scaleMin: 0, scaleMax: 100, scaleStep: 1 };
   }
@@ -72,4 +74,85 @@ export const createNewQuestion = (type: string): Question => {
       : undefined,
     settings,
   };
+};
+export const prepareStatusUpdatePayload = (
+  newStatus: string,
+  currentStatus: string
+) => {
+  const payload: any = { status: newStatus };
+
+  if (newStatus === "live" && currentStatus === "published") {
+    payload.startDate = new Date().toISOString();
+  }
+
+  // Handle live → closed transition (Close button)
+  if (newStatus === "closed" && currentStatus === "live") {
+    payload.endDate = new Date().toISOString();
+  }
+
+  return payload;
+};
+export const getStatusSuccessMessage = (status: string): string => {
+  const messages: Record<string, string> = {
+    live: "Survey is now live! Invitations have been sent to respondents.",
+    published: "Survey published successfully!",
+    closed: "Survey closed successfully.",
+    archived: "Survey archived successfully.",
+  };
+  return messages[status] || "";
+};
+export const validateSurveyForPublish = (
+  survey: any
+): { valid: boolean; error?: string } => {
+  if (!survey?.title?.trim()) {
+    return { valid: false, error: "Survey title is required" };
+  }
+
+  if (!survey?.pages || survey.pages.length === 0) {
+    return { valid: false, error: "Survey must have at least one page" };
+  }
+
+  const hasQuestions = survey.pages.some(
+    (page: any) => page.questions && page.questions.length > 0
+  );
+
+  if (!hasQuestions) {
+    return { valid: false, error: "Survey must have at least one question" };
+  }
+
+  if (!survey?.startDate) {
+    return { valid: false, error: "Start date is required to publish" };
+  }
+
+  if (!survey?.endDate) {
+    return { valid: false, error: "End date is required to publish" };
+  }
+
+  const start = new Date(survey.startDate);
+  const end = new Date(survey.endDate);
+
+  if (end <= start) {
+    return { valid: false, error: "End date must be after start date" };
+  }
+  return { valid: true };
+};
+
+export const validateSurveyForGoingLive = (
+  survey: any
+): { valid: boolean; error?: string } => {
+  // First check basic publish requirements
+  const publishValidation = validateSurveyForPublish(survey);
+  if (!publishValidation.valid) {
+    return publishValidation;
+  }
+
+  // Additional check for respondents
+  if (!survey?.allowedRespondents || survey.allowedRespondents.length === 0) {
+    return {
+      valid: false,
+      error: "At least one respondent must be added before going live",
+    };
+  }
+
+  return { valid: true };
 };

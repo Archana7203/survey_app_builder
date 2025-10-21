@@ -39,7 +39,7 @@ export const sendSurveyInvite = async (
     const transporter = await createTransporter();
 
     const mailOptions = {
-      from: `"Survey App" <${process.env.SMTP_USER}>`,
+      from: `"Survey Builder" <${process.env.SMTP_USER}>`,
       to: email,
       subject: "You've been invited to take a survey",
       text: `
@@ -52,7 +52,7 @@ Click here to take the survey: ${surveyLink}
 This link will expire in 7 days.
 
 Best regards,
-Survey App Team
+Survey Builder Team
       `,
       html: `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -73,7 +73,7 @@ Survey App Team
   
   <p style="color: #666; font-size: 14px;">
     Best regards,<br>
-    Survey App Team
+    Survey Builder Team
   </p>
 </div>
       `,

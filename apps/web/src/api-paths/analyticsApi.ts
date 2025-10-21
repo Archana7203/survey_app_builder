@@ -1,8 +1,22 @@
-import { buildApiUrl, API_BASES} from './apiConfig';
+import { buildApiUrl } from "./apiConfig";
 
-export const ANALYTICS_API_BASE = API_BASES.ANALYTICS;
-
-export const ANALYTICS_API = {
-  // Get analytics for a survey
-  GET: (surveyId: string) => buildApiUrl(`${ANALYTICS_API_BASE}/${surveyId}`),
+export const fetchAnalyticsApi = async (surveyId: string) => {
+  try {
+    const response = await fetch(buildApiUrl(`/api/analytics/${surveyId}`), {
+      credentials: "include",
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      return Promise.reject(new Error(`${response.status} ${errorText}`));  
+    }
+    
+    const data = await response.json();
+    return Promise.resolve(data);  
+    
+  } catch (error) {
+    console.error("Failed to fetch analytics data:", error);
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+  }
 };
+

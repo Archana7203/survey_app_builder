@@ -16,6 +16,7 @@
     "heroku-postbuild": "npm --workspace apps/web run build && npx copyfiles -u 1 apps/web/src/data/**/* apps/web/dist && npm --workspace apps/api run build"
   },
   "devDependencies": {
+    "@types/morgan": "^1.9.10",
     "@types/supertest": "^6.0.3",
     "@types/validator": "^13.15.3",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
@@ -27,7 +28,10 @@
     "supertest": "^7.1.4"
   },
   "dependencies": {
+    "morgan": "^1.10.1",
     "uuid": "^13.0.0",
-    "validator": "^13.15.15"
+    "validator": "^13.15.15",
+    "winston": "^3.18.3",
+    "winston-mongodb": "^7.0.1"
   }
 }

@@ -6,8 +6,8 @@ import Button from '../../components/ui/Button';
 import ChartSelector, { type ChartType } from '../../components/charts/ChartSelector';
 import ChartRenderer from '../../components/charts/ChartRenderer';
 import { exportReport } from '../../utils/exportReport';
-import { SURVEYS_API } from '../../api-paths/surveysApi';
-import { ANALYTICS_API } from '../../api-paths/analyticsApi';
+import { fetchSurveyByIdApi } from '../../api-paths/surveysApi';
+import { fetchAnalyticsApi } from '../../api-paths/analyticsApi';
 
 interface ResultsQuestionAnalytics {
   questionId: string;
@@ -53,64 +53,51 @@ const Results: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchSurvey = useCallback(async () => {
-    try {
-      const response = await fetch(SURVEYS_API.GET(surveyId!), {
-        credentials: 'include',
-      });
+    if (!surveyId) return;
 
-      if (response.ok) {
-        const data = await response.json();
-        setSurvey(data);
-      } else {
-        setError('Failed to load survey data');
-      }
-    } catch {
-      setError('Error loading survey data');
+    try {
+      const data = await fetchSurveyByIdApi(surveyId);
+      setSurvey(data);
+      setError(null);
+    } catch (error: any) {
+      console.error('Survey fetch error:', error);
+      setError(error.message || 'Error loading survey data');
     }
   }, [surveyId]);
 
   const fetchAnalytics = useCallback(async () => {
-    try {
-      setLoading(true);
-      if (!surveyId) return;
-      const response = await fetch(ANALYTICS_API.GET(surveyId), {
-        credentials: 'include',
-      });
+    if (!surveyId) return;
 
-      if (response.ok) {
-        const data = await response.json();
-        setAnalyticsData(data);
-        setLastUpdated(new Date());
-        
-        // Set default chart types
-        const defaultCharts: Record<string, ChartType> = {};
-        for (const q of data.questions as ResultsQuestionAnalytics[]) {
-          switch (q.analytics?.type) {
-            case 'choice':
-              defaultCharts[q.questionId] = 'Bar';
-              break;
-            case 'numeric':
-              defaultCharts[q.questionId] = 'Line';
-              break;
-            case 'text':
-              defaultCharts[q.questionId] = 'WordCloud';
-              break;
-            case 'matrix':
-            case 'grid':
-              defaultCharts[q.questionId] = 'Bar';
-              break;
-            default:
-              defaultCharts[q.questionId] = 'Bar';
-          }
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await fetchAnalyticsApi(surveyId); // call API service
+      setAnalyticsData(data);
+      setLastUpdated(new Date());
+
+      const defaultCharts: Record<string, ChartType> = {};
+      for (const q of data.questions as ResultsQuestionAnalytics[]) {
+        switch (q.analytics?.type) {
+          case 'choice':
+          case 'matrix':
+          case 'grid':
+            defaultCharts[q.questionId] = 'Bar';
+            break;
+          case 'numeric':
+            defaultCharts[q.questionId] = 'Line';
+            break;
+          case 'text':
+            defaultCharts[q.questionId] = 'WordCloud';
+            break;
+          default:
+            defaultCharts[q.questionId] = 'Bar';
         }
-        setChartTypes(defaultCharts);
-      } else {
-        const errorText = await response.text();
-        console.error('Analytics request failed:', response.status, errorText);
-        setError('Failed to load analytics data');
       }
-    } catch {
-      setError('Error loading analytics data');
+      setChartTypes(defaultCharts);
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || 'Error loading analytics data'); // optional: replace setError with alert
     } finally {
       setLoading(false);
     }

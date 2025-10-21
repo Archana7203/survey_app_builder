@@ -4,7 +4,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Alert from '../../components/ui/Alert';
 import { fetchTemplates, instantiateTemplate } from '../../utils/templateService';
-import { TEMPLATES_API } from '../../api-paths/templatesApi';
+import { ensureTemplateSamples } from '../../api-paths/templatesApi';
 
 interface Template {
   id: string;
@@ -32,21 +32,26 @@ const Templates: React.FC = () => {
   }, []);
 
   const loadTemplates = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      const data = await fetchTemplates();
-      // If expected samples missing, call ensure endpoint then refetch
+      let data = await fetchTemplates();
+
       const hasHealthcare = data.some((t) => t.category === 'Healthcare');
       const hasResearch = data.some((t) => t.category === 'Research');
-      const hasSamples = data.some((t) => t.id === 'covid-19-vaccination') && data.some((t) => t.id === 'impact-of-social-media');
+      const hasSamples =
+        data.some((t) => t.id === 'covid-19-vaccination') &&
+        data.some((t) => t.id === 'impact-of-social-media');
+
       if (!hasHealthcare || !hasResearch || !hasSamples) {
-        await fetch(TEMPLATES_API.ENSURE_SAMPLES(), { method: 'POST', credentials: 'include' });
-        const refreshed = await fetchTemplates();
-        setTemplates(refreshed);
-      } else {
-        setTemplates(data);
+        await ensureTemplateSamples(); // call service
+        data = await fetchTemplates(); // refetch after ensuring samples
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error loading templates');
+
+      setTemplates(data);
+    } catch (error: any) {
+      alert('Error loading templates');
     } finally {
       setLoading(false);
     }

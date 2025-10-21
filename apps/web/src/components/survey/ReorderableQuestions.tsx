@@ -29,8 +29,7 @@ function SortableQuestionItem({
   index, 
   onDelete, 
   onSelect,
-  disabled = false,
-}: SortableQuestionItemProps & { disabled?: boolean }) {
+}: SortableQuestionItemProps ) {
   const {
     attributes,
     listeners,
@@ -40,7 +39,6 @@ function SortableQuestionItem({
     isDragging,
   } = useSortable({ 
     id: question.id,
-    disabled,
   });
 
   const style = {
@@ -71,18 +69,14 @@ function SortableQuestionItem({
               type="button"
               {...attributes}
               {...listeners}
-              disabled={disabled}
-              className={`mt-1 p-2 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing ${
-                disabled ? 'cursor-not-allowed opacity-50' : ''
-              }`}
-              title={disabled ? 'Survey is locked' : 'Drag to reorder'}
+              className={`mt-1 p-2 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing `}
+              title='Drag to reorder'
               onKeyDown={(e) => {
-                if (disabled) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                 }
               }}
-              aria-label={disabled ? 'Survey is locked' : 'Drag to reorder'}
+              aria-label={'Drag to reorder'}
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/>
@@ -114,7 +108,6 @@ function SortableQuestionItem({
                     size="sm"
                     onClick={() => onDelete(question.id) } 
                     className="text-red-600 hover:text-red-800"
-                    disabled={disabled}
                   >
                     Delete
                   </Button>
@@ -167,14 +160,12 @@ interface ReorderableQuestionsProps {
   onReorder: (questions: Question[]) => void;
   onDeleteQuestion: (questionId: string) => void;
   onSelectQuestion: (question: Question) => void;
-  disabled?: boolean;
 }
 
 export default function ReorderableQuestions({
   questions,
   onDeleteQuestion,
   onSelectQuestion,
-  disabled = false,
 }: Readonly<Omit<ReorderableQuestionsProps, 'onReorder'>>) {
   // Sorting is handled by the parent Dnd context; this component only renders Sortable items
 
@@ -198,7 +189,6 @@ export default function ReorderableQuestions({
                 index={index}
                 onDelete={onDeleteQuestion}
                 onSelect={onSelectQuestion}
-                disabled={disabled}
               />
             ))}
           </div>

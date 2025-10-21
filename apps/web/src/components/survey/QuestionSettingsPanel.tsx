@@ -28,7 +28,6 @@ interface QuestionSettingsPanelProps {
   activePageIndex: number;
   setSelectedQuestion: (question: Question | null) => void;
   onEditVisibility: (questionId: string) => void;
-  isDisabled?: boolean;
 }
 
 const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
@@ -38,7 +37,6 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
   activePageIndex,
   setSelectedQuestion,
   onEditVisibility,
-  isDisabled = false
 }) => {
   const updateQuestion = (updates: Partial<Question>) => {
     if (!survey || !selectedQuestion) return;
@@ -106,7 +104,6 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
         value={selectedQuestion.title}
         onChange={(e) => updateQuestion({ title: e.target.value })}
         placeholder="Enter question"
-        disabled={isDisabled}
       />
       
       <Input
@@ -114,7 +111,6 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
         value={selectedQuestion.description || ''}
         onChange={(e) => updateQuestion({ description: e.target.value })}
         placeholder="Optional help text"
-        disabled={isDisabled}
       />
       
       <label className="flex items-center gap-2">
@@ -123,7 +119,6 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
           checked={selectedQuestion.required}
           onChange={(e) => updateQuestion({ required: e.target.checked })}
           className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400"
-          disabled={isDisabled}
         />
         <span className="text-sm text-gray-700 dark:text-gray-300">Required</span>
       </label>
@@ -135,7 +130,6 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
         addOption={addOption}
         removeOption={removeOption}
         updateOption={updateOption}
-        isDisabled={isDisabled}
       />
 
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -144,7 +138,6 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
           size="sm"
           onClick={() => onEditVisibility(selectedQuestion.id)}
           className="w-full"
-          disabled={isDisabled}
         >
           Configure Visibility Rules
         </Button>
@@ -159,7 +152,6 @@ interface QuestionTypeSettingsProps {
   addOption: () => void;
   removeOption: (optionId: string) => void;
   updateOption: (index: number, text: string) => void;
-  isDisabled: boolean;
 }
 
 const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
@@ -167,8 +159,7 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
   updateQuestionSettings,
   addOption,
   removeOption,
-  updateOption,
-  isDisabled
+  updateOption
 }) => {
   const isChoiceType = ['singleChoice', 'multiChoice', 'dropdown'].includes(question.type);
   const isRatingType = ['ratingStar', 'ratingSmiley', 'ratingNumber'].includes(question.type);
@@ -187,14 +178,12 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
               value={option.text}
               onChange={(e) => updateOption(index, e.target.value)}
               placeholder={`Option ${index + 1}`}
-              disabled={isDisabled}
             />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => removeOption(option.id)}
               className="text-red-600 hover:text-red-800"
-              disabled={isDisabled}
             >
               ×
             </Button>
@@ -204,7 +193,6 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
           variant="outline"
           size="sm"
           onClick={addOption}
-          disabled={isDisabled}
         >
           + Add Option
         </Button>
@@ -233,7 +221,6 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
           }}
           min={question.type === 'ratingSmiley' ? 3 : 1}
           max={question.type === 'ratingSmiley' ? 5 : 10}
-          disabled={isDisabled}
         />
       </div>
     );
@@ -247,14 +234,12 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
           label="Minimum Value"
           value={question.settings?.scaleMin || 0}
           onChange={(e) => updateQuestionSettings({ scaleMin: Number.parseInt(e.target.value) })}
-          disabled={isDisabled}
         />
         <Input
           type="number"
           label="Maximum Value"
           value={question.settings?.scaleMax || 100}
           onChange={(e) => updateQuestionSettings({ scaleMax: Number.parseInt(e.target.value) })}
-          disabled={isDisabled}
         />
         <Input
           type="number"
@@ -262,7 +247,6 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
           value={question.settings?.scaleStep || 1}
           onChange={(e) => updateQuestionSettings({ scaleStep: Number.parseInt(e.target.value) })}
           min={1}
-          disabled={isDisabled}
         />
       </div>
     );

@@ -1,3 +1,4 @@
+import { exportSurveyApi, duplicateSurveyApi, uploadImportedSurveyApi } from "../api-paths/surveysApi";
 interface SurveyQuestion {
   id: string;
   type: string;
@@ -25,20 +26,10 @@ interface SurveyExportData {
   exportedAt: string;
   survey: SurveyDefinition;
 }
-
 export const exportSurveyToFile = async (surveyId: string): Promise<void> => {
   try {
-    const response = await fetch(`/api/surveys/${surveyId}/export`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to export survey');
-    }
-
-    const blob = await response.blob();
-    const contentDisposition = response.headers.get('Content-Disposition');
+    const blob = await exportSurveyApi(surveyId); // call service
+    const contentDisposition = 'attachment; filename="survey.json"'; // fallback filename if API doesn't provide headers
     const filename = contentDisposition?.match(/filename="(.+)"/)?.[1] || `survey-export-${Date.now()}.json`;
 
     // Create download link
@@ -55,7 +46,6 @@ export const exportSurveyToFile = async (surveyId: string): Promise<void> => {
     throw error;
   }
 };
-
 export const importSurveyFromFile = async (file: File): Promise<SurveyExportData> => {
   try {
     const content = await file.text();
@@ -75,61 +65,20 @@ export const importSurveyFromFile = async (file: File): Promise<SurveyExportData
   }
 };
 
-
-interface ImportedSurveyResponse {
-  id: string;
-  title: string;
-  slug: string;
-  status: string;
-  pages: Array<SurveyPage>;
-}
-
-export const uploadImportedSurvey = async (surveyData: SurveyExportData): Promise<ImportedSurveyResponse> => {
+export const uploadImportedSurvey = async (surveyData: SurveyExportData)=> {
   try {
-    const response = await fetch('/api/surveys/import', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({ surveyData }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to import survey');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Import error:', error);
-    throw error;
+    const imported = await uploadImportedSurveyApi(surveyData);
+    console.log('Imported survey:', imported);
+  } catch (err) {
+    console.error('Import error:', err);
   }
 };
 
-interface DuplicatedSurveyResponse {
-  id: string;
-  title: string;
-  slug: string;
-  status: string;
-  pages: Array<SurveyPage>;
-}
-
-export const duplicateSurvey = async (surveyId: string): Promise<DuplicatedSurveyResponse> => {
+export const duplicateSurvey = async (surveyId: string) => {
   try {
-    const response = await fetch(`/api/surveys/${surveyId}/duplicate`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to duplicate survey');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Duplicate error:', error);
-    throw error;
+    const duplicated = await duplicateSurveyApi(surveyId);
+    console.log('Duplicated survey:', duplicated);
+  } catch (err) {
+    console.error('Duplicate error:', err);
   }
 };

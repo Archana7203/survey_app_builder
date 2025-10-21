@@ -11,9 +11,14 @@ const Input: React.FC<InputProps> = ({
   error,
   helperText,
   className = '',
+  type = 'text',
   ...props
 }) => {
+  const isColorInput = type === 'color';
+  
   const inputClasses = `w-full px-3 py-2 border rounded-md focus:outline-none transition-colors bg-white dark:bg-gray-700 text-gray-900 ${
+    isColorInput ? 'h-12 cursor-pointer' : ''
+  } ${
     error 
       ? 'border-red-500 focus:border-red-500'
       : 'border-gray-300 dark:border-gray-600 focus:border-2 focus:border-[var(--color-primary)]'
@@ -26,7 +31,7 @@ const Input: React.FC<InputProps> = ({
           {label}
         </label>
       )}
-      <input className={inputClasses} {...props} />
+      <input type={type} className={inputClasses} {...props} />
       {error && (
         <p className="text-sm text-red-600">{error}</p>
       )}
@@ -38,4 +43,3 @@ const Input: React.FC<InputProps> = ({
 };
 
 export default Input;
-

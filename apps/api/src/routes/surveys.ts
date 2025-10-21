@@ -1,15 +1,13 @@
 import dotenv from 'dotenv';
-// Load environment variables from .env file
 dotenv.config();
-
 import express from 'express';
 import { SurveyService } from '../services/survey.service';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { ensureSurveyEditable } from '../middleware/ensureSurveyEditable';
+import log from '../logger';  
 
 const router = express.Router();
-
-// Default pagination limits
+const service = new SurveyService();
 const defaultSurveyLimit = 10;
 const maxSurveyLimit = 100;
 const defaultRespondentProgressLimit = 20;
@@ -18,14 +16,17 @@ const maxRespondentProgressLimit = 200;
 // GET /api/surveys - Get all surveys for the authenticated user
 router.get('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    // Parse pagination parameters
     const page = Number.parseInt(req.query.page as string) || 1;
     const limit = Math.min(
       Number.parseInt(req.query.limit as string) || defaultSurveyLimit,
-      maxSurveyLimit // Maximum limit
+      maxSurveyLimit
     );
+    log.info('Fetching surveys', 'GET_SURVEYS', { 
+      userId: req.user._id.toString(), 
+      page, 
+      limit 
+    });
 
-    const service = new SurveyService();
     const { surveysWithResponses, totalSurveys } = await service.getAllSurveys(req.user._id.toString(), page, limit);
     const mapped = surveysWithResponses.map((survey: any) => ({
       id: survey._id.toString(),
@@ -53,7 +54,11 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching surveys:', error);
+    log.error('Failed to fetch surveys', 'GET_SURVEYS', { 
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to fetch surveys' });
   }
 });
@@ -61,8 +66,19 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
 // POST /api/surveys - Create new survey
 router.post('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const service = new SurveyService();
+    log.info('Creating survey', 'CREATE_SURVEY', { 
+      userId: req.user._id.toString(),
+      title: req.body.title 
+    });
+
     const survey = await service.createSurvey(req.user._id.toString(), req.body);
+    
+    log.info('Survey created successfully', 'CREATE_SURVEY', { 
+      surveyId: String(survey._id),
+      slug: survey.slug,
+      userId: req.user._id.toString()
+    });
+
     res.status(201).json({
       id: survey._id,
       title: survey.title,
@@ -79,7 +95,12 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
       allowedRespondents: survey.allowedRespondents
     });
   } catch (error) {
-    console.error('Error creating survey:', error);
+    log.error('Failed to create survey', 'CREATE_SURVEY', { 
+      userId: req.user?._id.toString(),
+      title: req.body.title,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to create survey' });
   }
 });
@@ -88,7 +109,12 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
 router.get('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    const service = new SurveyService();
+    
+    log.info('Fetching survey by ID', 'GET_SURVEY', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     const survey = await service.getSurveyById(req.user._id.toString(), surveyId);
 
     res.json({
@@ -97,16 +123,24 @@ router.get('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
       description: survey.description,
       slug: survey.slug,
       status: survey.status,
+      startDate: survey.startDate,
+      endDate: survey.endDate,
       closeDate: survey.closeDate,
       createdAt: survey.createdAt,
       updatedAt: survey.updatedAt,
       pages: survey.pages,
       theme: survey.theme,
       backgroundColor: survey.backgroundColor,
-      textColor: survey.textColor
+      textColor: survey.textColor,
+      allowedRespondents: survey.allowedRespondents,
     });
   } catch (error) {
-    console.error('Error fetching survey:', error);
+    log.error('Failed to fetch survey', 'GET_SURVEY', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to fetch survey' });
   }
 });
@@ -115,8 +149,9 @@ router.get('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
 router.get('/by-slug/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
-    console.log('By-slug route accessed with slug:', slug);
-    const service = new SurveyService();
+    
+    log.info('Fetching survey by slug', 'GET_SURVEY_BY_SLUG', { slug });
+
     const survey = await service.getSurveyBySlug(slug);
 
     res.json({
@@ -131,7 +166,11 @@ router.get('/by-slug/:slug', async (req, res) => {
       status: survey.status
     });
   } catch (error) {
-    console.error('Error fetching survey by slug:', error);
+    log.error('Failed to fetch survey by slug', 'GET_SURVEY_BY_SLUG', { 
+      slug: req.params.slug,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to fetch survey' });
   }
 });
@@ -140,8 +179,9 @@ router.get('/by-slug/:slug', async (req, res) => {
 router.get('/by-id/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('By-id route accessed with id:', id);
-    const service = new SurveyService();
+    
+    log.info('Fetching survey by object ID', 'GET_SURVEY_BY_ID', { surveyId: id });
+
     const survey = await service.getSurveyByObjectId(id);
 
     res.json({
@@ -156,7 +196,11 @@ router.get('/by-id/:id', async (req, res) => {
       status: survey.status
     });
   } catch (error) {
-    console.error('Error fetching survey by id:', error);
+    log.error('Failed to fetch survey by ID', 'GET_SURVEY_BY_ID', { 
+      surveyId: req.params.id,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to fetch survey' });
   }
 });
@@ -165,8 +209,9 @@ router.get('/by-id/:id', async (req, res) => {
 router.get('/public/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
-    console.log('Public route accessed with slug:', slug);
-    const service = new SurveyService();
+    
+    log.info('Public survey access', 'GET_PUBLIC_SURVEY', { slug });
+
     const survey = await service.getPublicSurvey(slug);
 
     res.json({
@@ -181,7 +226,11 @@ router.get('/public/:slug', async (req, res) => {
       status: survey.status
     });
   } catch (error) {
-    console.error('Error fetching survey by slug:', error);
+    log.error('Failed to fetch public survey', 'GET_PUBLIC_SURVEY', { 
+      slug: req.params.slug,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to fetch survey' });
   }
 });
@@ -190,11 +239,21 @@ router.get('/public/:slug', async (req, res) => {
 router.get('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    const service = new SurveyService();
+    
+    log.info('Fetching respondents', 'GET_RESPONDENTS', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     const allowedRespondents = await service.getRespondents(req.user._id.toString(), surveyId);
     res.json({ allowedRespondents });
   } catch (error) {
-    console.error('Error fetching respondents:', error);
+    log.error('Failed to fetch respondents', 'GET_RESPONDENTS', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to fetch respondents' });
   }
 });
@@ -204,11 +263,23 @@ router.post('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res)
   try {
     const { surveyId } = req.params;
     const { email } = req.body;
-    const service = new SurveyService();
+    
+    log.info('Adding respondent', 'ADD_RESPONDENT', { 
+      surveyId,
+      email,
+      userId: req.user._id.toString()
+    });
+
     const result = await service.addRespondent(req.user._id.toString(), surveyId, email);
     res.json(result);
   } catch (error) {
-    console.error('Error adding respondent:', error);
+    log.error('Failed to add respondent', 'ADD_RESPONDENT', { 
+      surveyId: req.params.surveyId,
+      email: req.body.email,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to add respondent' });
   }
 });
@@ -217,11 +288,23 @@ router.post('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res)
 router.delete('/:surveyId/respondents/:email', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId, email } = req.params;
-    const service = new SurveyService();
+    
+    log.info('Removing respondent', 'REMOVE_RESPONDENT', { 
+      surveyId,
+      email,
+      userId: req.user._id.toString()
+    });
+
     const result = await service.removeRespondent(req.user._id.toString(), surveyId, email);
     res.json(result);
   } catch (error) {
-    console.error('Error removing respondent:', error);
+    log.error('Failed to remove respondent', 'REMOVE_RESPONDENT', { 
+      surveyId: req.params.surveyId,
+      email: req.params.email,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to remove respondent' });
   }
 });
@@ -230,16 +313,34 @@ router.delete('/:surveyId/respondents/:email', requireAuth, async (req: AuthRequ
 router.post('/:surveyId/respondents/send-invitations', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    const service = new SurveyService();
+    
+    log.info('Sending survey invitations', 'SEND_INVITATIONS', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     const results = await service.sendInvitations(req.user._id.toString(), surveyId);
     const successful = results.filter((r: any) => r.success).length;
     const failed = results.length - successful;
+    
+    log.info('Invitations sent', 'SEND_INVITATIONS', { 
+      surveyId,
+      successful,
+      failed,
+      total: results.length
+    });
+
     res.json({ 
       message: 'Invitations sent successfully to ' + successful + ' respondents' + (failed > 0 ? ', ' + failed + ' failed' : ''),
       results
     });
   } catch (error) {
-    console.error('Error sending invitations:', error);
+    log.error('Failed to send invitations', 'SEND_INVITATIONS', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to send invitations' });
   }
 });
@@ -248,19 +349,28 @@ router.post('/:surveyId/respondents/send-invitations', requireAuth, async (req: 
 router.get('/:surveyId/respondent-progress', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    
-    // Parse pagination parameters
     const page = Number.parseInt(req.query.page as string) || 1;
     const limit = Math.min(
       Number.parseInt(req.query.limit as string) || defaultRespondentProgressLimit,
-      maxRespondentProgressLimit // Maximum limit
+      maxRespondentProgressLimit
     );
 
-    const service = new SurveyService();
+    log.info('Fetching respondent progress', 'GET_RESPONDENT_PROGRESS', { 
+      surveyId,
+      page,
+      limit,
+      userId: req.user._id.toString()
+    });
+
     const result = await service.getRespondentProgress(req.user._id.toString(), surveyId, page, limit);
     res.json(result);
   } catch (error) {
-    console.error('Error fetching respondent progress:', error);
+    log.error('Failed to fetch respondent progress', 'GET_RESPONDENT_PROGRESS', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to fetch respondent progress' });
   }
 });
@@ -269,9 +379,20 @@ router.get('/:surveyId/respondent-progress', requireAuth, async (req: AuthReques
 router.put('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    const updateData = req.body;
-    const service = new SurveyService();
-    const survey = await service.updateSurvey(req.user._id.toString(), surveyId, updateData);
+    
+    log.info('Updating survey', 'UPDATE_SURVEY', { 
+      surveyId,
+      userId: req.user._id.toString(),
+      updateFields: Object.keys(req.body)
+    });
+
+    const survey = await service.updateSurvey(req.user._id.toString(), surveyId, req.body);
+    
+    log.info('Survey updated successfully', 'UPDATE_SURVEY', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     res.json({ 
       message: 'Survey updated successfully',
       survey: {
@@ -281,6 +402,8 @@ router.put('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequ
         slug: survey.slug,
         status: survey.status,
         closeDate: survey.closeDate,
+        startDate: survey.startDate,
+        endDate: survey.endDate,
         theme: survey.theme,
         backgroundColor: survey.backgroundColor,
         textColor: survey.textColor,
@@ -290,20 +413,52 @@ router.put('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequ
       }
     });
   } catch (error) {
-    console.error('Error updating survey:', error);
+    log.error('Failed to update survey', 'UPDATE_SURVEY', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to update survey' });
   }
 });
 
 // DELETE /api/surveys/:surveyId - Delete survey
-router.delete('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
+router.delete('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    const service = new SurveyService();
+    if (!req.user?._id) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    log.info('Deleting survey', 'DELETE_SURVEY', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     const result = await service.deleteSurvey(req.user._id.toString(), surveyId);
+    
+    log.info('Survey deleted successfully', 'DELETE_SURVEY', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     res.json(result);
-  } catch (error) {
-    console.error('Error deleting survey:', error);
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'name' in error && 'kind' in error) {
+      if (error.name === 'CastError' && error.kind === 'ObjectId') {
+        log.warn('Invalid survey ID format', 'DELETE_SURVEY', { 
+          surveyId: req.params.surveyId 
+        });
+        return res.status(400).json({ error: 'Invalid survey ID format' });
+      }
+    }
+    log.error('Failed to delete survey', 'DELETE_SURVEY', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to delete survey' });
   }
 });
@@ -312,8 +467,20 @@ router.delete('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
 router.post('/:surveyId/duplicate', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    const service = new SurveyService();
+    
+    log.info('Duplicating survey', 'DUPLICATE_SURVEY', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     const duplicatedSurvey = await service.duplicateSurvey(req.user._id.toString(), surveyId);
+    
+    log.info('Survey duplicated successfully', 'DUPLICATE_SURVEY', { 
+      originalSurveyId: surveyId,
+      newSurveyId: String(duplicatedSurvey._id),
+      userId: req.user._id.toString()
+    });
+
     res.status(201).json({
       id: duplicatedSurvey._id,
       title: duplicatedSurvey.title,
@@ -330,7 +497,12 @@ router.post('/:surveyId/duplicate', requireAuth, async (req: AuthRequest, res) =
       allowedRespondents: duplicatedSurvey.allowedRespondents
     });
   } catch (error) {
-    console.error('Error duplicating survey:', error);
+    log.error('Failed to duplicate survey', 'DUPLICATE_SURVEY', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to duplicate survey' });
   }
 });
@@ -339,24 +511,52 @@ router.post('/:surveyId/duplicate', requireAuth, async (req: AuthRequest, res) =
 router.post('/:surveyId/export', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { surveyId } = req.params;
-    const service = new SurveyService();
+    
+    log.info('Exporting survey', 'EXPORT_SURVEY', { 
+      surveyId,
+      userId: req.user._id.toString()
+    });
+
     const exportData = await service.exportSurvey(req.user._id.toString(), surveyId);
     res.setHeader('Content-Type', 'application/json');
-    // Use safe title if possible
     const safeTitle = (exportData.survey.title || 'survey').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}-${Date.now()}.json"`);
+    
+    log.info('Survey exported successfully', 'EXPORT_SURVEY', { 
+      surveyId,
+      fileName: `${safeTitle}-${Date.now()}.json`,
+      userId: req.user._id.toString()
+    });
+
     res.json(exportData);
   } catch (error) {
-    console.error('Error exporting survey:', error);
+    log.error('Failed to export survey', 'EXPORT_SURVEY', { 
+      surveyId: req.params.surveyId,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to export survey' });
   }
 });
+
 // POST /api/surveys/import - Import survey from JSON
 router.post('/import', requireAuth, async (req: AuthRequest, res) => {
   try {
+    log.info('Importing survey', 'IMPORT_SURVEY', { 
+      userId: req.user._id.toString(),
+      surveyTitle: req.body.surveyData?.survey?.title
+    });
+
     const { surveyData } = req.body;
-    const service = new SurveyService();
     const importedSurvey = await service.importSurvey(req.user._id.toString(), surveyData);
+    
+    log.info('Survey imported successfully', 'IMPORT_SURVEY', { 
+      surveyId: String(importedSurvey._id),
+      title: importedSurvey.title,
+      userId: req.user._id.toString()
+    });
+
     res.status(201).json({
       id: importedSurvey._id,
       title: importedSurvey.title,
@@ -373,9 +573,13 @@ router.post('/import', requireAuth, async (req: AuthRequest, res) => {
       allowedRespondents: importedSurvey.allowedRespondents
     });
   } catch (error) {
-    console.error('Error importing survey:', error);
+    log.error('Failed to import survey', 'IMPORT_SURVEY', { 
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({ error: 'Failed to import survey' });
   }
 });
-export default router;
 
+export default router;

@@ -5,8 +5,8 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Alert from '../components/ui/Alert';
 import { evaluateCondition } from '../utils/visibilityHelpers';
-import { SURVEYS_API } from '../api-paths/surveysApi';
-import { RESPONSES_API } from '../api-paths/responsesApi';
+import { fetchPublicSurveyApi } from '../api-paths/surveysApi';
+import { autoSaveResponse, submitSurveyApi } from '../api-paths/responsesApi';
 import { buildApiUrl } from '../api-paths/apiConfig';
 
 interface Question {
@@ -132,31 +132,21 @@ export default function SurveyRenderer() {
   }, [survey]);
 
   const fetchSurvey = useCallback(async () => {
+    if (!slug) return;
+
     try {
-      if (!slug) return;
       console.log('Fetching survey with slug:', slug);
-      const response = await fetch(SURVEYS_API.GET_PUBLIC(slug), {
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-      });
-      
-      console.log('Survey response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Survey data received:', data);
-        setSurvey(data);
-      } else {
-        const errorData = await response.json();
-        console.error('Survey fetch error:', errorData);
-        setError(errorData.error || 'Failed to load survey');
-      }
-    } catch (error) {
-      console.error('Survey fetch exception:', error);
-      setError('Error loading survey');
+      const data = await fetchPublicSurveyApi(slug, token||undefined);
+      console.log('Survey data received:', data);
+      setSurvey(data);
+      setError(null);
+    } catch (error: any) {
+      console.error('Survey fetch error:', error);
+      setError(error.message || 'Error loading survey');
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, token]);
 
   // Fetch config.json
   const fetchConfig = useCallback(async () => {
@@ -196,68 +186,54 @@ export default function SurveyRenderer() {
   }, [draftKey]);
 
   // Auto-save to backend and localStorage every 60 seconds
-  const saveProgress = useCallback(async () => {
-    if (Object.keys(responses).length > 0) {
-      // Save to localStorage
-      const draft = {
-        responses,
-        currentPageIndex,
-        pagesVisited,
-        lastSaved: Date.now(),
-      };
-      localStorage.setItem(draftKey, JSON.stringify(draft));
+const saveProgress = useCallback(async () => {
+    if (Object.keys(responses).length === 0) return;
 
-      // Save to MongoDB backend
-      try {
-        // Prepare response data (exclude hidden questions)
-        const responseData = Object.entries(responses).flatMap(([questionId, value]) => {
-          // Find which page this question belongs to and the question itself
-          let pageIndex = -1;
-          let foundQuestion: Question | undefined;
-          for (let i = 0; i < (survey?.pages.length || 0); i++) {
-            const q = survey?.pages[i].questions.find(qn => qn.id === questionId);
-            if (q) {
-              pageIndex = i;
-              foundQuestion = q;
-              break;
-            }
+    // Save to localStorage
+    const draft = {
+      responses,
+      currentPageIndex,
+      pagesVisited,
+      lastSaved: Date.now(),
+    };
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+
+    // Save to backend
+    try {
+      if (!survey) return;
+
+      // Prepare response data (exclude hidden questions)
+      const responseData = Object.entries(responses).flatMap(([questionId, value]) => {
+        let pageIndex = -1;
+        let foundQuestion;
+        for (let i = 0; i < (survey?.pages.length || 0); i++) {
+          const q = survey?.pages[i].questions.find(qn => qn.id === questionId);
+          if (q) {
+            pageIndex = i;
+            foundQuestion = q;
+            break;
           }
-          if (!foundQuestion || pageIndex === -1) return [] as any[];
-          if (!isQuestionVisible(foundQuestion)) return [] as any[]; // skip hidden
-
-          return [{ questionId, value, pageIndex }];
-        });
-
-        const payload = {
-          responses: responseData,
-          metadata: {
-            lastPageIndex: currentPageIndex,
-            timeSpent: Math.floor((Date.now() - startTime) / 1000),
-            pagesVisited: [...new Set([...pagesVisited, currentPageIndex])]
-          },
-          status: "InProgress",
-          updatedAt: new Date().toISOString(),
-        };
-
-        if (!survey) return;
-        
-        const response = await fetch(RESPONSES_API.AUTO_SAVE(survey.id), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (response.ok) {
-          setLastSaveTime(new Date().toISOString());
-        } else {
-          console.error('Failed to auto-save:', await response.json());
         }
-      } catch (error) {
-        console.error('Auto-save error:', error);
-      }
+        if (!foundQuestion || pageIndex === -1) return [];
+        if (!isQuestionVisible(foundQuestion)) return []; // skip hidden
+        return [{ questionId, value, pageIndex }];
+      });
+
+      const payload = {
+        responses: responseData,
+        metadata: {
+          lastPageIndex: currentPageIndex,
+          timeSpent: Math.floor((Date.now() - startTime) / 1000),
+          pagesVisited: [...new Set([...pagesVisited, currentPageIndex])]
+        },
+        status: "InProgress",
+        updatedAt: new Date().toISOString(),
+      };
+
+      await autoSaveResponse(survey.id, payload, token||undefined);
+      setLastSaveTime(new Date().toISOString());
+    } catch (error: any) {
+      console.error('Auto-save error:', error);
     }
   }, [responses, currentPageIndex, pagesVisited, draftKey, survey, isQuestionVisible, startTime, token]);
 
@@ -328,81 +304,69 @@ export default function SurveyRenderer() {
   };
 
   const saveProgressToServer = useCallback(async () => {
-    if (Object.keys(responses).length > 0) {
-      try {
-        // Prepare response data (exclude hidden questions)
-        const responseData = Object.entries(responses).flatMap(([questionId, value]) => {
-          // Find which page this question belongs to and the question itself
-          let pageIndex = -1;
-          let foundQuestion: Question | undefined;
-          for (let i = 0; i < (survey?.pages.length || 0); i++) {
-            const q = survey?.pages[i].questions.find(qn => qn.id === questionId);
-            if (q) {
-              pageIndex = i;
-              foundQuestion = q;
-              break;
-            }
+    if (Object.keys(responses).length === 0) return;
+
+    try {
+      if (!survey) return;
+
+      const responseData = Object.entries(responses).flatMap(([questionId, value]) => {
+        let pageIndex = -1;
+        let foundQuestion: Question | undefined;
+
+        for (let i = 0; i < (survey?.pages.length || 0); i++) {
+          const q = survey?.pages[i].questions.find(qn => qn.id === questionId);
+          if (q) {
+            pageIndex = i;
+            foundQuestion = q;
+            break;
           }
-          if (!foundQuestion || pageIndex === -1) return [] as any[];
-          if (!isQuestionVisible(foundQuestion)) return [] as any[]; // skip hidden
-
-          return [{ questionId, value, pageIndex }];
-        });
-
-        const payload = {
-          responses: responseData,
-          metadata: {
-            lastPageIndex: currentPageIndex,
-            timeSpent: Math.round((Date.now() - startTime) / 1000),
-            pagesVisited,
-          },
-          status: "InProgress",
-          updatedAt: new Date().toISOString(),
-        };
-
-        if (!survey) return;
-        
-        const response = await fetch(RESPONSES_API.AUTO_SAVE(survey.id), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (response.ok) {
-          setLastSaveTime(new Date().toISOString());
-        } else {
-          console.error('Failed to auto-save:', await response.json());
         }
-      } catch (error) {
-        console.error('Auto-save error:', error);
-      }
+
+        if (!foundQuestion || pageIndex === -1) return [];
+        if (!isQuestionVisible(foundQuestion)) return []; // skip hidden
+
+        return [{ questionId, value, pageIndex }];
+      });
+
+      const payload = {
+        responses: responseData,
+        metadata: {
+          lastPageIndex: currentPageIndex,
+          timeSpent: Math.round((Date.now() - startTime) / 1000),
+          pagesVisited,
+        },
+        status: "InProgress",
+        updatedAt: new Date().toISOString(),
+      };
+
+      await autoSaveResponse(survey.id, payload, token || undefined);
+      setLastSaveTime(new Date().toISOString());
+    } catch (error: any) {
+      alert("Auto save error")
+      console.error('Auto-save error:', error);
     }
   }, [responses, currentPageIndex, pagesVisited, survey, isQuestionVisible, startTime, token]);
 
   const submitSurvey = async () => {
     if (!survey) return;
-    
+
     if (!validateCurrentPage()) {
       setError('Please answer all required questions before submitting.');
       return;
     }
-    
+
     setSubmitting(true);
     setError(null);
-    
+
     try {
       // Save progress to server before submitting
       await saveProgressToServer();
 
       // Prepare response data (exclude hidden questions)
       const responseData = Object.entries(responses).flatMap(([questionId, value]) => {
-        // Find which page this question belongs to and the question itself
         let pageIndex = -1;
         let foundQuestion: Question | undefined;
-        
+
         for (let i = 0; i < survey.pages.length; i++) {
           const q = survey.pages[i].questions.find(qn => qn.id === questionId);
           if (q) {
@@ -411,54 +375,29 @@ export default function SurveyRenderer() {
             break;
           }
         }
-        
-        if (!foundQuestion || pageIndex === -1) {
-          console.warn(`Question ${questionId} not found in survey pages`);
-          return [];
-        }
-        
-        if (!isQuestionVisible(foundQuestion)) {
-          console.log(`Question ${questionId} is hidden, skipping`);
-          return [];
-        }
 
+        if (!foundQuestion || pageIndex === -1) return [];
+        if (!isQuestionVisible(foundQuestion)) return [];
         return [{ questionId, value, pageIndex }];
       });
-      
+
       const timeSpent = Math.round((Date.now() - startTime) / 1000);
-      
-      // Use survey.id instead of slug for the API endpoint
-      const response = await fetch(RESPONSES_API.SUBMIT(survey.id), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+
+      await submitSurveyApi(survey.id, {
+        responses: responseData,
+        metadata: {
+          timeSpent,
+          pagesVisited,
+          lastPageIndex: currentPageIndex,
         },
-        body: JSON.stringify({
-          responses: responseData,
-          metadata: {
-            timeSpent,
-            pagesVisited,
-            lastPageIndex: currentPageIndex,
-          },
-        }),
-      });
-      
-      if (response.ok) {
-        console.log('Survey submitted successfully');
-        // Clear draft from localStorage
-        localStorage.removeItem(draftKey);
-        
-        // Redirect to thank you page
-        navigate(`/s/${slug}/thank-you`);
-      } else {
-        const errorData = await response.json();
-        console.error('Submit failed:', errorData);
-        setError(errorData.error || 'Failed to submit survey');
-      }
-    } catch (error) {
+      }, token || undefined);
+
+      console.log('Survey submitted successfully');
+      localStorage.removeItem(draftKey);
+      navigate(`/s/${slug}/thank-you`);
+    } catch (error: any) {
       console.error('Submit error:', error);
-      setError('Error submitting survey');
+      setError(error.message || 'Error submitting survey');
     } finally {
       setSubmitting(false);
     }

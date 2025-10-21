@@ -17,7 +17,14 @@ export class SurveyRepository {
   }
 
   async findBySlugPublished(slug: string) {
-    return Survey.findOne({ slug, status: 'published' });
+    return Survey.findOne({
+      slug,
+      status: { $in: ['published', 'live'] }, // Accept both statuses
+    });
+  }
+
+  async deleteById(surveyId: string) {
+    return Survey.findByIdAndDelete(surveyId);
   }
 
   async findAllByCreator(userId: string, skip = 0, limit = 10) {
@@ -28,8 +35,8 @@ export class SurveyRepository {
           from: 'responses',
           localField: '_id',
           foreignField: 'survey',
-          as: 'responses'
-        }
+          as: 'responses',
+        },
       },
       {
         $addFields: {
@@ -37,11 +44,11 @@ export class SurveyRepository {
             $size: {
               $filter: {
                 input: '$responses',
-                cond: { $eq: ['$$this.status', 'Completed'] }
-              }
-            }
-          }
-        }
+                cond: { $eq: ['$$this.status', 'Completed'] },
+              },
+            },
+          },
+        },
       },
       {
         $project: {
@@ -55,12 +62,12 @@ export class SurveyRepository {
           updatedAt: 1,
           responseCount: 1,
           allowedRespondents: 1,
-          locked: 1
-        }
+          locked: 1,
+        },
       },
       { $sort: { updatedAt: -1 } },
       { $skip: skip },
-      { $limit: limit }
+      { $limit: limit },
     ]);
   }
 

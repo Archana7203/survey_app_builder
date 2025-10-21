@@ -20,15 +20,13 @@ export const generateAccessToken = (userId: string): string => {
     throw new Error('JWT_SECRET environment variable is not defined');
   }
 
-  return jwt.sign({ userId }, secret, { expiresIn: '15m' });
+  return jwt.sign({ userId }, secret);
 };
 
 export const generateRefreshToken = (userId: string): string => {
   // Fallback to JWT_SECRET in case JWT_REFRESH_SECRET isn't set (e.g., test env)
   const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET!;
-  return jwt.sign({ userId }, secret, {
-    expiresIn: '7d',
-  });
+  return jwt.sign({ userId }, secret);
 };
 
 export const verifyAccessToken = (token: string): { userId: string } => {
@@ -55,8 +53,7 @@ export const generateRespondentToken = (surveyId: string, email: string): string
 
   return jwt.sign(
     { surveyId, email },
-    secret,
-    { expiresIn: '7d' }
+    secret
   );
 };
 

@@ -3,7 +3,7 @@ import Card from '../ui/Card';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import { loadConfig, getRespondentProgressPaginationConfig } from '../../utils/config';
-import { SURVEYS_API } from '../../api-paths/surveysApi';
+import { fetchRespondentProgressApi } from '../../api-paths/surveysApi';
 
 interface RespondentProgress {
   email: string;
@@ -84,42 +84,33 @@ export default function RespondentProgress({ surveyId }: Props) {
     try {
       console.log('Fetching progress for surveyId:', surveyId);
       setLoading(true);
-      const response = await fetch(SURVEYS_API.RESPONDENT_PROGRESS(surveyId, page, limit), {
-        credentials: 'include',
-      });
-      
-      console.log('Response status:', response.status);
-      
-      if (response.ok) {
-        const progressData = await response.json();
-        console.log('Progress data received:', progressData);
-        setData(progressData);
-        if (progressData.pagination) {
-          console.log('Setting pagination:', progressData.pagination);
-          // Ensure pagination data is properly formatted
-          const paginationData = {
-            page: progressData.pagination.page || 1,
-            limit: progressData.pagination.limit || 5,
-            total: progressData.pagination.total || 0,
-            totalPages: progressData.pagination.totalPages || 0,
-            hasNext: progressData.pagination.hasNext || false,
-            hasPrev: progressData.pagination.hasPrev || false
-          };
-          console.log('Formatted pagination data:', paginationData);
-          setPagination(paginationData);
-        } else {
-          console.warn('No pagination data in response');
-        }
-        console.log('Total respondents:', progressData.respondentProgress?.length);
-        console.log('Pagination data:', progressData.pagination);
+
+      const progressData = await fetchRespondentProgressApi(surveyId, page, limit);
+
+      console.log('Progress data received:', progressData);
+      setData(progressData);
+
+      if (progressData.pagination) {
+        const paginationData = {
+          page: progressData.pagination.page || 1,
+          limit: progressData.pagination.limit || 5,
+          total: progressData.pagination.total || 0,
+          totalPages: progressData.pagination.totalPages || 0,
+          hasNext: progressData.pagination.hasNext || false,
+          hasPrev: progressData.pagination.hasPrev || false
+        };
+        console.log('Formatted pagination data:', paginationData);
+        setPagination(paginationData);
       } else {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        setError('Failed to fetch respondent progress');
+        console.warn('No pagination data in response');
       }
-    } catch (error) {
+
+      console.log('Total respondents:', progressData.respondentProgress?.length);
+      console.log('Pagination data:', progressData.pagination);
+
+    } catch (error: any) {
       console.error('Fetch error:', error);
-      setError('Error fetching progress data');
+      setError(error.message || 'Error fetching progress data');
     } finally {
       setLoading(false);
     }

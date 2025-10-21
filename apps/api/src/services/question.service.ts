@@ -1,8 +1,10 @@
 import { QuestionType } from '../models/Question';
+import log from '../logger';
 
 export class QuestionService {
   getAllQuestionTypes() {
-    return [
+    log.debug('Fetching all question types', 'getAllQuestionTypes');
+    const questionTypes = [
       {
         type: QuestionType.SINGLE_CHOICE,
         name: 'Single Choice',
@@ -122,15 +124,20 @@ export class QuestionService {
         schema: { settings: { placeholder: { type: 'string', default: 'Enter your email address' } } },
       },
     ];
+    log.debug('Question types retrieved', 'getAllQuestionTypes', { count: questionTypes.length });
+    return questionTypes;
   }
 
   getCategories() {
-    return [
+    log.debug('Fetching question categories', 'getCategories');
+    const categories = [
       { id: 'choice', name: 'Choice Questions', description: 'Single or multiple selection' },
       { id: 'rating', name: 'Rating Questions', description: 'Satisfaction and rating scales' },
       { id: 'text', name: 'Text Questions', description: 'Free text responses' },
       { id: 'scale', name: 'Scale Questions', description: 'Numeric and slider inputs' },
       { id: 'input', name: 'Input Questions', description: 'Specialized input types' },
     ];
+    log.debug('Question categories retrieved', 'getCategories', { count: categories.length });
+    return categories;
   }
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import QuestionRenderer from '../questions/QuestionRenderer';
-import { QUESTIONS_API } from '../../api-paths/questionsApi';
+import { fetchQuestionTypesApi } from '../../api-paths/questionsApi';
 
 interface QuestionType {
   type: string;
@@ -306,16 +306,11 @@ const useQuestionTypes = () => {
 
   const fetchQuestionTypes = async () => {
     try {
-      const response = await fetch(QUESTIONS_API.TYPES());
-      if (response.ok) {
-        const data = await response.json();
-        setQuestionTypes(data.types);
-        setCategories([{ id: 'all', name: 'All Types', count: 0 }, ...data.categories]);
-      } else {
-        setQuestionTypes([]);
-        setCategories([{ id: 'all', name: 'All Types', count: 0 }]);
-      }
-    } catch {
+      const data = await fetchQuestionTypesApi();
+      setQuestionTypes(data.types);
+      setCategories([{ id: 'all', name: 'All Types', count: 0 }, ...data.categories]);
+    } catch (error: any) {
+      console.error('Failed to fetch question types:', error);
       setQuestionTypes([]);
       setCategories([{ id: 'all', name: 'All Types', count: 0 }]);
     } finally {

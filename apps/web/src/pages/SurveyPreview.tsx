@@ -4,7 +4,7 @@ import { evaluateCondition } from '../utils/visibilityHelpers';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { SURVEYS_API } from '../api-paths/surveysApi';
+import { fetchSurveyApi } from '../api-paths/surveysApi';
 
 interface Question {
   id: string;
@@ -110,39 +110,32 @@ export default function SurveyPreview() {
   // Fetch survey data
   const fetchSurvey = useCallback(async () => {
     if (!slug) return;
-    
+
     try {
-      // Check if this is a temporary preview
       if (slug.startsWith('temp_')) {
         const storageKey = `survey_preview_${slug}`;
         const storedSurvey = sessionStorage.getItem(storageKey);
-        
+
         if (!storedSurvey) {
-          throw new Error('Preview session expired or not found. Please return to the Survey Builder and click "Open Preview" again.');
+          throw new Error(
+            'Preview session expired or not found. Please return to the Survey Builder and click "Open Preview" again.'
+          );
         }
-        
+
         const surveyData = JSON.parse(storedSurvey);
         console.log('📋 Loaded preview data:', surveyData);
         setSurvey(surveyData);
         setError(null);
         return;
       }
-      
-      // If not a temp preview, fetch from API
-      // Check if slug is a MongoDB ObjectId (24 hex characters)
-      const isObjectId = /^[0-9a-fA-F]{24}$/.test(slug);
-      const endpoint = isObjectId ? SURVEYS_API.GET_BY_ID(slug) : SURVEYS_API.GET_BY_SLUG(slug);
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error('Failed to fetch survey');
-      }
-      
-      const surveyData = await response.json();
+
+      // Fetch from API if not preview
+      const surveyData = await fetchSurveyApi(slug);
       setSurvey(surveyData);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching survey:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load survey');
+      setError(err.message || 'Failed to load survey');
     } finally {
       setLoading(false);
     }
