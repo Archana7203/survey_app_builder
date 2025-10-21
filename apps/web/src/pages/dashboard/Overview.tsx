@@ -162,7 +162,7 @@ const Overview: React.FC = () => {
         <Card>
           <div className="text-center">
             <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.uniqueRespondents}</div>
-            <div className="text-sm text-gray-500 dark:text-white">Unique Respondents</div>
+            <div className="text-sm text-gray-500 dark:text-white">Total Respondents</div>
           </div>
         </Card>
 
