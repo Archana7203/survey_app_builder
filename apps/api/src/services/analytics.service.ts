@@ -48,7 +48,7 @@ export class AnalyticsService {
       };
     }
 
-    const analytics = this.calculateAnalytics(question.type, questionResponses);
+    const analytics = this.calculateAnalytics(question, questionResponses);
 
     return {
       questionId: question.id,
@@ -59,36 +59,91 @@ export class AnalyticsService {
     };
   }
 
-  private calculateAnalytics(questionType: string, questionResponses: any[]): any {
+  private calculateAnalytics(question: any, questionResponses: any[]): any {
     const choiceTypes = ['singleChoice', 'multiChoice', 'dropdown'];
-    const numericTypes = ['slider', 'ratingStar', 'ratingNumber', 'ratingSmiley'];
+    const numericTypes = ['slider', 'ratingStar', 'ratingNumber'];
     const textTypes = ['textShort', 'textLong'];
 
-    if (choiceTypes.includes(questionType)) {
-      return this.analyzeChoiceQuestion(questionResponses);
+    // Handle smiley rating specially
+    if (question.type === 'ratingSmiley') {
+      return this.analyzeSmileyRating(questionResponses);
     }
 
-    if (numericTypes.includes(questionType)) {
+    if (choiceTypes.includes(question.type)) {
+      return this.analyzeChoiceQuestion(question, questionResponses);
+    }
+
+    if (numericTypes.includes(question.type)) {
       return this.analyzeNumericQuestion(questionResponses);
     }
 
-    if (textTypes.includes(questionType)) {
+    if (textTypes.includes(question.type)) {
       return this.analyzeTextQuestion(questionResponses);
     }
 
     return { type: 'basic', responseCount: questionResponses.length };
   }
 
-  private analyzeChoiceQuestion(questionResponses: any[]): any {
+  // Smiley rating label mapping
+  private getSmileyLabel(value: string): string {
+    const smileyMap: Record<string, string> = {
+      'very_sad': 'Very Sad',
+      'sad': 'Sad',
+      'neutral': 'Neutral',
+      'happy': 'Happy',
+      'very_happy': 'Very Happy'
+    };
+    return smileyMap[value] || value;
+  }
+
+  private analyzeSmileyRating(questionResponses: any[]): any {
     const counts: Record<string, number> = {};
+
+    for (const resp of questionResponses) {
+      if (resp.value) {
+        // Smiley ratings store string values like "very_sad", "sad", etc.
+        const value = typeof resp.value === 'string' ? resp.value : resp.value.toString();
+        counts[value] = (counts[value] || 0) + 1;
+      }
+    }
+
+    // Convert to distribution with labels
+    const distribution: Record<string, number> = {};
+    Object.entries(counts).forEach(([key, value]) => {
+      distribution[this.getSmileyLabel(key)] = value;
+    });
+
+    return {
+      type: 'numeric',
+      distribution
+    };
+  }
+
+  private analyzeChoiceQuestion(question: any, questionResponses: any[]): any {
+    const counts: Record<string, number> = {};
+
+    // Get option labels from question
+    const optionMap: Record<string, string> = {};
+    if (question.options && Array.isArray(question.options)) {
+      question.options.forEach((opt: any) => {
+        // Support both {id, text} and string formats
+        if (typeof opt === 'object' && opt.id && opt.text) {
+          optionMap[opt.id] = opt.text;
+        } else if (typeof opt === 'string') {
+          optionMap[opt] = opt;
+        }
+      });
+    }
 
     for (const resp of questionResponses) {
       if (Array.isArray(resp.value)) {
         for (const val of resp.value) {
-          counts[val] = (counts[val] || 0) + 1;
+          const label = optionMap[val] || val;
+          counts[label] = (counts[label] || 0) + 1;
         }
       } else if (resp.value) {
-        counts[resp.value] = (counts[resp.value] || 0) + 1;
+        const label = optionMap[resp.value] || resp.value;
+        counts[label] = (counts[label] || 0) + 1;
       }
     }
 

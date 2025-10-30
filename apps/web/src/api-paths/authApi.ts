@@ -50,3 +50,27 @@ export const logoutApi = async () => {
     throw new Error(`Logout failed: ${res.status} ${errorText}`);
   }
 };
+
+// SSO API functions
+export const ssoLoginApi = () => {
+  // Redirect to SSO login endpoint
+  window.location.href = buildApiUrl('/api/auth/sso/login');
+};
+
+export const ssoLogoutApi = () => {
+  // Redirect to SSO logout endpoint
+  window.location.href = buildApiUrl('/api/auth/sso/logout');
+};
+
+export const fetchSSOUserApi = async () => {
+  const res = await fetch(buildApiUrl('/api/auth/sso/me'), { 
+    credentials: 'include' 
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error("Error:"+ res.status + ' ' + errorText);
+  }
+
+  return res.json();
+};

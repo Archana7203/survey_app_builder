@@ -5,6 +5,11 @@ export class ResponseRepository {
     return Response.find({ survey: surveyId }).select('respondentEmail status startedAt metadata responses');
   }
 
+  async findOneBySurveyAndEmail(surveyId: string, email: string) {
+    return Response.findOne({ survey: surveyId, respondentEmail: email })
+      .select('respondentEmail status startedAt submittedAt metadata responses');
+  }
+
   async countBySurvey(surveyId: string) {
     return Response.countDocuments({ survey: surveyId });
   }

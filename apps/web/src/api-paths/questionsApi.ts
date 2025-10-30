@@ -1,7 +1,9 @@
 import { buildApiUrl} from './apiConfig';
 export const fetchQuestionTypesApi = async () => {
   try {
-    const res = await fetch(buildApiUrl('/api/questions/types'));
+    const res = await fetch(buildApiUrl('/api/questions/types'), {
+      credentials: 'include'
+    });
     
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));

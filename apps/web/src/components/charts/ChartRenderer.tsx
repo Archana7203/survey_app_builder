@@ -28,6 +28,18 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
   data,
   title,
 }) => {
+  // Sort smiley rating categories in order
+  const sortSmileyCategories = (entries: [string, number][]): [string, number][] => {
+    const order = ['Very Sad', 'Sad', 'Neutral', 'Happy', 'Very Happy'];
+    const orderMap = new Map(order.map((label, index) => [label, index]));
+    
+    return entries.sort(([a], [b]) => {
+      const indexA = orderMap.get(a) ?? 999;
+      const indexB = orderMap.get(b) ?? 999;
+      return indexA - indexB;
+    });
+  };
+
   // Convert data to chart format
   const getChartData = () => {
     switch (data.type) {
@@ -39,7 +51,18 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
       
       case 'numeric':
         if (data.distribution) {
-          return Object.entries(data.distribution).map(([name, value]) => ({
+          // Check if this might be smiley ratings (has "Very Sad" category)
+          const entries = Object.entries(data.distribution);
+          const hasSmileyCategories = entries.some(([key]) => 
+            key.includes('Very Sad') || key.includes('Very Happy')
+          );
+          
+          // Sort if it's smiley ratings
+          const sortedEntries = hasSmileyCategories 
+            ? sortSmileyCategories(entries)
+            : entries.sort(([a], [b]) => Number(a) - Number(b));
+          
+          return sortedEntries.map(([name, value]) => ({
             name,
             value,
           }));

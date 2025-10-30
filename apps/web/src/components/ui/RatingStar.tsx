@@ -53,9 +53,17 @@ const RatingStar: React.FC<RatingStarProps> = ({
             <button
               key={rating}
               type="button"
-              className={`text-3xl transition-all duration-200 ${
+              className={`text-3xl transition-all duration-200 border-none p-0 m-0 ${
                 readOnly ? 'cursor-default' : 'cursor-pointer hover:scale-110'
               } ${isFilled ? 'star-filled' : 'star-unfilled'}`}
+              style={{ 
+                background: 'white !important', 
+                border: 'none !important',
+                backgroundColor: 'white !important',
+                '--color-primary': 'white',
+                '--color-secondary': 'white',
+                '--color-accent': 'white'
+              } as React.CSSProperties}
               onClick={() => handleClick(rating)}
               onMouseEnter={() => handleMouseEnter(rating)}
               onMouseLeave={handleMouseLeave}

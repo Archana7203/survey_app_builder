@@ -36,18 +36,15 @@ function DraggableQuestionType({ questionType }: { readonly questionType: Questi
         <div 
           {...attributes}
           {...listeners}
-          className="p-2 flex items-center gap-3"
+          className="py-0.5 px-1 flex items-center gap-2"
         >
-          <div className="text-2xl group-hover:scale-110 transition-transform duration-200">
+          <div className="text-lg group-hover:scale-110 transition-transform duration-200">
             {questionType.icon}
           </div>
           <div className="flex-1 text-left">
             <h4 className="text-sm font-medium text-gray-900 dark:text-white">
               {questionType.name}
             </h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
-              {questionType.description}
-            </p>
           </div>
         </div>
       </Card>

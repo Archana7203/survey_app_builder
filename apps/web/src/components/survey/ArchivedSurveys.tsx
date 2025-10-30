@@ -46,11 +46,14 @@ const ArchivedSurveys: React.FC = () => {
   const fetchArchivedSurveys = async () => {
     try {
       setLoading(true);
-      const data = await listSurveysApi(1, 100);
-      const allSurveys = data.surveys || data;
-      
-      const archived = allSurveys.filter((s: Survey) => s.status === "archived");
-      setSurveys(archived);
+      // Query with status=archived parameter to get archived surveys from backend
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "100",
+        status: "archived"
+      });
+      const data = await listSurveysApi(params.toString());
+      setSurveys(data.surveys || []);
     } catch (error: any) {
       setError(error.message || "Error loading archived surveys");
     } finally {
@@ -95,7 +98,7 @@ const ArchivedSurveys: React.FC = () => {
     });
   };
 
-  const getStatusBadge = (status: string, closeDate?: string) => {
+  const getStatusBadge = () => {
     const colors = {
       archived:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
@@ -180,7 +183,7 @@ const ArchivedSurveys: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>{getStatusBadge(survey.status, survey.closeDate)}</span>
+                    <span>{getStatusBadge()}</span>
                     <span>{formatDate(survey.createdAt)}</span>
                   </div>
 
@@ -261,7 +264,7 @@ const ArchivedSurveys: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-3 sm:px-6 py-4">
-                        {getStatusBadge(survey.status, survey.closeDate)}
+                        {getStatusBadge()}
                       </td>
                       <td className="hidden md:table-cell px-6 py-4 text-sm text-gray-500 dark:text-white">
                         {formatDate(survey.createdAt)}

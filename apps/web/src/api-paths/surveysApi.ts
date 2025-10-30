@@ -100,6 +100,30 @@ export const fetchRespondentsApi = async (surveyId: string) => {
   }
 };
 
+export const updateSurveyRespondentsApi = async (
+  surveyId: string,
+  respondentIds: string[],
+  groupIds: string[]
+) => {
+  try {
+    const res = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondents`), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ respondentIds, groupIds }),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      return Promise.reject(new Error(errorData.error || "Failed to update respondents"));
+    }
+    const data = await res.json();
+    return Promise.resolve(data);
+  } catch (error) {
+    console.error("Failed to update respondents:", error);
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
 export const addRespondentApi = async (surveyId: string, email: string) => {
   try {
     const res = await fetch(buildApiUrl(`/api/surveys/${surveyId}/respondents`), {
@@ -202,13 +226,21 @@ export const fetchSurveyByIdApi = async (surveyId: string) => {
   }
 };
 
-export const listSurveysApi = async (page = 1, limit = 5) => {
+export const listSurveysApi = async (
+  pageOrQueryString?: number | string, 
+  limit?: number
+) => {
   try {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    });
-    const res = await fetch(buildApiUrl(`/api/surveys?${params.toString()}`), {
+    let url: string;    
+    if (typeof pageOrQueryString === 'string') {
+      url = buildApiUrl(`/api/surveys?${pageOrQueryString}`);
+    } 
+    else {
+      const page = pageOrQueryString || 1;
+      const pageLimit = limit || 5;
+      url = buildApiUrl(`/api/surveys?page=${page}&limit=${pageLimit}`);
+    }
+    const res = await fetch(url, {
       credentials: "include",
     });
     if (!res.ok) {

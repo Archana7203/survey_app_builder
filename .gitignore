@@ -84,3 +84,8 @@ __tests__/
 # E2E Tests
 /apps/web/e2e/
 /apps/web/e2e/test-utils.ts
+/md_files
+
+PLAN.md
+SSO-GUIDE.md
+SSO-PLAN.md

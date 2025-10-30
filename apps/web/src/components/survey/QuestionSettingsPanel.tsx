@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 
@@ -38,6 +38,9 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
   setSelectedQuestion,
   onEditVisibility,
 }) => {
+  // Check if this is the first question of the survey
+  const isFirstQuestion = activePageIndex === 0 && survey?.pages?.[0]?.questions?.[0]?.id === selectedQuestion?.id;
+  
   const updateQuestion = (updates: Partial<Question>) => {
     if (!survey || !selectedQuestion) return;
     
@@ -138,9 +141,15 @@ const QuestionSettingsPanel: React.FC<QuestionSettingsPanelProps> = ({
           size="sm"
           onClick={() => onEditVisibility(selectedQuestion.id)}
           className="w-full"
+          disabled={isFirstQuestion}
         >
           Configure Visibility Rules
         </Button>
+        {isFirstQuestion && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            The first question is always visible
+          </p>
+        )}
       </div>
     </div>
   );
@@ -164,6 +173,34 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
   const isChoiceType = ['singleChoice', 'multiChoice', 'dropdown'].includes(question.type);
   const isRatingType = ['ratingStar', 'ratingSmiley', 'ratingNumber'].includes(question.type);
   const isSliderType = question.type === 'slider';
+  
+  // Local state for input values to allow free typing
+  const [maxRatingInput, setMaxRatingInput] = useState(String(question.settings?.maxRating || 5));
+  const [scaleMinInput, setScaleMinInput] = useState(String(question.settings?.scaleMin || 0));
+  const [scaleMaxInput, setScaleMaxInput] = useState(String(question.settings?.scaleMax || 100));
+  const [scaleStepInput, setScaleStepInput] = useState(String(question.settings?.scaleStep || 1));
+  
+  // Update local state when question settings change
+  useEffect(() => {
+    setMaxRatingInput(String(question.settings?.maxRating || 5));
+  }, [question.settings?.maxRating]);
+  
+  useEffect(() => {
+    setScaleMinInput(String(question.settings?.scaleMin || 0));
+  }, [question.settings?.scaleMin]);
+  
+  useEffect(() => {
+    setScaleMaxInput(String(question.settings?.scaleMax || 100));
+  }, [question.settings?.scaleMax]);
+  
+  useEffect(() => {
+    setScaleStepInput(String(question.settings?.scaleStep || 1));
+  }, [question.settings?.scaleStep]);
+  
+  // Helper function to show alert
+  const showRangeAlert = (min: number, max: number, fieldName: string) => {
+    alert(`Please enter a value between ${min} and ${max} for ${fieldName}`);
+  };
 
   if (isChoiceType) {
     return (
@@ -201,26 +238,47 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
   }
 
   if (isRatingType) {
+    const minRating = question.type === 'ratingSmiley' ? 3 : 1;
+    const maxRating = question.type === 'ratingSmiley' ? 5 : 10;
+    
     return (
       <div className="space-y-4">
         <Input
           type="number"
           label="Maximum Rating"
-          value={question.settings?.maxRating || 5}
+          value={maxRatingInput}
           onChange={(e) => {
-            let maxRating = Number.parseInt(e.target.value);
+            // Allow free typing by updating local state
+            setMaxRatingInput(e.target.value);
+          }}
+          onBlur={(e) => {
+            const inputValue = e.target.value;
             
-            // Enforce limits based on question type
-            if (question.type === 'ratingSmiley') {
-              maxRating = Math.min(Math.max(maxRating, 3), 5); // 3-5 for smileys
-            } else {
-              maxRating = Math.min(Math.max(maxRating, 1), 10); // 1-10 for stars and numbers
+            // If empty or invalid, reset to default
+            if (inputValue === '' || isNaN(Number.parseInt(inputValue))) {
+              setMaxRatingInput('5');
+              updateQuestionSettings({ maxRating: 5 });
+              return;
             }
             
-            updateQuestionSettings({ maxRating });
+            let inputRating = Number.parseInt(inputValue);
+            
+            // Check if value is out of range and show alert
+            if (inputRating < minRating || inputRating > maxRating) {
+              showRangeAlert(minRating, maxRating, 'Maximum Rating');
+              // Reset to current valid value
+              const currentValue = question.settings?.maxRating || 5;
+              setMaxRatingInput(String(currentValue));
+              return;
+            }
+            
+            // Value is valid, update settings
+            setMaxRatingInput(String(inputRating));
+            updateQuestionSettings({ maxRating: inputRating });
           }}
-          min={question.type === 'ratingSmiley' ? 3 : 1}
-          max={question.type === 'ratingSmiley' ? 5 : 10}
+          min={minRating}
+          max={maxRating}
+          placeholder={`${minRating}-${maxRating}`}
         />
       </div>
     );
@@ -232,21 +290,83 @@ const QuestionTypeSettings: React.FC<QuestionTypeSettingsProps> = ({
         <Input
           type="number"
           label="Minimum Value"
-          value={question.settings?.scaleMin || 0}
-          onChange={(e) => updateQuestionSettings({ scaleMin: Number.parseInt(e.target.value) })}
+          value={scaleMinInput}
+          onChange={(e) => {
+            // Allow free typing by updating local state
+            setScaleMinInput(e.target.value);
+          }}
+          onBlur={(e) => {
+            const inputValue = e.target.value;
+            
+            // If empty or invalid, reset to default
+            if (inputValue === '' || isNaN(Number.parseInt(inputValue))) {
+              setScaleMinInput('0');
+              updateQuestionSettings({ scaleMin: 0 });
+            } else {
+              const minValue = Number.parseInt(inputValue);
+              setScaleMinInput(String(minValue));
+              updateQuestionSettings({ scaleMin: minValue });
+            }
+          }}
+          placeholder="0"
         />
         <Input
           type="number"
           label="Maximum Value"
-          value={question.settings?.scaleMax || 100}
-          onChange={(e) => updateQuestionSettings({ scaleMax: Number.parseInt(e.target.value) })}
+          value={scaleMaxInput}
+          onChange={(e) => {
+            // Allow free typing by updating local state
+            setScaleMaxInput(e.target.value);
+          }}
+          onBlur={(e) => {
+            const inputValue = e.target.value;
+            
+            // If empty or invalid, reset to default
+            if (inputValue === '' || isNaN(Number.parseInt(inputValue))) {
+              setScaleMaxInput('100');
+              updateQuestionSettings({ scaleMax: 100 });
+            } else {
+              const maxValue = Number.parseInt(inputValue);
+              setScaleMaxInput(String(maxValue));
+              updateQuestionSettings({ scaleMax: maxValue });
+            }
+          }}
+          placeholder="100"
         />
         <Input
           type="number"
           label="Step Size"
-          value={question.settings?.scaleStep || 1}
-          onChange={(e) => updateQuestionSettings({ scaleStep: Number.parseInt(e.target.value) })}
+          value={scaleStepInput}
+          onChange={(e) => {
+            // Allow free typing by updating local state
+            setScaleStepInput(e.target.value);
+          }}
+          onBlur={(e) => {
+            const inputValue = e.target.value;
+            
+            // If empty or invalid, reset to default
+            if (inputValue === '' || isNaN(Number.parseInt(inputValue))) {
+              setScaleStepInput('1');
+              updateQuestionSettings({ scaleStep: 1 });
+            } else {
+              const stepValue = Number.parseInt(inputValue);
+              
+              // Check if step size is less than 1
+              if (stepValue < 1) {
+                showRangeAlert(1, 20, 'Step Size');
+                // Reset to current valid value
+                const currentValue = question.settings?.scaleStep || 1;
+                setScaleStepInput(String(currentValue));
+                return;
+              }
+              
+              // Value is valid, update settings
+              setScaleStepInput(String(stepValue));
+              updateQuestionSettings({ scaleStep: stepValue });
+            }
+          }}
           min={1}
+          placeholder="1"
         />
       </div>
     );

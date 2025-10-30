@@ -31,8 +31,6 @@ export interface ISurvey extends Document {
     questions: Array<any>;
     branching?: Array<IBranchingRule>;
   }>;
-  allowedRespondents: string[];
-  invitationsSent: string[];  // ✅ Already in interface - good!
   createdBy: IUser['_id'];
   createdAt: Date;
   updatedAt: Date;
@@ -114,30 +112,6 @@ const SurveySchema: Schema = new Schema({
       },
     }],
   }],
-  allowedRespondents: {
-    type: [String],
-    default: [],
-    validate: [
-      {
-        validator: function(emails: string[]) {
-          return emails.every(email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
-        },
-        message: 'Invalid email format in allowedRespondents'
-      }
-    ]
-  },
-  invitationsSent: {
-    type: [String],
-    default: [],
-    validate: [
-      {
-        validator: function(emails: string[]) {
-          return emails.every(email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
-        },
-        message: 'Invalid email format in invitationsSent'
-      }
-    ]
-  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',

@@ -78,10 +78,11 @@ export class ResponseService {
       });
       throw new Error('Survey is not available for responses');
     }    
-    if (survey.closeDate && new Date(survey.closeDate) < new Date()) {
-      log.warn('Survey has closed', 'submit', { surveyId, emailHash, closeDate: survey.closeDate });
+    // Enforce endDate as source of truth for closure
+    if (survey.endDate && new Date(survey.endDate) <= new Date()) {
+      log.warn('Survey has closed (endDate reached)', 'submit', { surveyId, emailHash, endDate: survey.endDate });
       throw new Error('Survey has closed');
-    }    
+    }
     const existingResponse = await (await import('../models/Response')).Response.findOne({ survey: surveyId, respondentEmail: email });
     if (existingResponse?.status === 'Completed') {
       log.warn('Survey already submitted', 'submit', { 
@@ -97,6 +98,18 @@ export class ResponseService {
       emailHash, 
       responseId: responseDoc._id 
     });
+    return responseDoc;
+  }
+
+  async getBySurveyAndEmail(creatorUserId: string, surveyId: string, email: string) {
+    const survey = await this.surveyRepo.findByIdAndCreator(surveyId, creatorUserId);
+    if (!survey) {
+      throw new Error('Survey not found or no permission');
+    }
+    const responseDoc = await this.repo.findOneBySurveyAndEmail(surveyId, email);
+    if (!responseDoc) {
+      return null;
+    }
     return responseDoc;
   }
 }

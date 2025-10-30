@@ -27,9 +27,55 @@ export class SurveyRepository {
     return Survey.findByIdAndDelete(surveyId);
   }
 
-  async findAllByCreator(userId: string, skip = 0, limit = 10) {
+  async findAllByCreator(
+    userId: string, 
+    skip = 0, 
+    limit = 10, 
+    filters?: { 
+      status?: string; 
+      search?: string; 
+      dateFrom?: string; 
+      dateTo?: string; 
+      dateField?: string; 
+    }
+  ) {
+    const matchStage: any = { 
+      createdBy: new mongoose.Types.ObjectId(userId)
+    };
+    
+    // Status filter (draft, published, live, closed, archived)
+    // If no status filter is provided, exclude archived surveys
+    if (filters?.status) {
+      matchStage.status = filters.status;
+    } else {
+      matchStage.status = { $ne: 'archived' };
+    }
+    
+    // Search filter (title OR description)
+    if (filters?.search) {
+      matchStage.$or = [
+        { title: { $regex: filters.search, $options: 'i' } },
+        { description: { $regex: filters.search, $options: 'i' } }
+      ];
+    }
+    
+    // Date range filters
+    if (filters?.dateFrom && filters?.dateField) {
+      matchStage[filters.dateField] = { 
+        ...matchStage[filters.dateField],
+        $gte: new Date(filters.dateFrom) 
+      };
+    }
+    
+    if (filters?.dateTo && filters?.dateField) {
+      matchStage[filters.dateField] = { 
+        ...matchStage[filters.dateField],
+        $lte: new Date(filters.dateTo) 
+      };
+    }
+
     return Survey.aggregate([
-      { $match: { createdBy: new mongoose.Types.ObjectId(userId) } },
+      { $match: matchStage },
       {
         $lookup: {
           from: 'responses',
@@ -61,19 +107,61 @@ export class SurveyRepository {
           createdAt: 1,
           updatedAt: 1,
           responseCount: 1,
-          allowedRespondents: 1,
           locked: 1,
         },
       },
-      { $sort: { updatedAt: -1 } },
+      { $sort: { updatedAt: -1 } }, // Default backend sort
       { $skip: skip },
       { $limit: limit },
     ]);
   }
 
-  async countByCreator(userId: string) {
-    return Survey.countDocuments({ createdBy: userId });
+  async countByCreator(
+    userId: string, 
+    filters?: { 
+      status?: string; 
+      search?: string; 
+      dateFrom?: string; 
+      dateTo?: string; 
+      dateField?: string; 
+    }
+  ) {
+    const query: any = { 
+      createdBy: userId
+    };
+    
+    // Status filter (draft, published, live, closed, archived)
+    // If no status filter is provided, exclude archived surveys
+    if (filters?.status) {
+      query.status = filters.status;
+    } else {
+      query.status = { $ne: 'archived' };
+    }
+    
+    if (filters?.search) {
+      query.$or = [
+        { title: { $regex: filters.search, $options: 'i' } },
+        { description: { $regex: filters.search, $options: 'i' } }
+      ];
+    }
+    
+    if (filters?.dateFrom && filters?.dateField) {
+      query[filters.dateField] = { 
+        ...query[filters.dateField],
+        $gte: new Date(filters.dateFrom) 
+      };
+    }
+    
+    if (filters?.dateTo && filters?.dateField) {
+      query[filters.dateField] = { 
+        ...query[filters.dateField],
+        $lte: new Date(filters.dateTo) 
+      };
+    }
+    
+    return Survey.countDocuments(query);
   }
+
 
   async createSurvey(surveyData: any) {
     const survey = new Survey(surveyData);

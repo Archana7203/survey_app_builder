@@ -29,6 +29,7 @@ export const useSurvey = (surveyId?: string) => {
         id: "new",
         title: "New Survey",
         description: "",
+        theme: "default",
         pages: [{ questions: [], branching: [] }],
       });
       setLoading(false);

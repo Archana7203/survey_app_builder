@@ -31,11 +31,13 @@ const SurveyDetailsCard: React.FC<SurveyDetailsCardProps> = ({
   };
 
   const handleBackgroundColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSurvey({ ...survey, backgroundColor: e.target.value });
+    const color = e.target.value;
+    setSurvey({ ...survey, backgroundColor: color });
   };
 
   const handleTextColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSurvey({ ...survey, textColor: e.target.value });
+    const color = e.target.value;
+    setSurvey({ ...survey, textColor: color });
   };
 
   const handleThemeChange = (themeId: string) => {
@@ -70,18 +72,28 @@ const SurveyDetailsCard: React.FC<SurveyDetailsCardProps> = ({
 
               {/* Global background and theme preview */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Global Background Color"
-                  type="color"
-                  value={survey.backgroundColor || '#f9fafb'}
-                  onChange={handleBackgroundColorChange}
-                />
-                <Input
-                  label="Global Text Color"
-                  type="color"
-                  value={survey.textColor || '#111827'}
-                  onChange={handleTextColorChange}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Global Background Color
+                  </label>
+                  <input
+                    type="color"
+                    value={survey.backgroundColor || '#f9fafb'}
+                    onChange={handleBackgroundColorChange}
+                    className="w-full h-10 rounded border border-gray-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Global Text Color
+                  </label>
+                  <input
+                    type="color"
+                    value={survey.textColor || '#111827'}
+                    onChange={handleTextColorChange}
+                    className="w-full h-10 rounded border border-gray-300 cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
         )}

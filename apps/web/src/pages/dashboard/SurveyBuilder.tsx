@@ -98,7 +98,7 @@ export default function SurveyBuilder() {
       const errorMessage = validateSurveyData(surveyData);
       if (errorMessage) {
         setError(errorMessage);
-        return;
+        return undefined;
       }
 
       const response = await fetch(url, {
@@ -109,10 +109,12 @@ export default function SurveyBuilder() {
       });
 
       if (!response.ok) {
-        return handleSaveError(response, setError);
+        handleSaveError(response, setError);
+        return undefined;
       }
 
-      const savedSurvey = await response.json();
+      const responseData = await response.json();
+      const savedSurvey = isNew ? responseData : responseData.survey;
       const updatedSurvey = isNew
         ? savedSurvey
         : { ...savedSurvey, id: survey.id };
@@ -122,11 +124,14 @@ export default function SurveyBuilder() {
         navigate(`/dashboard/surveys/${savedSurvey.id}/edit`, {
           replace: true,
         });
+      
+      return updatedSurvey;
     } catch (err) {
       console.error("Save survey error:", err);
       setError(
         `Error saving survey: ${err instanceof Error ? err.message : "Unknown error"}`
       );
+      return undefined;
     } finally {
       setSaving(false);
     }

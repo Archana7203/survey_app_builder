@@ -9,11 +9,9 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
   const { theme, toggleTheme } = useTheme();
 
   const handleClick = () => {
-    console.log('🔧 ThemeToggle: Button clicked, current theme:', theme);
     toggleTheme();
   };
 
-  console.log('🔧 ThemeToggle: Rendering with theme:', theme);
 
   return (
     <button

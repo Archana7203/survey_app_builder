@@ -29,15 +29,15 @@ export const useSurveyFilters = (surveys: Survey[]) => {
   }, [surveys, searchQuery, sortBy, sortOrder, filterBy, dateFrom, dateTo, statusValue]); // ✅ Added statusValue
 
   const applyFiltersAndSearch = () => {
-    let result = [...surveys];
-    result = result.filter((survey) => survey.status !== "archived");
+    let result = [...surveys].filter(survey => survey && survey.title);    // Filter out invalid surveys first
+    
     // Apply search filter (title and status only)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter((survey) => {
         return (
-          survey.title.toLowerCase().includes(query) ||
-          survey.status.toLowerCase().includes(query)
+          survey?.title?.toLowerCase().includes(query) ||
+          survey?.status?.toLowerCase().includes(query)
         );
       });
     }

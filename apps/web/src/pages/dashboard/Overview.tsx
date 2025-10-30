@@ -21,6 +21,7 @@ interface Stats {
   responses: number;
   templates: number;
   completedResponses: number;
+  uniqueRespondents: number; 
 }
 
 const Overview: React.FC = () => {
@@ -29,7 +30,8 @@ const Overview: React.FC = () => {
     active: 0, 
     responses: 0, 
     templates: 0, 
-    completedResponses: 0 
+    completedResponses: 0,
+    uniqueRespondents: 0 
   });
   const [recentActivity, setRecentActivity] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,7 @@ const Overview: React.FC = () => {
         let templates = 0;
         let responses = 0;
         let completedResponses = 0;
+        let uniqueRespondents = 0;
         
         if (surveysRes.ok) {
           const surveysData = await surveysRes.json();
@@ -68,10 +71,24 @@ const Overview: React.FC = () => {
           const responseData = await responsesRes.json();
           responses = responseData.totalResponses || 0;
           completedResponses = responseData.completedResponses || 0;
-          setRecentActivity(responseData.recentResponses || []);
+          
+          const recentResponses = responseData.recentResponses || [];
+          setRecentActivity(recentResponses);
+
+          const uniqueEmails = new Set(
+            recentResponses.map((r: Response) => r.respondentEmail)
+          );
+          uniqueRespondents = uniqueEmails.size;
         }
         
-        setStats({ total, active, responses, templates, completedResponses });
+        setStats({ 
+          total, 
+          active, 
+          responses, 
+          templates, 
+          completedResponses,
+          uniqueRespondents 
+        });
       } catch (error) {
         console.error('Failed to load overview data:', error);
       } finally {
@@ -141,10 +158,11 @@ const Overview: React.FC = () => {
           </div>
         </Card>
 
+        {/* ✅ Changed to show unique respondents instead of total responses */}
         <Card>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.responses}</div>
-            <div className="text-sm text-gray-500 dark:text-white">Total Responses</div>
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.uniqueRespondents}</div>
+            <div className="text-sm text-gray-500 dark:text-white">Unique Respondents</div>
           </div>
         </Card>
 
@@ -219,5 +237,3 @@ const Overview: React.FC = () => {
 };
 
 export default Overview;
-
-

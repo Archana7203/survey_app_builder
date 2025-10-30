@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from '../components/ui/ThemeToggle';
 
 const AuthPage: React.FC = () => {
-  const { login, register } = useAuth();
+  const { login, register, ssoLogin } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -98,6 +98,35 @@ const AuthPage: React.FC = () => {
               {submitButtonText}
             </Button>
           </form>
+
+          {/* SSO Login Section */}
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full flex items-center justify-center space-x-2"
+                onClick={ssoLogin}
+                disabled={loading}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#0078d4" d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/>
+                </svg>
+                <span>Sign in with Microsoft</span>
+              </Button>
+            </div>
+          </div>
 
           <div className="mt-4 text-sm text-center text-gray-600 dark:text-white">
             <button

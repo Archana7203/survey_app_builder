@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { fetchMeApi, loginApi, registerApi, logoutApi} from '../api-paths/authApi';
+import { fetchMeApi, loginApi, registerApi, logoutApi, fetchSSOUserApi, ssoLoginApi, ssoLogoutApi} from '../api-paths/authApi';
 
 interface AuthUser {
   id: string;
   email: string;
   role: 'creator' | 'respondent';
   createdAt: string;
+  name?: string; // For SSO users
 }
 
 interface AuthContextValue {
@@ -14,6 +15,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  ssoLogin: () => void;
+  ssoLogout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -32,8 +35,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
 
     try {
+      // Try SSO first, then fall back to JWT
+      try {
+        const ssoData = await fetchSSOUserApi();
+        if (ssoData.user) {
+          setUser({
+            id: ssoData.user.oid || ssoData.user.email,
+            email: ssoData.user.email,
+            name: ssoData.user.name,
+            role: 'creator', // SSO users default to creator
+            createdAt: new Date().toISOString()
+          });
+          return;
+        }
+      } catch (ssoError) {
+        // SSO failed, try JWT
+        console.log('SSO not available, trying JWT auth');
+      }
+
+      // Try JWT authentication
       const data = await fetchMeApi();
-      setUser(data.user); // data.user exists if API returns user object
+      setUser(data.user);
     } catch (error: any) {
       console.error(error);
       setUser(null);
@@ -74,10 +96,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const ssoLogin = useCallback(() => {
+    ssoLoginApi();
+  }, []);
+
+  const ssoLogout = useCallback(() => {
+    ssoLogoutApi();
+  }, []);
+
   // ✅ Memoize the context value
   const contextValue = useMemo(
-    () => ({ user, loading, login, register, logout }),
-    [user, loading, login, register, logout]
+    () => ({ user, loading, login, register, logout, ssoLogin, ssoLogout }),
+    [user, loading, login, register, logout, ssoLogin, ssoLogout]
   );
 
   return (

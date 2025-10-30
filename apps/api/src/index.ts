@@ -3,16 +3,23 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import path from 'node:path';
 
 import authRoutes from './routes/auth';
 import surveyRoutes from './routes/surveys';
+import surveyRespondentsRoutes from './routes/surveyRespondents';
 import questionRoutes from './routes/questions';
 import responseRoutes from './routes/responses';
 import analyticsRoutes from './routes/analytics';
 import templateRoutes from './routes/templates';
+import respondentsRoutes from './routes/respondents';
+import respondentGroupsRoutes from './routes/respondentGroups';
+import azureUsersRoutes from './routes/azureUsers';
+import jobsRoutes from './routes/jobs';
+import emailValidationRoutes from './routes/emailValidation';
 import { seedTemplates } from './utils/seedTemplates';
 import { log, morganMiddleware } from './logger';
 
@@ -66,6 +73,20 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Session middleware
+app.use(
+  session({
+    secret: process.env.JWT_SECRET || 'fallback-secret-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  })
+);
+
 // Add Morgan middleware for HTTP logging
 app.use(morganMiddleware);
 
@@ -91,10 +112,16 @@ app.set('io', io);
 // --- Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/surveys', surveyRoutes);
+app.use('/api/surveys', surveyRespondentsRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/responses', responseRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/respondents', respondentsRoutes);
+app.use('/api/respondent-groups', respondentGroupsRoutes);
+app.use('/api/azure-users', azureUsersRoutes);
+app.use('/api/jobs', jobsRoutes);
+app.use('/api/email-validation', emailValidationRoutes);
 
 // --- Socket.io handlers ---
 io.on('connection', (socket) => {

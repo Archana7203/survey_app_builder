@@ -94,7 +94,7 @@ export const prepareStatusUpdatePayload = (
 };
 export const getStatusSuccessMessage = (status: string): string => {
   const messages: Record<string, string> = {
-    live: "Survey is now live! Invitations have been sent to respondents.",
+    live: "Survey is now live!",
     published: "Survey published successfully!",
     closed: "Survey closed successfully.",
     archived: "Survey archived successfully.",
@@ -146,13 +146,28 @@ export const validateSurveyForGoingLive = (
     return publishValidation;
   }
 
-  // Additional check for respondents
-  if (!survey?.allowedRespondents || survey.allowedRespondents.length === 0) {
+  // Check if start date is today or in the past
+  const now = new Date();
+  const startDate = new Date(survey.startDate);
+  const endDate = new Date(survey.endDate);
+
+  // Compare only the date part (ignore time)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const surveyStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+
+  if (surveyStartDate > todayStart) {
     return {
       valid: false,
-      error: "At least one respondent must be added before going live",
+      error: "Cannot go live before the start date. Start date must be today or earlier.",
     };
   }
 
+  // Check if survey hasn't expired
+  if (endDate <= now) {
+    return {
+      valid: false,
+      error: "Cannot go live - survey end date has already passed",
+    };
+  }
   return { valid: true };
 };

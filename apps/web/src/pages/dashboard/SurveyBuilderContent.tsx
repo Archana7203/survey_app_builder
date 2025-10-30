@@ -181,15 +181,7 @@ export default function SurveyBuilderContent({
   const [respondentsModalOpen, setRespondentsModalOpen] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const isToday = (date: Date): boolean => {
-    const today = new Date();
-    const compareDate = new Date(date);
-    return (
-      today.getFullYear() === compareDate.getFullYear() &&
-      today.getMonth() === compareDate.getMonth() &&
-      today.getDate() === compareDate.getDate()
-    );
-  };
+
 
   const formatToLocalDatetime = (dateStr: string | undefined) => {
     if (!dateStr) return "";
@@ -203,17 +195,25 @@ export default function SurveyBuilderContent({
   };
 
   const handleStatusChangeLocal = async (newStatus: string): Promise<void> => {
-    if (!surveyId) {
-      setError("Survey ID is missing");
-      return;
-    }
-
     setStatusChanging(true);
     setError(null);
     setValidationError(null);
 
     try {
-      const freshResponse = await fetch(`/api/surveys/${surveyId}`, {
+      // First, save all survey data including colors
+      // This will create the survey if it doesn't have an ID yet
+      const savedSurvey = await saveSurvey();
+      
+      // Get the updated survey ID from the returned survey
+      const updatedSurveyId = savedSurvey?.id;
+      if (!updatedSurveyId || updatedSurveyId === "new") {
+        setError("Failed to save survey or survey ID is missing");
+        setStatusChanging(false);
+        setIsConfirmModalOpen(false);
+        return;
+      }
+
+      const freshResponse = await fetch(`/api/surveys/${updatedSurveyId}`, {
         credentials: "include",
       });
 
@@ -250,9 +250,23 @@ export default function SurveyBuilderContent({
         freshSurvey.status
       );
 
+      // When going live, always set start date to current date
+      if (newStatus === "live") {
+        const now = new Date();
+        updatePayload.startDate = now.toISOString();
+        console.log("Setting start date to current time for go live:", updatePayload.startDate);
+      }
+
+      // When closing survey, always set end date to current date
+      if (newStatus === "closed" && freshSurvey.status === "live") {
+        const now = new Date();
+        updatePayload.endDate = now.toISOString();
+        console.log("Setting end date to current time for closing:", updatePayload.endDate);
+      }
+
       console.log(
         "Updating survey:",
-        surveyId,
+        updatedSurveyId,
         "currentStatus:",
         freshSurvey.status,
         "newStatus:",
@@ -261,7 +275,7 @@ export default function SurveyBuilderContent({
         updatePayload
       );
 
-      const response = await fetch(`/api/surveys/${surveyId}`, {
+      const response = await fetch(`/api/surveys/${updatedSurveyId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -287,12 +301,30 @@ export default function SurveyBuilderContent({
       const result = await response.json();
       console.log("Survey updated:", result);
       setSurvey(result.survey);
+      
+      // Send email invitations when transitioning from published to live
+      if (newStatus === "live" && freshSurvey.status === "published") {
+        const hasRespondents = result.survey.allowedRespondents?.length > 0;
+        const hasGroups = result.survey.allowedGroups?.length > 0;
+        
+        if (hasRespondents || hasGroups) {
+          try {
+            const inviteResult = await sendSurveyInvitations(updatedSurveyId);
+            console.log("✅ Invitations sent:", inviteResult.message);
+          } catch (inviteErr) {
+            console.error("❌ Error sending invitations:", inviteErr);
+          }
+        }
+      }
+      
+      // Also send invitations when already live and adding new respondents (existing behavior)
       if (
         newStatus === "live" &&
+        freshSurvey.status === "live" &&
         result.survey.allowedRespondents?.length > 0
       ) {
         try {
-          const inviteResult = await sendSurveyInvitations(surveyId);
+          const inviteResult = await sendSurveyInvitations(updatedSurveyId);
           console.log("✅ Invitations sent:", inviteResult.message);
         } catch (inviteErr) {
           console.error("❌ Error in main:", inviteErr);
@@ -448,7 +480,7 @@ export default function SurveyBuilderContent({
           </>
         )}
 
-        {/* Dates row (only for draft/published) */}
+        {/* Dates row (editable in both draft and published modes) */}
         {showDates && (
           <div className="flex items-center space-x-4">
             <label className="flex items-center space-x-1 text-sm text-gray-700 dark:text-gray-300">
@@ -456,20 +488,9 @@ export default function SurveyBuilderContent({
               <input
                 type="datetime-local"
                 value={formatToLocalDatetime(survey.startDate)}
-                onChange={async (e) => {
+                onChange={(e) => {
                   const isoDate = new Date(e.target.value).toISOString();
                   setSurvey({ ...survey, startDate: isoDate });
-                  try {
-                    const res = await fetch(`/api/surveys/${surveyId}`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({ startDate: isoDate }),
-                    });
-                    console.log(res);
-                  } catch (err) {
-                    console.error("Failed to save start date", err);
-                  }
                 }}
                 className="w-48 px-2 py-1 border rounded-md dark:bg-gray-700 dark:text-white"
                 required
@@ -481,20 +502,9 @@ export default function SurveyBuilderContent({
               <input
                 type="datetime-local"
                 value={formatToLocalDatetime(survey.endDate)}
-                onChange={async (e) => {
+                onChange={(e) => {
                   const isoDate = new Date(e.target.value).toISOString();
                   setSurvey({ ...survey, endDate: isoDate });
-                  try {
-                    const res = await fetch(`/api/surveys/${surveyId}`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({ endDate: isoDate }),
-                    });
-                    console.log(res);
-                  } catch (err) {
-                    console.error("Failed to save end date", err);
-                  }
                 }}
                 className="w-48 px-2 py-1 border rounded-md dark:bg-gray-700 dark:text-white"
                 required
@@ -528,6 +538,13 @@ export default function SurveyBuilderContent({
             <Button variant="secondary" onClick={openPreviewInNewTab}>
               Preview
             </Button>
+            <Button 
+              variant="secondary" 
+              onClick={() => setRespondentsModalOpen(true)}
+              title="Add Respondents"
+            >
+              👥
+            </Button>
             <Button variant="outline" onClick={saveSurvey} disabled={saving}>
               {saving ? "Saving..." : "Save Survey"}
             </Button>
@@ -551,11 +568,12 @@ export default function SurveyBuilderContent({
             <Button variant="secondary" onClick={openPreviewInNewTab}>
               Preview
             </Button>
-            <Button
-              variant="secondary"
+            <Button 
+              variant="secondary" 
               onClick={() => setRespondentsModalOpen(true)}
+              title="Add Respondents"
             >
-              Add Respondents
+              👥
             </Button>
           </>
         );
@@ -574,11 +592,12 @@ export default function SurveyBuilderContent({
             <Button variant="secondary" onClick={openPreviewInNewTab}>
               Preview
             </Button>
-            <Button
-              variant="secondary"
+            <Button 
+              variant="secondary" 
               onClick={() => setRespondentsModalOpen(true)}
+              title="Add Respondents"
             >
-              Add Respondents
+              👥
             </Button>
             <Button variant="secondary" onClick={copyLink}>
               Copy Link
@@ -627,7 +646,6 @@ export default function SurveyBuilderContent({
       </div>
     );
   };
-
   const renderMainContent = () => {
     switch (surveyStatus) {
       case "draft":

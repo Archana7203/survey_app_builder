@@ -50,9 +50,17 @@ const RatingStarQuestion: React.FC<QuestionProps> = ({
               type="button"
               onClick={() => handleRatingChange(starValue)}
               disabled={disabled}
-              className={`text-3xl transition-all duration-200 ${
+              className={`text-3xl transition-all duration-200 border-none p-0 m-0 ${
                 disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-110'
               } ${isFilled ? 'star-filled' : 'star-unfilled'}`}
+              style={{ 
+                background: 'white !important', 
+                border: 'none !important',
+                backgroundColor: 'white !important',
+                '--color-primary': 'white',
+                '--color-secondary': 'white',
+                '--color-accent': 'white'
+              } as React.CSSProperties}
               aria-label={`Rate ${starValue} out of ${maxRating} stars`}
               aria-pressed={isFilled}
               title={`${starValue} ${starValue === 1 ? 'star' : 'stars'}`}

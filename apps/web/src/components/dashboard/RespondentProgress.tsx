@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import Card from '../ui/Card';
-import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import { loadConfig, getRespondentProgressPaginationConfig } from '../../utils/config';
 import { fetchRespondentProgressApi } from '../../api-paths/surveysApi';
+import RespondentResponseModal from '../modals/RespondentResponseModal';
 
 interface RespondentProgress {
   email: string;
@@ -52,13 +52,23 @@ export default function RespondentProgress({ surveyId }: Props) {
     hasPrev: false
   });
 
-  console.log('RespondentProgress component rendered with surveyId:', surveyId);
+  const [viewEmail, setViewEmail] = useState<string | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+
+  const handleOpenView = (email: string) => {
+    setViewEmail(email);
+    setIsViewOpen(true);
+  };
+
+  const handleCloseView = () => {
+    setIsViewOpen(false);
+    setViewEmail(null);
+  };
 
   useEffect(() => {
     if (surveyId && surveyId !== 'new') {
       loadConfig().then(() => {
         const config = getRespondentProgressPaginationConfig();
-        console.log('Config loaded:', config);
         if (config) {
           const newPagination = {
             page: 1,
@@ -68,7 +78,6 @@ export default function RespondentProgress({ surveyId }: Props) {
             hasNext: false,
             hasPrev: false
           };
-          console.log('Setting initial pagination:', newPagination);
           setPagination(newPagination);
           fetchProgress(1, config.defaultLimit);
         } else {
@@ -82,12 +91,9 @@ export default function RespondentProgress({ surveyId }: Props) {
 
   const fetchProgress = async (page: number = 1, limit: number = 20) => {
     try {
-      console.log('Fetching progress for surveyId:', surveyId);
       setLoading(true);
 
       const progressData = await fetchRespondentProgressApi(surveyId, page, limit);
-
-      console.log('Progress data received:', progressData);
       setData(progressData);
 
       if (progressData.pagination) {
@@ -99,14 +105,10 @@ export default function RespondentProgress({ surveyId }: Props) {
           hasNext: progressData.pagination.hasNext || false,
           hasPrev: progressData.pagination.hasPrev || false
         };
-        console.log('Formatted pagination data:', paginationData);
         setPagination(paginationData);
       } else {
         console.warn('No pagination data in response');
       }
-
-      console.log('Total respondents:', progressData.respondentProgress?.length);
-      console.log('Pagination data:', progressData.pagination);
 
     } catch (error: any) {
       console.error('Fetch error:', error);
@@ -165,11 +167,8 @@ export default function RespondentProgress({ surveyId }: Props) {
   }
 
   if (error) {
-    return (
-      <Alert variant="error" onClose={() => setError(null)}>
-        {error}
-      </Alert>
-    );
+      alert(error);
+      setError(null);
   }
 
   if (!data) return null;
@@ -245,6 +244,9 @@ export default function RespondentProgress({ surveyId }: Props) {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Last Activity
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      View
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -276,6 +278,22 @@ export default function RespondentProgress({ surveyId }: Props) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-white">
                         {respondent.lastUpdated ? new Date(respondent.lastUpdated).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenView(respondent.email)}
+                          aria-label={`View responses for ${respondent.email}`}
+                          className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpenView(respondent.email); } }}
+                        >
+                          {/* Eye icon (Lucide Eye outline) */}
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="">
+                            <path d="M2.06 12.34a1 1 0 0 1 0-.68C3.68 7.85 7.57 5 12 5s8.32 2.85 9.94 6.66a1 1 0 0 1 0 .68C20.32 16.15 16.43 19 12 19s-8.32-2.85-9.94-6.66" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -362,7 +380,12 @@ export default function RespondentProgress({ surveyId }: Props) {
         )}
       </Card>
 
-
+      <RespondentResponseModal
+        isOpen={isViewOpen}
+        onClose={handleCloseView}
+        surveyId={survey.id}
+        respondentEmail={viewEmail || ''}
+      />
     </div>
   );
 }

@@ -21,13 +21,44 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       Number.parseInt(req.query.limit as string) || defaultSurveyLimit,
       maxSurveyLimit
     );
-    log.info('Fetching surveys', 'GET_SURVEYS', { 
-      userId: req.user._id.toString(), 
-      page, 
-      limit 
+    
+    // Extract all filter parameters
+    const filters: any = {};
+    
+    if (req.query.status) {
+      filters.status = req.query.status as string;
+    }
+    
+    if (req.query.search) {
+      filters.search = req.query.search as string;
+    }
+    
+    if (req.query.dateFrom) {
+      filters.dateFrom = req.query.dateFrom as string;
+    }
+    
+    if (req.query.dateTo) {
+      filters.dateTo = req.query.dateTo as string;
+    }
+    
+    if (req.query.dateField) {
+      filters.dateField = req.query.dateField as string;
+    }
+    
+    log.info('Fetching surveys', 'GET_SURVEYS', {
+      userId: req.user._id.toString(),
+      page,
+      limit,
+      filters
     });
 
-    const { surveysWithResponses, totalSurveys } = await service.getAllSurveys(req.user._id.toString(), page, limit);
+    const { surveysWithResponses, totalSurveys } = await service.getAllSurveys(
+      req.user._id.toString(), 
+      page, 
+      limit,
+      Object.keys(filters).length > 0 ? filters : undefined
+    );
+    
     const mapped = surveysWithResponses.map((survey: any) => ({
       id: survey._id.toString(),
       title: survey.title,
@@ -38,7 +69,8 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       createdAt: survey.createdAt,
       updatedAt: survey.updatedAt,
       responseCount: survey.responseCount,
-      allowedRespondents: survey.allowedRespondents || [],
+      backgroundColor: survey.backgroundColor,
+      textColor: survey.textColor,
       locked: survey.locked
     }));
 
@@ -54,7 +86,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       }
     });
   } catch (error) {
-    log.error('Failed to fetch surveys', 'GET_SURVEYS', { 
+    log.error('Failed to fetch surveys', 'GET_SURVEYS', {
       userId: req.user?._id.toString(),
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
@@ -62,6 +94,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
     res.status(500).json({ error: 'Failed to fetch surveys' });
   }
 });
+
 
 // POST /api/surveys - Create new survey
 router.post('/', requireAuth, async (req: AuthRequest, res) => {
@@ -91,8 +124,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
       pages: survey.pages,
       theme: survey.theme,
       backgroundColor: survey.backgroundColor,
-      textColor: survey.textColor,
-      allowedRespondents: survey.allowedRespondents
+      textColor: survey.textColor
     });
   } catch (error) {
     log.error('Failed to create survey', 'CREATE_SURVEY', { 
@@ -132,7 +164,6 @@ router.get('/:surveyId', requireAuth, async (req: AuthRequest, res) => {
       theme: survey.theme,
       backgroundColor: survey.backgroundColor,
       textColor: survey.textColor,
-      allowedRespondents: survey.allowedRespondents,
     });
   } catch (error) {
     log.error('Failed to fetch survey', 'GET_SURVEY', { 
@@ -211,9 +242,7 @@ router.get('/public/:slug', async (req, res) => {
     const { slug } = req.params;
     
     log.info('Public survey access', 'GET_PUBLIC_SURVEY', { slug });
-
     const survey = await service.getPublicSurvey(slug);
-
     res.json({
       id: survey._id,
       title: survey.title,
@@ -245,8 +274,8 @@ router.get('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res) 
       userId: req.user._id.toString()
     });
 
-    const allowedRespondents = await service.getRespondents(req.user._id.toString(), surveyId);
-    res.json({ allowedRespondents });
+    const surveyRespondents = await service.getRespondents(req.user._id.toString(), surveyId);
+    res.json(surveyRespondents);
   } catch (error) {
     log.error('Failed to fetch respondents', 'GET_RESPONDENTS', { 
       surveyId: req.params.surveyId,
@@ -408,7 +437,6 @@ router.put('/:surveyId', requireAuth, ensureSurveyEditable, async (req: AuthRequ
         backgroundColor: survey.backgroundColor,
         textColor: survey.textColor,
         pages: survey.pages,
-        allowedRespondents: survey.allowedRespondents,
         locked: survey.locked
       }
     });
@@ -493,8 +521,7 @@ router.post('/:surveyId/duplicate', requireAuth, async (req: AuthRequest, res) =
       pages: duplicatedSurvey.pages,
       theme: duplicatedSurvey.theme,
       backgroundColor: duplicatedSurvey.backgroundColor,
-      textColor: duplicatedSurvey.textColor,
-      allowedRespondents: duplicatedSurvey.allowedRespondents
+      textColor: duplicatedSurvey.textColor
     });
   } catch (error) {
     log.error('Failed to duplicate survey', 'DUPLICATE_SURVEY', { 
@@ -569,8 +596,7 @@ router.post('/import', requireAuth, async (req: AuthRequest, res) => {
       pages: importedSurvey.pages,
       theme: importedSurvey.theme,
       backgroundColor: importedSurvey.backgroundColor,
-      textColor: importedSurvey.textColor,
-      allowedRespondents: importedSurvey.allowedRespondents
+      textColor: importedSurvey.textColor
     });
   } catch (error) {
     log.error('Failed to import survey', 'IMPORT_SURVEY', { 

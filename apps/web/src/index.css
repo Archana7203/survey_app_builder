@@ -88,18 +88,168 @@ body {
   color: #9ca3af !important;
 }
 
-/* Ensure stars are visible in all themes */
-.star-rating button {
-  color: inherit;
-}
-
 /* Star color classes */
 .star-filled {
   color: #f59e0b !important;
+  background: white !important;
+  background-color: white !important;
 }
 
 .star-unfilled {
   color: #9ca3af !important;
+  background: white !important;
+  background-color: white !important;
+}
+
+/* Ensure star rating buttons have white background */
+.star-rating button {
+  color: inherit;
+  background: white !important;
+  background-color: white !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.star-rating button:hover {
+  background: white !important;
+  background-color: white !important;
+}
+
+.star-rating button:focus {
+  background: white !important;
+  background-color: white !important;
+}
+
+.star-rating button:active {
+  background: white !important;
+  background-color: white !important;
+}
+
+/* Specific targeting for survey renderer */
+#survey-root .star-rating button,
+#survey-root button.star-filled,
+#survey-root button.star-unfilled {
+  background: white !important;
+  background-color: white !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#survey-root .star-rating button:hover,
+#survey-root button.star-filled:hover,
+#survey-root button.star-unfilled:hover {
+  background: white !important;
+  background-color: white !important;
+}
+
+#survey-root .star-rating button:focus,
+#survey-root button.star-filled:focus,
+#survey-root button.star-unfilled:focus {
+  background: white !important;
+  background-color: white !important;
+}
+
+#survey-root .star-rating button:active,
+#survey-root button.star-filled:active,
+#survey-root button.star-unfilled:active {
+  background: white !important;
+  background-color: white !important;
+}
+
+/* Ultra-specific targeting for all star rating buttons */
+button[class*="star-filled"],
+button[class*="star-unfilled"],
+.star-rating button,
+button.star-filled,
+button.star-unfilled {
+  background: white !important;
+  background-color: white !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Force white background on ALL buttons with star classes - highest specificity */
+button.star-filled,
+button.star-unfilled,
+button[class*="star-filled"],
+button[class*="star-unfilled"] {
+  background: white !important;
+  background-color: white !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Override any CSS variables that might be setting blue background */
+button.star-filled,
+button.star-unfilled,
+button[class*="star-filled"],
+button[class*="star-unfilled"],
+.star-rating button {
+  background: white !important;
+  background-color: white !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  /* Override any CSS custom properties */
+  --color-primary: white !important;
+  --color-secondary: white !important;
+  --color-accent: white !important;
+}
+
+button[class*="star-filled"]:hover,
+button[class*="star-unfilled"]:hover,
+.star-rating button:hover,
+button.star-filled:hover,
+button.star-unfilled:hover {
+  background: white !important;
+  background-color: white !important;
+}
+
+button[class*="star-filled"]:focus,
+button[class*="star-unfilled"]:focus,
+.star-rating button:focus,
+button.star-filled:focus,
+button.star-unfilled:focus {
+  background: white !important;
+  background-color: white !important;
+}
+
+button[class*="star-filled"]:active,
+button[class*="star-unfilled"]:active,
+.star-rating button:active,
+button.star-filled:active,
+button.star-unfilled:active {
+  background: white !important;
+  background-color: white !important;
+}
+
+/* Dark mode star backgrounds */
+.dark .star-filled {
+  background: #1f2937 !important;
+}
+
+.dark .star-unfilled {
+  background: #1f2937 !important;
+}
+
+.dark .star-rating button {
+  background: #1f2937 !important;
+}
+
+.dark .star-rating button:hover {
+  background: #1f2937 !important;
+}
+
+.dark .star-rating button:focus {
+  background: #1f2937 !important;
+}
+
+.dark .star-rating button:active {
+  background: #1f2937 !important;
 }
 
 /* Remove all focus rings and outlines from buttons */

@@ -23,7 +23,7 @@ const Tabs: React.FC<TabsProps> = ({
   // ✅ helper to compute classes
   const getTabClass = (tab: Tab) => {
     if (activeTab === tab.id) {
-      return 'border-[var(--color-primary)] text-[var(--color-primary)] dark:text-[var(--color-primary)] dark:border-[var(--color-primary)]';
+      return 'border-black text-black dark:text-white dark:border-white';
     }
     if (tab.disabled) {
       return 'border-transparent text-gray-400 cursor-not-allowed';

@@ -18,6 +18,7 @@ interface SurveyFiltersProps {
   onClearFilters: () => void;
   statusValue: string; 
   setStatusValue: (value: string) => void; 
+  onSearchTrigger?: () => void;
 }
 
 const SurveyFilters: React.FC<SurveyFiltersProps> = ({
@@ -36,6 +37,7 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
   onClearFilters,
   statusValue, 
   setStatusValue,
+  onSearchTrigger,
 }) => {
   // When filterBy changes, reset statusValue
   React.useEffect(() => {
@@ -61,6 +63,11 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
             placeholder="Search surveys by title or status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && onSearchTrigger) {
+                onSearchTrigger();
+              }
+            }}
             className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
           />
         </div>

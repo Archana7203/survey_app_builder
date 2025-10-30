@@ -263,8 +263,6 @@ const saveProgress = useCallback(async () => {
       if (response === undefined || response === null || response === '') {
         return false;
       }
-      
-      // Special validation for arrays (multi-choice questions)
       if (Array.isArray(response) && response.length === 0) {
         return false;
       }
@@ -465,89 +463,20 @@ const saveProgress = useCallback(async () => {
   
   const themeColors = getThemeColors();
 
-  // Compute visible questions for current page
   const visibleQuestions = currentPage.questions.filter(q => isQuestionVisible(q));
 
   const surveyTextColor = survey.textColor;
 
   const finalStyle = { 
-    backgroundColor: pageBg || themeColors.backgroundColor, 
+    backgroundColor: survey.backgroundColor || pageBg || themeColors.backgroundColor, 
     color: surveyTextColor || themeColors.color 
   };
   
-  // Debug logging
-  console.log('SurveyRenderer - Theme colors:', {
-    surveyTheme: survey?.theme,
-    surveyBackgroundColor: survey?.backgroundColor,
-    surveyTextColor: survey?.textColor,
-    themeColors,
-    pageBg,
-    finalStyle
-  });
-  
-  // Debug CSS custom properties
-  console.log('SurveyRenderer - CSS Custom Properties:', {
-    primary: themeColors.primary,
-    secondary: (() => {
-      const palette: Record<string, { secondary: string }> = {
-        default: { secondary: '#dbeafe' },
-        emerald: { secondary: '#d1fae5' },
-        purple: { secondary: '#ede9fe' },
-        rose: { secondary: '#ffe4e6' },
-        amber: { secondary: '#fef3c7' },
-        indigo: { secondary: '#e0e7ff' },
-        teal: { secondary: '#ccfbf1' },
-        slate: { secondary: '#e2e8f0' },
-      };
-      const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-      return theme.secondary;
-    })(),
-    accent: (() => {
-      const palette: Record<string, { accent: string }> = {
-        default: { accent: '#3b82f6' },
-        emerald: { accent: '#10b981' },
-        purple: { accent: '#8b5cf6' },
-        rose: { accent: '#f43f5e' },
-        amber: { accent: '#f59e0b' },
-        indigo: { accent: '#6366f1' },
-        teal: { accent: '#14b8a6' },
-        slate: { accent: '#64748b' },
-      };
-      const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-      return theme.accent;
-    })()
-  });
-  
-  // Debug button theme colors
-  console.log('SurveyRenderer - Button Theme Colors:', {
-    surveyTheme: survey?.theme,
-    primaryButtonColor: themeColors.primary,
-    secondaryButtonColor: (() => {
-      const palette: Record<string, { secondary: string }> = {
-        default: { secondary: '#dbeafe' },
-        emerald: { secondary: '#d1fae5' },
-        purple: { secondary: '#ede9fe' },
-        rose: { secondary: '#ffe4e6' },
-        amber: { secondary: '#fef3c7' },
-        indigo: { secondary: '#e0e7ff' },
-        teal: { secondary: '#ccfbf1' },
-        slate: { secondary: '#e2e8f0' },
-      };
-      const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-      return theme.secondary;
-    })(),
-    expectedColors: {
-      rose: { primary: '#e11d48', secondary: '#ffe4e6' },
-      purple: { primary: '#7c3aed', secondary: '#ede9fe' },
-      emerald: { primary: '#059669', secondary: '#d1fae5' },
-      default: { primary: '#2563eb', secondary: '#dbeafe' }
-    }
-  });
 
   return (
     <div
       id="survey-root"
-      className="min-h-screen py-8"
+      className="min-h-screen py-8 survey-no-dark-mode"
       style={{
         ...finalStyle,
         minHeight: '100vh',
@@ -556,6 +485,32 @@ const saveProgress = useCallback(async () => {
     >
       <style>
         {` 
+        /* Force light mode for survey pages - override dark mode styles */
+        .survey-no-dark-mode,
+        .survey-no-dark-mode * {
+          /* Prevent dark mode from applying to surveys */
+        }
+        
+        .survey-no-dark-mode .question-container {
+          background-color: #ffffff !important;
+          border-color: #e5e7eb !important;
+          color: #000000 !important;
+        }
+        
+        .survey-no-dark-mode input,
+        .survey-no-dark-mode textarea,
+        .survey-no-dark-mode select {
+          background-color: #ffffff !important;
+          border-color: #d1d5db !important;
+          color: #000000 !important;
+        }
+        
+        /* Only apply primary color to navigation buttons, not rating buttons */
+        .survey-no-dark-mode button[data-variant="primary"],
+        .survey-no-dark-mode button[data-variant="secondary"] {
+          background-color: var(--color-primary) !important;
+        }
+        
         #survey-root { 
           --color-primary: ${themeColors.primary}; 
           --color-secondary: ${(() => {
@@ -587,8 +542,18 @@ const saveProgress = useCallback(async () => {
             return theme.accent;
           })()}; 
           --color-on-primary: #ffffff; 
-          --color-background: ${pageBg || themeColors.backgroundColor};
+          --color-background: ${survey.backgroundColor || pageBg || themeColors.backgroundColor};
           --color-text: ${surveyTextColor || themeColors.color};
+        }
+        
+        /* Ensure global background color is applied */
+        #survey-root {
+          background-color: ${survey.backgroundColor || pageBg || themeColors.backgroundColor} !important;
+        }
+        
+        /* Ensure global text color is applied to all text elements */
+        #survey-root {
+          color: ${surveyTextColor || themeColors.color} !important;
         }
         
         /* Progress bar removed - no longer needed */
@@ -629,6 +594,81 @@ const saveProgress = useCallback(async () => {
         #survey-root button[data-variant="primary"],
         #survey-root button[data-variant="secondary"] {
           transition: all 0.15s ease-in-out !important;
+        }
+        
+        /* Fix rating component backgrounds - Ultra specific */
+        #survey-root .star-rating button,
+        #survey-root button.star-filled,
+        #survey-root button.star-unfilled,
+        #survey-root button[class*="star-filled"],
+        #survey-root button[class*="star-unfilled"],
+        /* Smiley rating buttons */
+        #survey-root fieldset button[type="button"],
+        /* Number rating buttons */
+        #survey-root fieldset button[aria-pressed] {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          /* Override any CSS custom properties that might be setting blue */
+          --color-primary: #ffffff !important;
+          --color-secondary: #ffffff !important;
+          --color-accent: #ffffff !important;
+        }
+        
+        #survey-root .star-rating button:hover,
+        #survey-root button.star-filled:hover,
+        #survey-root button.star-unfilled:hover,
+        #survey-root button[class*="star-filled"]:hover,
+        #survey-root button[class*="star-unfilled"]:hover,
+        #survey-root fieldset button[type="button"]:hover,
+        #survey-root fieldset button[aria-pressed]:hover {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+        }
+        
+        #survey-root .star-rating button:focus,
+        #survey-root button.star-filled:focus,
+        #survey-root button.star-unfilled:focus,
+        #survey-root button[class*="star-filled"]:focus,
+        #survey-root button[class*="star-unfilled"]:focus,
+        #survey-root fieldset button[type="button"]:focus,
+        #survey-root fieldset button[aria-pressed]:focus {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+        }
+        
+        #survey-root .star-rating button:active,
+        #survey-root button.star-filled:active,
+        #survey-root button.star-unfilled:active,
+        #survey-root button[class*="star-filled"]:active,
+        #survey-root button[class*="star-unfilled"]:active,
+        #survey-root fieldset button[type="button"]:active,
+        #survey-root fieldset button[aria-pressed]:active {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+        }
+        
+        /* Override any browser default button styles - but not rating buttons */
+        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]) {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+        }
+        
+        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]):hover {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+        }
+        
+        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]):focus {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+        }
+        
+        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]):active {
+          background: #ffffff !important;
+          background-color: #ffffff !important;
         }
         `}
       </style>

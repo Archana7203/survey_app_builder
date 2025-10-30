@@ -6,7 +6,7 @@ import ThemeToggle from '../ui/ThemeToggle';
 const DashboardLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, logout, loading } = useAuth();
+  const { user, logout, ssoLogout, loading } = useAuth();
 
   if (loading) {
     return (
@@ -24,6 +24,7 @@ const DashboardLayout: React.FC = () => {
     { name: 'Overview', href: '/dashboard/overview', icon: '📊' },
     { name: 'Surveys', href: '/dashboard/surveys', icon: '📝' },
     { name: 'Templates', href: '/dashboard/templates', icon: '📋' },
+    { name: 'Users', href: '/dashboard/users', icon: '👥' },
   ];
 
   const isActive = (href: string) => location.pathname === href;
@@ -67,11 +68,29 @@ const DashboardLayout: React.FC = () => {
               {/* User menu */}
               <div className="flex items-center space-x-3 text-sm text-gray-700 dark:text-gray-300">
                 <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">{user?.email?.[0]?.toUpperCase() || 'U'}</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    {(user?.name || user?.email)?.[0]?.toUpperCase() || 'U'}
+                  </span>
                 </div>
-                <span className="hidden sm:inline">{user?.email || 'User'}</span>
+                <div className="hidden sm:block">
+                  <div className="font-medium">{user?.name || user?.email || 'User'}</div>
+                  {user?.name && user?.email && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
+                  )}
+                </div>
                 <button 
-                  onClick={async () => { try { await logout(); } catch (err) { console.error(err); } }} 
+                  onClick={async () => { 
+                    try { 
+                      // Try SSO logout first, fallback to regular logout
+                      if (user?.name) {
+                        ssoLogout();
+                      } else {
+                        await logout(); 
+                      }
+                    } catch (err) { 
+                      console.error(err); 
+                    } 
+                  }} 
                   className="px-3 py-1 rounded transition-all duration-200 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-300 text-blue-600 dark:text-blue-400"
                 >
                   Logout

@@ -27,13 +27,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     // Check localStorage first, then system preference
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
-      console.log('🔧 ThemeContext: Loading saved theme from localStorage:', savedTheme);
       return savedTheme;
     }
 
     // Check system preference
     if (globalThis.matchMedia('(prefers-color-scheme: dark)').matches) {
-      console.log('🔧 ThemeContext: Using system dark theme preference');
       return 'dark';
     }
 
@@ -57,19 +55,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    console.log('🔧 ThemeContext: Toggling theme from', theme, 'to', theme === 'light' ? 'dark' : 'light');
     updateTheme(theme === 'light' ? 'dark' : 'light');
   }, [theme, updateTheme]);
 
   useEffect(() => {
     // Apply initial theme to document root
-    console.log('🔧 ThemeContext: Applying initial theme:', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
-      console.log('🔧 ThemeContext: Initial dark class added');
     } else {
       document.documentElement.classList.remove('dark');
-      console.log('🔧 ThemeContext: Initial dark class removed');
     }
   }, [theme]);
 

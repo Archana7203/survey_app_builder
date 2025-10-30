@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://just-levels-southeast-topics.trycloudflare.com',  
+        target: 'https://primarily-computational-prostores-rouge.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'bryan-cst-caused-promised.trycloudflare.com', 
+      'metres-saturn-radical-sword.trycloudflare.com', 
     ],
   },
 });

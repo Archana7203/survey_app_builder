@@ -1,0 +1,130 @@
+// server.js - Node.js Server Side Script
+// Install required packages: npm install @microsoft/microsoft-graph-client @azure/msal-node isomorphic-fetch
+
+const express = require('express');
+const msal = require('@azure/msal-node');
+const { Client } = require('@microsoft/microsoft-graph-client');
+require('isomorphic-fetch');
+const dotenv = require('dotenv');
+
+const app = express();
+dotenv.config();
+
+// Azure AD Configuration
+const msalConfig = {
+  auth: {
+    clientId: process.env.YOUR_CLIENT_ID, // Application (client) ID from Azure Portal
+    clientSecret: process.env.YOUR_CLIENT_SECRET, // Client secret from Azure Portal
+    authority: `https://login.microsoftonline.com/${process.env.YOUR_TENANT_ID}`, // Replace YOUR_TENANT_ID
+  }
+};
+
+const cca = new msal.ConfidentialClientApplication(msalConfig);
+
+// Get access token using client credentials flow (app-only)
+async function getAccessToken() {
+  const tokenRequest = {
+    scopes: ['https://graph.microsoft.com/.default']
+  };
+
+  try {
+    const response = await cca.acquireTokenByClientCredential(tokenRequest);
+    return response.accessToken;
+  } catch (error) {
+    console.error('Error acquiring token:', error);
+    throw error;
+  }
+}
+
+// Initialize Graph Client
+function getGraphClient(accessToken) {
+  return Client.init({
+    authProvider: (done) => {
+      done(null, accessToken);
+    }
+  });
+}
+
+// Retrieve all users from O365 directory
+async function getAllUsers() {
+  try {
+    const accessToken = await getAccessToken();
+    const client = getGraphClient(accessToken);
+
+    // Get users with specific fields
+    const users = await client
+      .api('/users')
+      .select('id,displayName,mail,userPrincipalName,accountEnabled,employeeId,gender')
+      .get();
+
+    // Transform to match required format
+    const transformedUsers = users.value.map(user => ({
+      id: user.id,
+      name: user.displayName,
+      email: user.mail || user.userPrincipalName,
+      employee_id: user.employeeId || null,
+      gender: user.gender || null,
+      status: user.accountEnabled ? 'active' : 'inactive'
+    }));
+
+    return transformedUsers;
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
+}
+
+// Retrieve single user by ID
+async function getUserById(userId) {
+  try {
+    const accessToken = await getAccessToken();
+    const client = getGraphClient(accessToken);
+
+    const user = await client
+      .api(`/users/${userId}`)
+      .select('id,displayName,mail,userPrincipalName,accountEnabled,employeeId,gender')
+      .get();
+
+    return {
+      internalId: user.id,
+      name: user.displayName,
+      email: user.mail || user.userPrincipalName,
+      employeeId: user.employeeId || null,
+      gender: user.gender || null,
+      status: user.accountEnabled ? 'active' : 'inactive'
+    };
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+}
+
+// API Endpoints
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await getAllUsers();
+    res.json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/users/:id', async (req, res) => {
+  try {
+    const user = await getUserById(req.params.id);
+    res.json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Export functions for use in other modules
+module.exports = {
+  getAllUsers,
+  getUserById
+};

@@ -26,6 +26,12 @@ interface Question {
     text: string;
     value?: string;
   }>;
+  settings?: {
+    maxRating?: number;
+    scaleMin?: number;
+    scaleMax?: number;
+    scaleStep?: number;
+  };
 }
 
 interface UICondition {
@@ -51,29 +57,64 @@ interface VisibilityRulesModalProps {
 }
 
 function getValueInputType(depQ: Question | undefined) {
-    if (!depQ) return 'text';
-    switch (depQ.type) {
-      case 'ratingNumber':
-      case 'ratingStar':
-      case 'ratingSmiley':
-      case 'slider':
-        return 'number';
-      case 'datePicker':
-        return 'date';
-      case 'email':
-        return 'email';
-      default:
-        return 'text';
-    }
+  if (!depQ) return 'text';
+  switch (depQ.type) {
+    case 'ratingNumber':
+    case 'ratingStar':
+    case 'ratingSmiley':
+    case 'slider':
+      return 'number';
+    case 'datePicker':
+      return 'date';
+    case 'email':
+      return 'email';
+    default:
+      return 'text';
   }
+}
 
-  function getValueOptions(depQ: Question | undefined) {
-    if (!depQ?.options) return null;
-    return depQ.options.map(option => ({ 
-      value: option.id,      
-      label: option.text   
-    }));
+function getValueOptions(depQ: Question | undefined) {
+  if (!depQ?.options) return null;
+  return depQ.options.map(option => ({
+    value: option.id,
+    label: option.text
+  }));
+}
+
+function getValueInputMin(depQ: Question | undefined): number | undefined {
+  if (!depQ) return undefined;
+
+  switch (depQ.type) {
+    case 'ratingNumber':
+    case 'ratingStar':
+      // Rating questions typically start from 1
+      return 1;
+    case 'ratingSmiley':
+      // Smiley ratings use values 1-5
+      return 1;
+    case 'slider':
+      // Get min from question settings
+      return depQ.settings?.scaleMin ?? 0;
+    default:
+      return undefined;
   }
+}
+
+function getValueInputMax(depQ: Question | undefined): number | undefined {
+  if (!depQ) return undefined;
+
+  switch (depQ.type) {
+    case 'ratingNumber':
+    case 'ratingStar':
+      return depQ.settings?.maxRating ?? 10;
+    case 'ratingSmiley':
+      return depQ.settings?.maxRating ?? 5;
+    case 'slider':
+      return depQ.settings?.scaleMax ?? 100;
+    default:
+      return undefined;
+  }
+}
 
 export default function VisibilityRulesModal({ isOpen, onClose, question, existingRules, candidateQuestions, onSave }: VisibilityRulesModalProps) {
   const [groups, setGroups] = useState<UIRuleGroup[]>([]);
@@ -211,11 +252,34 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
   function handleSave() {
     if (!question) return;
 
+    // Validate all numeric values are within range
+    for (const group of groups) {
+      for (const cond of group.conditions) {
+        if (cond.value === '' || cond.value === undefined || cond.value === null) continue;
+        
+        const depQ = candidateQuestions.find(q => q.id === cond.questionId);
+        const min = getValueInputMin(depQ);
+        const max = getValueInputMax(depQ);
+        
+        // Only validate if this is a numeric input (rating or slider)
+        if (min !== undefined && max !== undefined) {
+          const numValue = typeof cond.value === 'number' ? cond.value : Number(cond.value);
+          if (!isNaN(numValue)) {
+            if (numValue < min || numValue > max) {
+              const questionTitle = depQ?.title || 'the selected question';
+              alert(`Please enter a value between ${min} and ${max} for the question ${questionTitle}.`);
+              return;
+            }
+          }
+        }
+      }
+    }
+
     const flattened: VisibilityRule[] = [];
     for (const group of groups) {
       const validConds = group.conditions.filter(c => c.value !== '' && c.value !== undefined && c.value !== null);
       if (validConds.length === 0) continue;
-      
+
       for (let condIndex = 0; condIndex < validConds.length; condIndex++) {
         const cond = validConds[condIndex];
         flattened.push({
@@ -238,7 +302,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
   if (!question) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Visibility Rules: ${question.title}`} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Visibility Rules: ${question.title}`} size="xl">
       <div className="space-y-6">
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Show this question when any rule group below evaluates to true. Within a group, conditions are joined by AND/OR.
@@ -270,60 +334,67 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                 const depQ = candidateQuestions.find(q => q.id === cond.questionId);
                 const valueOptions = getValueOptions(depQ);
                 const valueInputType = getValueInputType(depQ);
+                const valueInputMin = getValueInputMin(depQ);
+                const valueInputMax = getValueInputMax(depQ);
                 return (
-                <div key={cond.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                  <div className="md:col-span-4">
-                    <Select
-                      label={condIndex === 0 ? 'Based on question' : 'And also based on'}
-                      options={candidateQuestions.map(q => ({ value: q.id, label: q.title }))}
-                      value={cond.questionId}
-                      onChange={(e) => updateCondition(groupIndex, condIndex, { questionId: e.target.value })}
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <Select
-                      label={condIndex === 0 ? 'If answer' : 'Then also'}
-                      options={operatorOptions}
-                      value={cond.operator}
-                      onChange={(e) => updateCondition(groupIndex, condIndex, { operator: e.target.value as UICondition['operator'] })}
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    {valueOptions ? (
+                  <div key={cond.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-3">
                       <Select
-                        label="Value"
-                        options={valueOptions}
-                        value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
-                        onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
-                        placeholder="Select an option"
+                        label={condIndex === 0 ? 'Based on question' : 'And also based on'}
+                        options={candidateQuestions.map(q => ({ value: q.id, label: q.title }))}
+                        value={cond.questionId}
+                        onChange={(e) => updateCondition(groupIndex, condIndex, { questionId: e.target.value })}
                       />
-                    ) : (
-                      <Input
-                        label="Value"
-                        type={valueInputType}
-                        value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
-                        onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
-                        placeholder="Enter value"
-                      />
-                    )}
-                  </div>
-                  <div className="md:col-span-1">
-                    {group.conditions.length >= 2 && condIndex < group.conditions.length - 1 && (
+                    </div>
+                    <div className="md:col-span-2">
                       <Select
-                        label="Join"
-                        options={[{ value: 'OR', label: 'OR' }, { value: 'AND', label: 'AND' }]}
-                        value={cond.logical || 'OR'}
-                        onChange={(e) => updateCondition(groupIndex, condIndex, { logical: e.target.value as 'AND' | 'OR' })}
+                        label={condIndex === 0 ? 'If answer' : 'Then also'}
+                        options={operatorOptions}
+                        value={cond.operator}
+                        onChange={(e) => updateCondition(groupIndex, condIndex, { operator: e.target.value as UICondition['operator'] })}
                       />
-                    )}
+                    </div>
+                    <div className="md:col-span-4">
+                      {valueOptions ? (
+                        <Select
+                          label="Value"
+                          options={valueOptions}
+                          value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
+                          onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
+                          placeholder="Select an option"
+                        />
+                      ) : (
+                        <div>
+                          <Input
+                            label="Value"
+                            type={valueInputType}
+                            value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
+                            onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
+                            placeholder="Enter value"
+                            min={valueInputMin}
+                            max={valueInputMax}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="md:col-span-2">
+                      {group.conditions.length >= 2 && condIndex < group.conditions.length - 1 && (
+                        <Select
+                          label="Join"
+                          options={[{ value: 'OR', label: 'OR' }, { value: 'AND', label: 'AND' }]}
+                          value={cond.logical || 'OR'}
+                          onChange={(e) => updateCondition(groupIndex, condIndex, { logical: e.target.value as 'AND' | 'OR' })}
+                        />
+                      )}
+                    </div>
+                    <div className="md:col-span-1">
+                      {group.conditions.length > 1 && (
+                        <Button variant="ghost" size="sm" onClick={() => removeCondition(groupIndex, condIndex)} className="text-red-600">✕</Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="md:col-span-1">
-                    {group.conditions.length > 1 && (
-                      <Button variant="ghost" size="sm" onClick={() => removeCondition(groupIndex, condIndex)} className="text-red-600">✕</Button>
-                    )}
-                  </div>
-                </div>
-              );})}
+                );
+              })}
               <Button variant="outline" size="sm" onClick={() => addCondition(groupIndex)}>+ Add Condition</Button>
             </div>
           </div>

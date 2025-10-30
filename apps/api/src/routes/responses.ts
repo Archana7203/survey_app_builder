@@ -97,4 +97,36 @@ router.post('/:surveyId/submit', validateRespondent, async (req: RespondentReque
   }
 });
 
+// GET /api/responses/:surveyId/by-email?email=... - Fetch a single respondent response for creators
+router.get('/:surveyId/by-email', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { surveyId } = req.params;
+    const email = (req.query.email as string)?.toLowerCase().trim();
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    log.info('Fetching respondent response', 'GET_RESPONSE_BY_EMAIL', {
+      userId: req.user!._id.toString(),
+      surveyId,
+      emailHash: require('crypto').createHash('sha256').update(email).digest('hex').substring(0, 12),
+    });
+
+    const service = new ResponseService();
+    const doc = await service.getBySurveyAndEmail(req.user!._id.toString(), surveyId, email);
+    if (!doc) {
+      return res.status(404).json({ error: 'Response not found' });
+    }
+    res.json(doc);
+  } catch (error) {
+    log.error('Failed to fetch respondent response', 'GET_RESPONSE_BY_EMAIL', {
+      userId: req.user?._id.toString(),
+      surveyId: req.params.surveyId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    res.status(500).json({ error: 'Failed to fetch respondent response' });
+  }
+});
+
 export default router;

@@ -106,32 +106,48 @@ const Surveys: React.FC = () => {
     });
   }, []);
 
-  const fetchSurveys = async (page = 1, limit = 5) => {
+  // Fetch when filters change (except search - handled by manual trigger)
+  useEffect(() => {
+    fetchSurveys(1, pagination.limit);
+  }, [filterBy, statusValue, dateFrom, dateTo]); 
+
+  const fetchSurveys = async (page: number, limit: number) => {
     try {
       setLoading(true);
-      const data = await listSurveysApi(page, limit);
+      setError(null);
 
-      setSurveys(data.surveys || data);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
 
-      if (data.pagination) {
-        setPagination(data.pagination);
-      } else {
-        const total = data.surveys ? data.surveys.length : data.length;
-        const totalPages = Math.ceil(total / limit);
-        setPagination((prev) => ({
-          ...prev,
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1,
-        }));
+      // Add status filter
+      if (filterBy === "status" && statusValue) {
+        params.append("status", statusValue);
       }
+
+      // Add search filter
+      if (searchQuery.trim()) {
+        params.append("search", searchQuery.trim());
+      }
+
+      // Add date filters
+      if (dateFrom && (filterBy === "createdAt" || filterBy === "closeDate")) {
+        params.append("dateFrom", dateFrom);
+        params.append("dateField", filterBy);
+      }
+
+      if (dateTo && (filterBy === "createdAt" || filterBy === "closeDate")) {
+        params.append("dateTo", dateTo);
+        params.append("dateField", filterBy);
+      }
+
+      const response = await listSurveysApi(params.toString());
+
+      setSurveys(response.surveys);
+      setPagination(response.pagination);
     } catch (error: any) {
-      const errorMessage = error.message || "Error loading surveys";
-      setError(errorMessage);
-      console.error("Error loading surveys:", errorMessage);
+      setError(error.message || "Failed to fetch surveys");
     } finally {
       setLoading(false);
     }
@@ -207,15 +223,7 @@ const Surveys: React.FC = () => {
     setDuplicating(surveyId);
     setError(null);
     try {
-      const newSurvey = await duplicateSurvey(surveyId);
-      setSurveys((prev) => [newSurvey as any, ...prev]);
-
-      setPagination((prev) => ({
-        ...prev,
-        total: prev.total + 1,
-        totalPages: Math.ceil((prev.total + 1) / prev.limit),
-      }));
-
+      await duplicateSurvey(surveyId);
       fetchSurveys(1, pagination.limit);
     } catch (error) {
       setError(
@@ -229,28 +237,16 @@ const Surveys: React.FC = () => {
   const handleDelete = async (surveyId: string) => {
     setDeleting(surveyId);
     setError(null);
-
     try {
       await deleteSurveyApi(surveyId);
-
-      setSurveys((prev) => prev.filter((s) => s.id !== surveyId));
-
-      setPagination((prev) => {
-        const newTotal = Math.max(0, prev.total - 1);
-        const newTotalPages = Math.ceil(newTotal / prev.limit);
-        return {
-          ...prev,
-          total: newTotal,
-          totalPages: newTotalPages,
-        };
-      });
-
-      const newTotalPages = Math.ceil(
-        Math.max(0, pagination.total - 1) / pagination.limit
-      );
-
-      if (pagination.page > newTotalPages && newTotalPages > 0) {
-        fetchSurveys(newTotalPages, pagination.limit);
+      // Calculate if current page will be empty after deletion
+      const remainingOnCurrentPage = surveys.length - 1;      
+      // If current page will be empty and it's not page 1, go to previous page
+      if (remainingOnCurrentPage === 0 && pagination.page > 1) {
+        fetchSurveys(pagination.page - 1, pagination.limit);
+      } else {
+        // Stay on current page and refetch to get next item
+        fetchSurveys(pagination.page, pagination.limit);
       }
     } catch (error: any) {
       setError(error.message || "Failed to delete survey");
@@ -258,6 +254,7 @@ const Surveys: React.FC = () => {
       setDeleting(null);
     }
   };
+
 
   const handleExport = async (surveyId: string) => {
     setExporting(surveyId);
@@ -380,7 +377,8 @@ const Surveys: React.FC = () => {
         setDateTo={setDateTo}
         onClearFilters={clearFilters}
         statusValue={statusValue} 
-        setStatusValue={setStatusValue} 
+        setStatusValue={setStatusValue}
+        onSearchTrigger={() => fetchSurveys(1, pagination.limit)}
       />
 
       {/* Survey List */}
@@ -412,7 +410,7 @@ const Surveys: React.FC = () => {
               {displaySurveys.length !== 1 ? "s" : ""}
               {searchQuery && ` matching "${searchQuery}"`}
             </div>
-            {displaySurveys.map((survey) => (
+            {displaySurveys.filter(survey => survey && survey.title).map((survey) => (
               <Card key={survey.id} className="p-4">
                 <div className="space-y-3">
                   <div>
@@ -531,8 +529,18 @@ const Surveys: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {displaySurveys.map((survey) => (
-                    <tr key={survey.id} className="transition-colors">
+                  {displaySurveys.filter(survey => survey && survey.title).map((survey) => (
+                    <tr 
+                      key={survey.id} 
+                      className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      onClick={() => {
+                        if (!survey.locked) {
+                          window.location.href = `/dashboard/surveys/${survey.id}/edit`;
+                        } else {
+                          window.location.href = `/dashboard/surveys/${survey.id}/view`;
+                        }
+                      }}
+                    >
                       <td className="px-3 sm:px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -565,6 +573,7 @@ const Surveys: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              e.preventDefault();
                               setOpenDropdown(
                                 openDropdown === survey.id ? null : survey.id
                               );

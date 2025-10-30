@@ -61,10 +61,7 @@ export default function SurveyPreview() {
   const { slug } = useParams<{ slug: string }>();
   
   // Debug logging for URL handling
-  console.log('🔍 SurveyPreview - Component mounted with slug:', slug);
-  console.log('🔍 SurveyPreview - Current URL:', globalThis.location.href);
-  console.log('🔍 SurveyPreview - Hostname:', globalThis.location.hostname);
-  console.log('🔍 SurveyPreview - Pathname:', globalThis.location.pathname);
+ 
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +206,9 @@ export default function SurveyPreview() {
     } as React.CSSProperties;
   };
 
+  const surveyTextColor = survey.textColor;
+  const surveyBackgroundColor = survey.backgroundColor;
+
   // Helper function to get theme colors for QuestionRenderer - matches inline preview exactly
   const getThemeColorsForQuestions = () => {
     // Questions should have white background and black text
@@ -222,7 +222,7 @@ export default function SurveyPreview() {
   return (
     <div 
       id="survey-preview-root"
-      className="min-h-screen py-8"
+      className="min-h-screen py-8 survey-no-dark-mode"
       style={getPageStyle()}
     >
       {/* Survey Container */}
@@ -234,6 +234,24 @@ export default function SurveyPreview() {
             {/* Add theme CSS - match inline preview exactly */}
             <style>
               {`
+                /* Force light mode for preview pages - override dark mode styles */
+                .survey-no-dark-mode .question-container,
+                .survey-no-dark-mode .survey-content {
+                  background-color: #ffffff !important;
+                  border-color: #e5e7eb !important;
+                  color: #000000 !important;
+                }
+                
+                .survey-no-dark-mode input,
+                .survey-no-dark-mode textarea,
+                .survey-no-dark-mode select {
+                  background-color: #ffffff !important;
+                  border-color: #d1d5db !important;
+                  color: #000000 !important;
+                }
+                
+              
+                
                 :root { 
                   --color-primary: ${(() => {
                     const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
@@ -293,11 +311,45 @@ export default function SurveyPreview() {
                   })()}; 
                   --color-on-primary: #ffffff; 
                 }
-              `}
+                `}
             </style>
+            {surveyTextColor && (
+              <style>
+                {`
+                /* Apply text color to survey header */
+                #survey-preview-root .survey-header h1,
+                #survey-preview-root .survey-header h2,
+                #survey-preview-root .survey-header h3,
+                #survey-preview-root .survey-header p {
+                  color: ${surveyTextColor} !important;
+                }
+                
+                /* Apply text color to progress indicators */
+                #survey-preview-root .progress-text {
+                  color: ${surveyTextColor} !important;
+                }
+                `}
+              </style>
+            )}
+            {surveyBackgroundColor && (
+              <style>
+                {`
+                /* Apply survey background color to main container */
+                #survey-preview-root {
+                  background-color: ${surveyBackgroundColor} !important;
+                }
+                
+                /* Ensure question containers keep white background */
+                #survey-preview-root .question-container {
+                  background-color: #ffffff !important;
+                  border: 1px solid #e5e7eb !important;
+                }
+                `}
+              </style>
+            )}
             
             {/* Survey Header */}
-            <div className="text-center mb-6" style={{ color: survey.textColor || '#111827' }}>
+            <div className="text-center mb-6 survey-header" style={{ color: surveyTextColor || '#111827' }}>
               <h2 className="text-xl md:text-2xl font-bold mb-2">
                 {survey.title || 'Untitled Survey'}
               </h2>
@@ -317,11 +369,11 @@ export default function SurveyPreview() {
                         ? 'bg-current'
                         : 'bg-current opacity-20'
                     }`}
-                    style={{ backgroundColor: survey.textColor || '#111827' }}
+                    style={{ backgroundColor: surveyTextColor || '#111827' }}
                   />
                 ))}
               </div>
-              <p className="text-xs opacity-70 mt-1" style={{ color: survey.textColor || '#111827' }}>
+              <p className="text-xs opacity-70 mt-1 progress-text" style={{ color: surveyTextColor || '#111827' }}>
                 Page {currentPageIndex + 1} of {survey.pages.length}
               </p>
             </div>

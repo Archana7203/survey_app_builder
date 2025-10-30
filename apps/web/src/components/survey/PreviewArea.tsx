@@ -494,7 +494,7 @@ const goToPreviousPage = useCallback(() => {
 
 
           {/* Preview Info */}
-          <div className="mt-3 flex items-center justify-center gap-2 text-sm" style={{ color: survey.textColor || '#111827' }}>
+          <div className="mt-3 flex items-center justify-center gap-2 text-sm" style={{ color: '#111827' }}>
             Interactive Preview
             {viewMode === 'mobile' && (
               <>
