@@ -155,6 +155,33 @@ router.get('/:id/respondents/invitations', requireAuth, async (req: AuthRequest,
   }
 });
 
+// POST /api/surveys/:id/respondents/send-invitations - Trigger sending pending invitations
+router.post('/:id/respondents/send-invitations', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id: surveyId } = req.params;
+
+    // Verify survey ownership
+    await surveyService.getSurveyById(req.user._id.toString(), surveyId);
+
+    const concurrency = Number.parseInt((req.query.concurrency as string) || '5', 10);
+    log.info('Triggering send invitations', 'SEND_INVITATIONS', {
+      userId: req.user._id.toString(),
+      surveyId,
+      concurrency,
+    });
+
+    const result = await service.sendPendingInvitations(surveyId, Math.max(1, Math.min(concurrency, 20)));
+    res.json(result);
+  } catch (error: any) {
+    log.error('Error sending invitations', 'SEND_INVITATIONS', {
+      userId: req.user?._id?.toString(),
+      surveyId: req.params.id,
+      error: error.message,
+    });
+    res.status(500).json({ error: error.message || 'Failed to send invitations' });
+  }
+});
+
 // GET /api/surveys/:id/respondents/count - Get respondent counts
 router.get('/:id/respondents/count', requireAuth, async (req: AuthRequest, res) => {
   try {

@@ -1,7 +1,6 @@
 import React, { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRespondents } from '../../contexts/RespondentContext';
-import type { AzureUser } from '../../api-paths/respondentsApi';
 import Button from '../ui/Button';
 import Alert from '../ui/Alert';
 

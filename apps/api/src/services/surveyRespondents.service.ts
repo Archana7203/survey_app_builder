@@ -80,40 +80,30 @@ export class SurveyRespondentsService {
         invitations: [],
       });
     } else {
-      // Merge with existing respondents and groups (don't replace)
-      const existingRespondentIds = (surveyRespondents.allowedRespondents || []).map((id: any) => 
-        typeof id === 'string' ? id : id.toString()
-      );
-      const existingGroupIds = (surveyRespondents.allowedGroups || []).map((id: any) => 
-        typeof id === 'string' ? id : id.toString()
-      );
-      
-      // Combine existing with new (deduplicated)
-      const mergedRespondentIds = [...new Set([...existingRespondentIds, ...uniqueRespondentIds])];
-      const mergedGroupIds = [...new Set([...existingGroupIds, ...uniqueGroupIds])];
-      
-
-      // Update existing entry with merged data
-      surveyRespondents = await this.repo.update(surveyId, {
-        allowedRespondents: mergedRespondentIds.map((id) => new mongoose.Types.ObjectId(id)),
-        allowedGroups: mergedGroupIds.map((id) => new mongoose.Types.ObjectId(id)),
+      // REPLACE existing respondents and groups with new data
+      await this.repo.update(surveyId, {
+        allowedRespondents: uniqueRespondentIds.map((id) => new mongoose.Types.ObjectId(id)),
+        allowedGroups: uniqueGroupIds.map((id) => new mongoose.Types.ObjectId(id)),
       });
+      // Re-fetch to get the invitations array (update doesn't return it)
+      surveyRespondents = await this.repo.getBySurveyIdIdsOnly(surveyId);
+      if (!surveyRespondents) {
+        throw new Error('Failed to fetch survey respondents after update');
+      }
     }
 
     // Expand groups to get all member IDs
     const allRespondentIds = new Set<string>(uniqueRespondentIds);
 
-    // Also expand existing groups to get all member IDs
-    const existingGroupIds = (surveyRespondents.allowedGroups || []).map((id: any) => {
-      if (typeof id === 'string') return id;
-      if (id && typeof id === 'object' && id._id) return id._id.toString();
-      return id?.toString();
-    }).filter(id => id && mongoose.Types.ObjectId.isValid(id));
-    for (const groupId of existingGroupIds) {
+    // Expand groups from the updated surveyRespondents to get all member IDs
+    const allGroupIds = uniqueGroupIds;
+    if (allGroupIds.length > 0) {
       try {
-        const group = await this.groupRepo.getById(groupId);
-        if (group && group.members) {
-          group.members.forEach((memberId: any) => {
+        const { RespondentGroup } = await import('../models/RespondentGroup');
+        const groups = await RespondentGroup.find({ _id: { $in: allGroupIds } }).select('members');
+        for (const group of groups) {
+          const members = (group as any).members || [];
+          for (const memberId of members) {
             let memberIdStr: string;
             if (typeof memberId === 'string') {
               memberIdStr = memberId;
@@ -122,43 +112,18 @@ export class SurveyRespondentsService {
             } else {
               memberIdStr = memberId?.toString();
             }
-            
             if (memberIdStr && mongoose.Types.ObjectId.isValid(memberIdStr)) {
               allRespondentIds.add(memberIdStr);
             }
-          });
+          }
         }
       } catch (error) {
-        log.warn('Failed to fetch existing group members', 'mergeRecipients', { groupId, error });
-      }
-    }
-
-    for (const groupId of uniqueGroupIds) {
-      try {
-        const group = await this.groupRepo.getById(groupId);
-        if (group && group.members) {
-          group.members.forEach((memberId: any) => {
-            let memberIdStr: string;
-            if (typeof memberId === 'string') {
-              memberIdStr = memberId;
-            } else if (memberId && typeof memberId === 'object' && memberId._id) {
-              memberIdStr = memberId._id.toString();
-            } else {
-              memberIdStr = memberId?.toString();
-            }
-            
-            if (memberIdStr && mongoose.Types.ObjectId.isValid(memberIdStr)) {
-              allRespondentIds.add(memberIdStr);
-            }
-          });
-        }
-      } catch (error) {
-        log.warn('Failed to fetch group members', 'mergeRecipients', { groupId, error });
+        log.warn('Failed to bulk fetch group members', 'mergeRecipients', { error });
       }
     }
 
     // Get existing invitations
-    const existingInvitations = surveyRespondents.invitations || [];
+    const existingInvitations = (surveyRespondents?.invitations || []) as IInvitation[];
     const existingInvitationMap = new Map(
       existingInvitations.map((inv: any) => [inv.respondentId.toString(), inv])
     );
@@ -190,72 +155,11 @@ export class SurveyRespondentsService {
       invitations: updatedInvitations,
     });
 
-    log.info('Recipients merged successfully', 'mergeRecipients', {
+    log.info('Recipients updated successfully', 'mergeRecipients', {
       surveyId,
       totalRespondents: allRespondentIds.size,
       invitationsCount: updatedInvitations.length,
     });
-
-    // Check if survey is live or published and auto-trigger invitations
-    try {
-      const { Survey } = await import('../models/Survey');
-      const { generateSurveyToken, sendSurveyInvite } = await import('../utils/email');
-      const { Respondent } = await import('../models/Respondent');
-      
-      const survey = await Survey.findById(surveyId);
-      if (survey && survey.status === 'live') {
-        log.info('Survey is live, sending email invitations automatically', 'mergeRecipients', {
-          surveyId,
-          status: survey.status,
-        });
-        
-        // Get new pending invitations
-        const newInvitations = updatedInvitations.filter((inv: any) => inv.status === 'pending');
-        
-        // Send emails for new pending invitations
-        let sentCount = 0;
-        let failedCount = 0;
-        
-        for (const inv of newInvitations) {
-          try {
-            const respondentId = typeof inv.respondentId === 'object' && inv.respondentId !== null 
-              ? (inv.respondentId as any).toString() 
-              : inv.respondentId?.toString() || '';
-            
-            const respondent = await Respondent.findById(respondentId);
-            if (!respondent || !respondent.mail) {
-              failedCount++;
-              continue;
-            }
-            
-            // Generate token and send email
-            const token = generateSurveyToken(surveyId, respondent.mail);
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-            const surveyLink = `${frontendUrl}/s/${survey.slug}?token=${token}`;
-            
-            await sendSurveyInvite(respondent.mail, survey.title, surveyLink);
-            
-            // Update status to 'sent'
-            await this.updateInvitationStatus(surveyId, respondentId, 'sent');
-            sentCount++;
-            
-          } catch (error: any) {
-            const respondentId = typeof inv.respondentId === 'object' && inv.respondentId !== null 
-              ? (inv.respondentId as any).toString() 
-              : inv.respondentId?.toString() || '';
-            await this.updateInvitationStatus(surveyId, respondentId, 'failed');
-            failedCount++;
-          }
-        }
-      }
-    } catch (error: any) {
-      log.error('Failed to check survey status or send invitations', 'mergeRecipients', {
-        surveyId,
-        error: error.message,
-      });
-      // Don't throw - the invitations were created successfully
-      // The job will pick them up later
-    }
 
     return updated;
   }
@@ -274,15 +178,6 @@ export class SurveyRespondentsService {
     }
 
     const updated = await this.repo.addRespondents(surveyId, respondentIds);
-
-    // Add pending invitations for new respondents
-    for (const respondentId of respondentIds) {
-      await this.repo.addInvitation(surveyId, {
-        respondentId: new mongoose.Types.ObjectId(respondentId),
-        sentAt: new Date(),
-        status: 'pending',
-      });
-    }
 
     log.info('Respondents added successfully', 'addRespondents', {
       surveyId,
@@ -348,7 +243,38 @@ export class SurveyRespondentsService {
       throw new Error('No group IDs provided');
     }
 
+    // First, get all member IDs from the groups being removed
+    const memberIdsToRemove = new Set<string>();
+    for (const groupId of groupIds) {
+      try {
+        const group = await this.groupRepo.getById(groupId);
+        if (group && group.members && group.members.length > 0) {
+          const memberIds = group.members.map((id: any) => {
+            if (typeof id === 'string') return id;
+            if (id && typeof id === 'object' && id._id) return id._id.toString();
+            return id?.toString();
+          }).filter(id => id && mongoose.Types.ObjectId.isValid(id));
+          
+          for (const memberId of memberIds) {
+            memberIdsToRemove.add(memberId);
+          }
+        }
+      } catch (error) {
+        log.warn('Failed to fetch group members for removal', 'removeGroups', { groupId, error });
+      }
+    }
+
+    // Remove the groups
     const updated = await this.repo.removeGroups(surveyId, groupIds);
+
+    // Remove invitations for the members of removed groups
+    if (memberIdsToRemove.size > 0) {
+      await this.repo.removeInvitationsByRespondentIds(surveyId, Array.from(memberIdsToRemove));
+      log.info('Removed invitations for group members', 'removeGroups', {
+        surveyId,
+        removedMemberCount: memberIdsToRemove.size,
+      });
+    }
 
     log.info('Groups removed successfully', 'removeGroups', {
       surveyId,
@@ -388,6 +314,125 @@ export class SurveyRespondentsService {
   async getInvitations(surveyId: string) {
     log.debug('Fetching invitations', 'getInvitations', { surveyId });
     return this.repo.getInvitations(surveyId);
+  }
+
+  /**
+   * Send pending invitations for a survey with limited concurrency
+   */
+  async sendPendingInvitations(surveyId: string, concurrency = 5) {
+    log.info('Sending pending invitations', 'sendPendingInvitations', { surveyId, concurrency });
+    const { Survey } = await import('../models/Survey');
+    const { Respondent } = await import('../models/Respondent');
+    const { generateSurveyToken, sendSurveyInvite } = await import('../utils/email');
+
+    const survey = await Survey.findById(surveyId);
+    if (!survey) {
+      throw new Error('Survey not found');
+    }
+
+    // Get currently allowed respondent IDs
+    const surveyRespondents = await this.repo.getBySurveyIdIdsOnly(surveyId);
+    if (!surveyRespondents) {
+      return { sent: 0, failed: 0, total: 0 };
+    }
+
+    const allowedRespondentIds = new Set(
+      (surveyRespondents.allowedRespondents || []).map((id: any) => 
+        typeof id === 'string' ? id : id.toString()
+      )
+    );
+
+    // Expand groups to get all allowed member IDs
+    const allAllowedRespondentIds = new Set(allowedRespondentIds);
+    if (surveyRespondents.allowedGroups && surveyRespondents.allowedGroups.length > 0) {
+      const groupIds = surveyRespondents.allowedGroups.map((id: any) => {
+        if (typeof id === 'string') return id;
+        if (id && typeof id === 'object' && id._id) return id._id.toString();
+        return id?.toString();
+      }).filter(id => id && mongoose.Types.ObjectId.isValid(id));
+
+      try {
+        const { RespondentGroup } = await import('../models/RespondentGroup');
+        const groups = await RespondentGroup.find({ _id: { $in: groupIds } }).select('members');
+        for (const group of groups) {
+          const members = (group as any).members || [];
+          for (const memberId of members) {
+            let memberIdStr: string;
+            if (typeof memberId === 'string') {
+              memberIdStr = memberId;
+            } else if (memberId && typeof memberId === 'object' && memberId._id) {
+              memberIdStr = memberId._id.toString();
+            } else {
+              memberIdStr = memberId?.toString();
+            }
+            if (memberIdStr && mongoose.Types.ObjectId.isValid(memberIdStr)) {
+              allAllowedRespondentIds.add(memberIdStr);
+            }
+          }
+        }
+      } catch (error) {
+        log.warn('Failed to fetch group members', 'sendPendingInvitations', { error });
+      }
+    }
+
+    // Load invitations and filter to only pending invitations for currently allowed respondents
+    const invitations = await this.repo.getInvitations(surveyId);
+    const pending = (invitations || []).filter((inv: any) => {
+      const respondentId = typeof inv.respondentId === 'object' && inv.respondentId !== null
+        ? (inv.respondentId as any)._id?.toString?.() || (inv.respondentId as any).toString()
+        : inv.respondentId?.toString() || '';
+      
+      // Only include if status is pending AND respondent is currently allowed
+      return inv.status === 'pending' && allAllowedRespondentIds.has(respondentId);
+    });
+
+    if (pending.length === 0) {
+      return { sent: 0, failed: 0, total: 0 };
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    // Simple pool
+    const pool: Promise<void>[] = [];
+    const runTask = async (inv: any) => {
+      try {
+        const respondentId = typeof inv.respondentId === 'object' && inv.respondentId !== null
+          ? (inv.respondentId as any)._id?.toString?.() || (inv.respondentId as any).toString()
+          : inv.respondentId?.toString() || '';
+        if (!respondentId) throw new Error('Invalid respondentId');
+        const respondent = await Respondent.findById(respondentId).select('mail');
+        if (!respondent?.mail) throw new Error('Respondent email missing');
+
+        const token = generateSurveyToken(surveyId, respondent.mail);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const surveyLink = `${frontendUrl}/s/${survey.slug}?token=${token}`;
+        await sendSurveyInvite(respondent.mail, survey.title, surveyLink);
+        await this.updateInvitationStatus(surveyId, respondentId, 'sent');
+        sent++;
+      } catch (e) {
+        try {
+          const respondentId = typeof inv.respondentId === 'object' && inv.respondentId !== null
+            ? (inv.respondentId as any)._id?.toString?.() || (inv.respondentId as any).toString()
+            : inv.respondentId?.toString() || '';
+          if (respondentId) await this.updateInvitationStatus(surveyId, respondentId, 'failed');
+        } catch {}
+        failed++;
+      }
+    };
+
+    let index = 0;
+    const runNext = async (): Promise<void> => {
+      if (index >= pending.length) return;
+      const current = pending[index++];
+      await runTask(current);
+      return runNext();
+    };
+    const workers = Array.from({ length: Math.min(concurrency, pending.length) }, () => runNext());
+    await Promise.all(workers);
+
+    log.info('Invitation sending completed', 'sendPendingInvitations', { surveyId, sent, failed, total: pending.length });
+    return { sent, failed, total: pending.length };
   }
 
   /**

@@ -48,6 +48,12 @@ export class ResponseService {
       log.warn('Auto-save validation failed: Invalid status', 'autoSave', { surveyId, emailHash, status });
       throw new Error('Invalid status for auto-save');
     }
+    // Prevent any auto-save writes after final submission
+    const existing = await (await import('../models/Response')).Response.findOne({ survey: surveyId, respondentEmail: email }).select('status');
+    if (existing?.status === 'Completed') {
+      log.warn('Auto-save blocked: response already completed', 'autoSave', { surveyId, emailHash });
+      throw new Error('Survey already submitted');
+    }
     await this.repo.upsertAutoSave(surveyId, email, { responses, metadata, status, updatedAt });
     log.info('Response progress auto-saved successfully', 'autoSave', { 
       surveyId, 

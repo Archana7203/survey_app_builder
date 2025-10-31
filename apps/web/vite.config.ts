@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://primarily-computational-prostores-rouge.trycloudflare.com',  
+        target: 'https://jewelry-electrical-barry-firm.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'metres-saturn-radical-sword.trycloudflare.com', 
+      'benz-festival-survivor-powerseller.trycloudflare.com', 
     ],
   },
 });

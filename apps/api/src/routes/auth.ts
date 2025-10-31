@@ -7,19 +7,40 @@ import log from '../logger';  // ✅ Import logger
 const router = express.Router();
 const service = new AuthService();
 
-// MSAL configuration for SSO
-const msalConfig = {
-  auth: {
-    clientId: process.env.YOUR_CLIENT_ID!,
-    authority: `https://login.microsoftonline.com/${process.env.YOUR_TENANT_ID}`,
-    clientSecret: process.env.YOUR_CLIENT_SECRET!
-  }
+// SSO safety: lazy-init MSAL and guard against missing env
+const isSsoConfigured = () => {
+  return Boolean(
+    process.env.YOUR_CLIENT_ID &&
+    process.env.YOUR_TENANT_ID &&
+    process.env.YOUR_CLIENT_SECRET &&
+    process.env.FRONTEND_URL
+  );
 };
-const cca = new msal.ConfidentialClientApplication(msalConfig);
+
+const createCca = () => {
+  const clientId = process.env.YOUR_CLIENT_ID;
+  const tenantId = process.env.YOUR_TENANT_ID;
+  const clientSecret = process.env.YOUR_CLIENT_SECRET;
+  if (!clientId || !tenantId || !clientSecret) {
+    throw new Error('SSO is not configured');
+  }
+  const msalConfig = {
+    auth: {
+      clientId,
+      authority: `https://login.microsoftonline.com/${tenantId}`,
+      clientSecret,
+    },
+  } as const;
+  return new msal.ConfidentialClientApplication(msalConfig);
+};
 
 // SSO Login - redirect to Microsoft
 router.get('/sso/login', (_req, res) => {
   try {
+    if (!isSsoConfigured()) {
+      log.warn('SSO not configured, blocking /sso/login', 'SSO_LOGIN');
+      return res.status(503).json({ error: 'SSO is not configured' });
+    }
     const params = new URLSearchParams({
       client_id: process.env.YOUR_CLIENT_ID!,
       response_type: 'code',
@@ -41,6 +62,10 @@ router.get('/sso/login', (_req, res) => {
 // SSO Callback - handle Microsoft OAuth callback
 router.get('/sso/callback', async (req, res, next) => {
   try {
+    if (!isSsoConfigured()) {
+      log.warn('SSO not configured, blocking /sso/callback', 'SSO_CALLBACK');
+      return res.redirect(`${process.env.FRONTEND_URL || ''}?error=sso_not_configured`);
+    }
     const code = req.query.code as string;
     
     if (!code) {
@@ -56,6 +81,7 @@ router.get('/sso/callback', async (req, res, next) => {
       scopes: ['openid', 'profile', 'email']
     };
 
+    const cca = createCca();
     const response = await cca.acquireTokenByCode(tokenRequest);
     
     if (!response?.idTokenClaims) {
@@ -128,7 +154,7 @@ router.post('/register', async (req, res) => {
     
     const { user, accessToken, refreshToken } = await service.register(email, password, role);
 
-    res.cookie('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 15 * 60 * 1000 });
+    res.cookie('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 8 * 60 * 60 * 1000 });
     res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
 
     log.info('User registered successfully', 'REGISTER', { 
@@ -155,7 +181,7 @@ router.post('/login', async (req, res) => {
     log.info('Login attempt', 'LOGIN', { email });
     const { user, accessToken, refreshToken } = await service.login(email, password);
 
-    res.cookie('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 15 * 60 * 1000 });
+    res.cookie('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 8 * 60 * 60 * 1000 });
     res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
 
     log.info('Login successful', 'LOGIN', { 
@@ -181,7 +207,7 @@ router.post('/refresh', async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
     const { accessToken } = await service.refresh(refreshToken);
 
-    res.cookie('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 15 * 60 * 1000 });
+    res.cookie('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 8 * 60 * 60 * 1000 });
     
     log.info('Token refreshed successfully', 'REFRESH_TOKEN');
     res.json({ message: 'Token refreshed' });

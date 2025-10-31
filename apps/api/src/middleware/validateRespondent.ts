@@ -67,6 +67,26 @@ export const validateRespondent = async (
       return;
     }
 
+    // Block if respondent has already completed the survey
+    try {
+      const { Response } = await import('../models/Response');
+      const existing = await Response.findOne({ survey: decoded.surveyId, respondentEmail: decoded.email }).select('status');
+      if (existing?.status === 'Completed') {
+        log.warn('Respondent already completed survey - blocking access', 'validateRespondent', {
+          surveyId: decoded.surveyId,
+          email: decoded.email,
+        });
+        res.status(409).json({ error: 'You have already answered this survey' });
+        return;
+      }
+    } catch (e) {
+      log.warn('Check for existing completed response failed', 'validateRespondent', {
+        surveyId: decoded.surveyId,
+        email: decoded.email,
+        error: (e as any)?.message,
+      });
+    }
+
     log.debug('Respondent validated successfully', 'validateRespondent', {
       surveyId: decoded.surveyId,
       email: decoded.email,

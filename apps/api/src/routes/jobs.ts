@@ -2,6 +2,7 @@ import express from 'express';
 import { SendSurveyInvitationsJob } from '../jobs/sendSurveyInvitations.job';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import log from '../logger';
+import { Job } from '../models/Job';
 
 const router = express.Router();
 
@@ -112,4 +113,43 @@ router.get('/pending-invitations/count', requireAuth, async (req: AuthRequest, r
 });
 
 export default router;
+
+// New endpoints for background job enqueueing and status
+router.post('/surveys/:id/invitations/jobs', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id: surveyId } = req.params;
+    const job = await Job.create({
+      type: 'send_invitations',
+      status: 'queued',
+      surveyId,
+      createdBy: req.user._id,
+      progress: { total: 0, processed: 0, success: 0, failed: 0 },
+    } as any);
+    log.info('Enqueued send invitations job', 'ENQUEUE_JOB', { jobId: (job as any)._id.toString(), surveyId });
+    res.status(202).json({ jobId: (job as any)._id.toString(), status: job.status });
+  } catch (error: any) {
+    log.error('Failed to enqueue job', 'ENQUEUE_JOB', { error: error.message });
+    res.status(500).json({ error: 'Failed to enqueue job' });
+  }
+});
+
+router.get('/jobs/:jobId/status', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    res.json({
+      jobId: (job as any)._id.toString(),
+      type: job.type,
+      status: job.status,
+      progress: job.progress,
+      error: job.error,
+      startedAt: job.startedAt,
+      finishedAt: job.finishedAt,
+    });
+  } catch (error: any) {
+    log.error('Failed to get job status', 'JOB_STATUS', { error: error.message });
+    res.status(500).json({ error: 'Failed to get job status' });
+  }
+});
 

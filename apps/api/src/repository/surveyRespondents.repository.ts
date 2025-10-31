@@ -84,6 +84,9 @@ export class SurveyRespondentsRepository {
       {
         $pull: {
           allowedRespondents: { $in: respondentIds.map((id) => new mongoose.Types.ObjectId(id)) },
+          invitations: {
+            respondentId: { $in: respondentIds.map((id) => new mongoose.Types.ObjectId(id)) },
+          },
         },
       },
       { new: true }
@@ -112,6 +115,20 @@ export class SurveyRespondentsRepository {
       },
       { new: true }
     ).populate('allowedGroups', 'name description');
+  }
+
+  async removeInvitationsByRespondentIds(surveyId: string, respondentIds: string[]) {
+    return SurveyRespondents.findOneAndUpdate(
+      { surveyId },
+      {
+        $pull: {
+          invitations: {
+            respondentId: { $in: respondentIds.map((id) => new mongoose.Types.ObjectId(id)) },
+          },
+        },
+      },
+      { new: true }
+    );
   }
 
   async addInvitation(surveyId: string, invitation: IInvitation) {

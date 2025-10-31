@@ -229,17 +229,22 @@ export default function SurveyPreview() {
       <div className="max-w-4xl mx-auto px-4 relative">
 
         
-        <div className="rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 md:p-5 survey-content" style={getPageStyle()}>
+        <div className="rounded-lg overflow-hidden">
+          <div className="p-4 md:p-5 survey-content" style={{ backgroundColor: 'transparent', color: survey.textColor || '#111827' }}>
             {/* Add theme CSS - match inline preview exactly */}
             <style>
               {`
                 /* Force light mode for preview pages - override dark mode styles */
-                .survey-no-dark-mode .question-container,
-                .survey-no-dark-mode .survey-content {
+                .survey-no-dark-mode .question-container {
                   background-color: #ffffff !important;
                   border-color: #e5e7eb !important;
                   color: #000000 !important;
+                }
+                /* Ensure non-question areas stay transparent */
+                #survey-preview-root .survey-header,
+                #survey-preview-root .survey-content {
+                  background-color: transparent !important;
+                  border: none !important;
                 }
                 
                 .survey-no-dark-mode input,

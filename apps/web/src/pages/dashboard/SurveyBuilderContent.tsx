@@ -18,7 +18,6 @@ import PublishedModeView from "../../components/survey/PublishedModeView";
 import RespondentProgress from "../../components/dashboard/RespondentProgress";
 import type { Question } from "./SurveyBuilder";
 import RespondentsModal from "../../components/modals/RespondentsModal";
-import { sendSurveyInvitations } from "../../api-paths/surveysApi";
 import {
   validateSurveyForPublish,
   prepareStatusUpdatePayload,
@@ -301,35 +300,6 @@ export default function SurveyBuilderContent({
       const result = await response.json();
       console.log("Survey updated:", result);
       setSurvey(result.survey);
-      
-      // Send email invitations when transitioning from published to live
-      if (newStatus === "live" && freshSurvey.status === "published") {
-        const hasRespondents = result.survey.allowedRespondents?.length > 0;
-        const hasGroups = result.survey.allowedGroups?.length > 0;
-        
-        if (hasRespondents || hasGroups) {
-          try {
-            const inviteResult = await sendSurveyInvitations(updatedSurveyId);
-            console.log("✅ Invitations sent:", inviteResult.message);
-          } catch (inviteErr) {
-            console.error("❌ Error sending invitations:", inviteErr);
-          }
-        }
-      }
-      
-      // Also send invitations when already live and adding new respondents (existing behavior)
-      if (
-        newStatus === "live" &&
-        freshSurvey.status === "live" &&
-        result.survey.allowedRespondents?.length > 0
-      ) {
-        try {
-          const inviteResult = await sendSurveyInvitations(updatedSurveyId);
-          console.log("✅ Invitations sent:", inviteResult.message);
-        } catch (inviteErr) {
-          console.error("❌ Error in main:", inviteErr);
-        }
-      }
 
       const successMessage = getStatusSuccessMessage(result.survey.status);
       if (successMessage) {
@@ -855,6 +825,7 @@ export default function SurveyBuilderContent({
         isOpen={respondentsModalOpen}
         onClose={() => setRespondentsModalOpen(false)}
         surveyId={surveyId || ""}
+        surveyStatus={survey?.status}
       />
     </div>
   );

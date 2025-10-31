@@ -41,7 +41,7 @@ export class AuthService {
       throw new Error('Email and password required');
     }
     const user = await this.repo.findByEmail(email);
-    if (!user || !(await comparePassword(password, user.passwordHash))) {
+    if (!user || !(await comparePassword(password, user.passwordHash!))) {
       log.warn('Login failed: Invalid credentials', 'login', { emailHash });
       throw new Error('Invalid credentials');
     }

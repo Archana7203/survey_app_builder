@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { SurveyService } from '../services/survey.service';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { ensureSurveyEditable } from '../middleware/ensureSurveyEditable';
@@ -59,7 +60,13 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       Object.keys(filters).length > 0 ? filters : undefined
     );
     
-    const mapped = surveysWithResponses.map((survey: any) => ({
+    // Ensure just-in-time transitions (e.g., auto-close on endDate) are reflected in the list
+    // by reloading each survey (this applies close-first ordering and persists updates)
+    const refreshed = await Promise.all(
+      surveysWithResponses.map((s: any) => service.getSurveyByObjectId(s._id.toString()))
+    );
+    
+    const mapped = refreshed.map((survey: any) => ({
       id: survey._id.toString(),
       title: survey.title,
       description: survey.description,
@@ -243,6 +250,38 @@ router.get('/public/:slug', async (req, res) => {
     
     log.info('Public survey access', 'GET_PUBLIC_SURVEY', { slug });
     const survey = await service.getPublicSurvey(slug);
+    
+    // If token is provided, check if respondent has already completed the survey
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      try {
+        const jwtSecret = process.env.JWT_SECRET;
+        if (jwtSecret) {
+          const decoded = jwt.verify(token, jwtSecret) as { surveyId: string; email: string };
+          
+          // Check if this token is for the correct survey
+          const surveyId = (survey as any)._id?.toString();
+          if (decoded.surveyId === surveyId) {
+            const { Response } = await import('../models/Response');
+            const existing = await Response.findOne({ survey: decoded.surveyId, respondentEmail: decoded.email }).select('status');
+            if (existing?.status === 'Completed') {
+              log.warn('Respondent already completed survey - denying access', 'GET_PUBLIC_SURVEY', {
+                slug,
+                email: decoded.email,
+              });
+              return res.status(409).json({ error: 'You have already completed this survey' });
+            }
+          }
+        }
+      } catch (e) {
+        // Token validation failed or token not provided - continue without checking
+        log.debug('Token validation skipped or failed', 'GET_PUBLIC_SURVEY', {
+          slug,
+          error: (e as any)?.message,
+        });
+      }
+    }
+    
     res.json({
       id: survey._id,
       title: survey.title,
@@ -260,6 +299,17 @@ router.get('/public/:slug', async (req, res) => {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
+    
+    // If it's a specific error message, return it
+    if (error instanceof Error) {
+      if (error.message === 'Survey not found or not accessible') {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message === 'This survey is closed') {
+        return res.status(403).json({ error: error.message });
+      }
+    }
+    
     res.status(500).json({ error: 'Failed to fetch survey' });
   }
 });

@@ -20,7 +20,7 @@ export const generateAccessToken = (userId: string): string => {
     throw new Error('JWT_SECRET environment variable is not defined');
   }
 
-  return jwt.sign({ userId }, secret);
+  return jwt.sign({ userId }, secret, { expiresIn: '8h' });
 };
 
 export const generateRefreshToken = (userId: string): string => {

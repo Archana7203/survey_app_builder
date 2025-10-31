@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Button from '../ui/Button';
 import Alert from '../ui/Alert';
-import { fetchRespondentsApi, updateSurveyRespondentsApi } from '../../api-paths/surveysApi';
+import { fetchRespondentsApi, updateSurveyRespondentsApi, sendSurveyInvitations } from '../../api-paths/surveysApi';
 import { useRespondents } from '../../contexts/RespondentContext';
+import { fetchRespondentsApi as fetchAllRespondentsApi } from '../../api-paths/respondentsApi';
 // import type { Respondent, RespondentGroup } from '../../api-paths/respondentsApi';
 
 interface RespondentsModalProps {
   isOpen: boolean;
   onClose: () => void;
   surveyId: string;
+  surveyStatus?: string;
 }
 
-const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, surveyId }) => {
+const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, surveyId, surveyStatus }) => {
   const { respondents, groups, fetchRespondents, fetchGroups } = useRespondents();
   
   const [selectedRespondentIds, setSelectedRespondentIds] = useState<string[]>([]);
@@ -21,6 +23,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [allRespondents, setAllRespondents] = useState<Array<{ _id: string; name: string; mail: string; isArchived?: boolean }>>([]);
   
   // Dropdown states
   const [respondentSearchQuery, setRespondentSearchQuery] = useState('');
@@ -38,6 +41,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       
       loadSurveyRespondents();
       fetchRespondents();
+      loadAllRespondents();
       fetchGroups();
     }
   }, [isOpen, surveyId]);
@@ -99,6 +103,39 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
     }
   };
 
+  const loadAllRespondents = async () => {
+    try {
+      const pageSize = 500;
+      let page = 1;
+      const all: Array<{ _id: string; name: string; mail: string; isArchived?: boolean }> = [];
+      // Paginate until hasNext is false
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // Using global respondents API (not survey-scoped)
+        const res = await fetchAllRespondentsApi({ page, limit: pageSize });
+        const items = Array.isArray((res as any).respondents) ? (res as any).respondents : [];
+        for (const it of items) {
+          if (it && typeof it === 'object' && typeof (it as any)._id === 'string') {
+            all.push({
+              _id: (it as any)._id,
+              name: (it as any).name || (it as any).displayName || (it as any).mail || 'Unknown',
+              mail: (it as any).mail || (it as any).email || '',
+              isArchived: Boolean((it as any).isArchived),
+            });
+          }
+        }
+        if (!res.pagination?.hasNext) break;
+        page += 1;
+        // Safety cap to avoid runaway loops
+        if (page > 100) break;
+      }
+      setAllRespondents(all);
+    } catch (e) {
+      // Non-fatal; fall back to context respondents
+      // console.warn('Failed to load all respondents', e);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -124,7 +161,17 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
 
       await updateSurveyRespondentsApi(surveyId, validRespondentIds, validGroupIds);
       
-      setSuccess('Respondents and groups updated successfully. Invitations will be sent when the survey goes live.');
+      // If survey is live, send invitations automatically
+      if (surveyStatus === 'live') {
+        try {
+          const sendResult = await sendSurveyInvitations(surveyId);
+          setSuccess(`Respondents updated and invitations sent to ${sendResult.message || 'all recipients'}`);
+        } catch (sendError) {
+          setSuccess('Respondents updated, but failed to send some invitations');
+        }
+      } else {
+        setSuccess('Respondents and groups updated successfully.');
+      }
       
       // Refresh the data to show updated state
       await loadSurveyRespondents();
@@ -142,14 +189,15 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
 
   // Filter available respondents
   const filteredRespondents = useMemo(() => {
-    return respondents.filter(r => {
+    const source = allRespondents.length > 0 ? allRespondents : respondents;
+    return source.filter(r => {
       const matchesSearch = respondentSearchQuery === '' || 
-        r.name.toLowerCase().includes(respondentSearchQuery.toLowerCase()) ||
-        r.mail.toLowerCase().includes(respondentSearchQuery.toLowerCase());
+        (r.name || '').toLowerCase().includes(respondentSearchQuery.toLowerCase()) ||
+        (r.mail || '').toLowerCase().includes(respondentSearchQuery.toLowerCase());
       const notSelected = !selectedRespondentIds.includes(r._id);
       return matchesSearch && notSelected && !r.isArchived;
     });
-  }, [respondents, respondentSearchQuery, selectedRespondentIds]);
+  }, [respondents, allRespondents, respondentSearchQuery, selectedRespondentIds]);
 
   // Filter available groups
   const filteredGroups = useMemo(() => {
@@ -163,8 +211,9 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
 
   // Get selected respondent objects
   const selectedRespondentsData = useMemo(() => {
-    return respondents.filter(r => selectedRespondentIds.includes(r._id));
-  }, [respondents, selectedRespondentIds]);
+    const source = allRespondents.length > 0 ? allRespondents : respondents;
+    return source.filter(r => selectedRespondentIds.includes(r._id));
+  }, [respondents, allRespondents, selectedRespondentIds]);
 
   // Get selected group objects
   const selectedGroupsData = useMemo(() => {
@@ -237,13 +286,6 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
             </div>
           ) : (
             <>
-              {/* Info Banner */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Automated Email Invitations:</strong> Survey invitations will be automatically sent to all respondents when the survey goes live.
-              </p>
-            </div>
-
               {/* Respondents Section */}
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -434,7 +476,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
                   onClick={handleSave}
                   disabled={saving}
                 >
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? 'Saving...' : surveyStatus === 'live' ? 'Save and Send' : 'Save Changes'}
                 </Button>
           </div>
             </>

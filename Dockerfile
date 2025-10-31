@@ -60,6 +60,9 @@
     # Expose backend port
     EXPOSE 3001
 
-    # Start backend server
-    CMD ["npm", "run", "start"]
+    # Select process by env (web default; set PROCESS_TYPE=worker to run background worker)
+    ENV PROCESS_TYPE=web
+
+    # Start appropriate process
+    CMD ["sh", "-c", "if [ \"$PROCESS_TYPE\" = \"worker\" ]; then npm run start:worker; else npm run start; fi"]
     

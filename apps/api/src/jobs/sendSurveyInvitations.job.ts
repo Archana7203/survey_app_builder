@@ -31,17 +31,19 @@ interface InvitationResult {
 export class SendSurveyInvitationsJob {
   private readonly repo = new SurveyRespondentsRepository();
   private batchSize = 10; // Process in batches to avoid overwhelming email service
+  private onlySurveyId?: string;
 
   /**
    * Main job execution method
    */
-  async execute(): Promise<{
+  async execute(onlySurveyId?: string): Promise<{
     totalProcessed: number;
     successCount: number;
     failedCount: number;
     results: InvitationResult[];
   }> {
-    log.info('Starting SendSurveyInvitations job', 'SendSurveyInvitationsJob');
+    this.onlySurveyId = onlySurveyId;
+    log.info('Starting SendSurveyInvitations job', 'SendSurveyInvitationsJob', { onlySurveyId: this.onlySurveyId });
 
     try {
       // Find all SurveyRespondents with pending invitations
@@ -112,7 +114,7 @@ export class SendSurveyInvitationsJob {
     }>
   > {
     // Aggregate query to find all pending invitations with survey and respondent details
-    const results = await SurveyRespondents.aggregate([
+    const pipeline: any[] = [
       {
         // Unwind invitations array to process each invitation separately
         $unwind: '$invitations',
@@ -123,6 +125,15 @@ export class SendSurveyInvitationsJob {
           'invitations.status': 'pending',
         },
       },
+    ];
+
+    if (this.onlySurveyId) {
+      pipeline.push({
+        $match: { surveyId: new mongoose.Types.ObjectId(this.onlySurveyId) },
+      });
+    }
+
+    pipeline.push(
       {
         // Join with Survey collection to get survey details
         $lookup: {
@@ -172,8 +183,10 @@ export class SendSurveyInvitationsJob {
           respondentEmail: '$respondent.mail',
           respondentName: '$respondent.name',
         },
-      },
-    ]);
+      }
+    );
+
+    const results = await SurveyRespondents.aggregate(pipeline);
 
     log.debug('Pending invitations query result', 'findPendingInvitations', {
       count: results.length,

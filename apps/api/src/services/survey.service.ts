@@ -75,6 +75,14 @@ export class SurveyService {
       filters
     );
     
+    // Apply just-in-time transitions (e.g., auto-close on endDate) for each survey
+    for (const s of surveysWithResponses) {
+      try {
+        await this.ensureJustInTimeTransitions(s, userId, s._id?.toString?.() ?? '');
+        console.log(s.status);
+      } catch {}
+    }
+    
     const totalSurveys = await this.repo.countByCreator(userId, filters);
     
     log.info('Successfully retrieved surveys', 'getAllSurveys', {
@@ -217,18 +225,25 @@ export class SurveyService {
   // Helper: Apply immediate transitions on read
   private async ensureJustInTimeTransitions(survey: any, userId: string, surveyId: string): Promise<void> {
     const now = new Date();
-    // Auto-live if published and startDate passed
-    if (survey.status === 'published' && survey.startDate && now >= new Date(survey.startDate)) {
-      survey.status = 'live';
-      await this.handleLiveTransition(survey, userId, surveyId);
-      return;
-    }
-    // Auto-close if endDate passed
-    if ((survey.status === 'live' || survey.status === 'published') && survey.endDate && now >= new Date(survey.endDate)) {
+    // Auto-close if endDate passed (takes precedence)
+    if (survey.endDate && now >= new Date(survey.endDate) && (survey.status === 'live' || survey.status === 'published')) {
       const originalStatus = survey.status;
       survey.status = 'closed';
       (survey as any).closeDate = survey.endDate;
       await this.handleStatusTransitions(survey, originalStatus, 'closed', userId, surveyId);
+      return;
+    }
+    // Auto-live if published and startDate passed
+    if (survey.status === 'published' && survey.startDate && now >= new Date(survey.startDate)) {
+      survey.status = 'live';
+      await this.handleLiveTransition(survey, userId, surveyId);
+      // Optional: immediately close if endDate already passed
+      if (survey.endDate && now >= new Date(survey.endDate)) {
+        const originalStatus = 'live';
+        survey.status = 'closed';
+        (survey as any).closeDate = survey.endDate;
+        await this.handleStatusTransitions(survey, originalStatus, 'closed', userId, surveyId);
+      }
     }
   }
 
@@ -276,49 +291,10 @@ export class SurveyService {
     log.info('Respondent added successfully', 'addRespondent', { 
       userId, 
       surveyId, 
-      respondentId, 
-      surveyStatus: survey.status 
+      respondentId 
     });
 
-    // AUTO-SEND EMAIL IF SURVEY IS LIVE
-    if (survey.status === 'live') {
-      log.info('Auto-sending invitation (survey is live)', 'addRespondent', { 
-        userId, 
-        surveyId, 
-        respondentId 
-      });
-      try {
-        await this.sendInvitations(userId, surveyId);
-        log.info('Auto-sent invitation successfully', 'addRespondent', { 
-          userId, 
-          surveyId, 
-          respondentId 
-        });
-        return {
-          message: 'Respondent added and invitation sent successfully',
-          emailSent: true,
-        };
-      } catch (emailError) {
-        log.error('Failed to auto-send email invitation', 'addRespondent', {
-          userId,
-          surveyId,
-          respondentId,
-          error: emailError instanceof Error ? emailError.message : String(emailError),
-        });
-        return {
-          message: 'Respondent added but email failed to send',
-          emailSent: false,
-          error:
-            emailError instanceof Error
-              ? emailError.message
-              : String(emailError),
-        };
-      }
-    }
-    return {
-      message: 'Respondent added successfully',
-      emailSent: false,
-    };
+    return { message: 'Respondent added successfully' };
   }
 
   // 9. Remove respondent
@@ -719,7 +695,7 @@ export class SurveyService {
     });
   }
 
-  // Extract method: Handle live transition with validations and email sending
+  // Extract method: Handle live transition with validations
   private async handleLiveTransition(survey: any, userId: string, surveyId: string): Promise<void> {
     log.info('Survey status changed to live - validating', 'updateSurvey', {
       userId,
@@ -736,21 +712,10 @@ export class SurveyService {
 
     await this.repo.updateSurvey(surveyId, survey);
 
-    // Send invitations only if there are respondents
-    const respondentCount = await this.surveyRespondentsService.countRespondents(surveyId);
-    if (respondentCount > 0) {
-      log.info('Sending automated invitations', 'updateSurvey', {
-        userId,
-        surveyId,
-        respondentCount
-      });
-      await this.sendAutomatedInvitations(userId, surveyId, survey);
-    } else {
-      log.info('No respondents to invite - survey is live without invitations', 'updateSurvey', {
-        userId,
-        surveyId
-      });
-    }
+    log.info('Survey is now live - invitations must be sent manually', 'updateSurvey', {
+      userId,
+      surveyId
+    });
   }
 
   // Extract method: Validate survey can go live
@@ -808,25 +773,6 @@ export class SurveyService {
       userId,
       surveyId
     });
-  }
-  private async sendAutomatedInvitations(userId: string, surveyId: string, survey: any): Promise<void> {
-    try {
-      const results = await this.sendInvitations(userId, surveyId);
-      const successCount = results.filter((r: any) => r.success).length;
-      const totalRespondents = await this.surveyRespondentsService.countRespondents(surveyId);
-      log.info('Automated invitations completed', 'updateSurvey', {
-        userId,
-        surveyId,
-        successCount,
-        totalRespondents
-      });
-    } catch (emailError) {
-      log.error('Error sending automated invitations', 'updateSurvey', {
-        userId,
-        surveyId,
-        error: emailError instanceof Error ? emailError.message : String(emailError)
-      });
-    }
   }
 
   // 13. Delete survey

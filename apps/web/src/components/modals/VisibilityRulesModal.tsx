@@ -10,7 +10,17 @@ type ValueType = string | number | boolean;
 interface VisibilityRule {
   questionId: string;
   condition: {
-    operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
+    operator:
+      | 'equals'
+      | 'not_equals'
+      | 'contains'
+      | 'not_contains'
+      | 'greater_than'
+      | 'less_than'
+      | 'count_eq'
+      | 'count_gt'
+      | 'count_lt'
+      | 'has_selected';
     value: ValueType
   };
   logical?: 'AND' | 'OR';
@@ -37,7 +47,17 @@ interface Question {
 interface UICondition {
   id: string; // unique identifier for stable keys
   questionId: string; // depends on this (previous) question
-  operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
+  operator:
+    | 'equals'
+    | 'not_equals'
+    | 'contains'
+    | 'not_contains'
+    | 'greater_than'
+    | 'less_than'
+    | 'count_eq'
+    | 'count_gt'
+    | 'count_lt'
+    | 'has_selected';
   value: string | number | boolean;
   logical?: 'AND' | 'OR';
 }
@@ -64,8 +84,6 @@ function getValueInputType(depQ: Question | undefined) {
     case 'ratingSmiley':
     case 'slider':
       return 'number';
-    case 'datePicker':
-      return 'date';
     case 'email':
       return 'email';
     default:
@@ -121,6 +139,14 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
 
   const firstCandidateId = candidateQuestions?.[0]?.id || '';
 
+  const getQuestionById = (id: string | undefined): Question | undefined =>
+    candidateQuestions.find(q => q.id === id);
+
+  const getDefaultOperatorForType = (type: string | undefined): UICondition['operator'] => {
+    if (type === 'multiChoice') return 'count_eq';
+    return 'equals';
+  };
+
   // Generate unique IDs for conditions
   const generateConditionId = (): string => {
     // Prefer crypto.getRandomValues when available (browser), fallback to Math.random
@@ -135,12 +161,16 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     return `branch-cond-${Date.now()}-${randomPart}`;
   };
 
-  const createEmptyGroup = useCallback((groupIndex: number): UIRuleGroup => ({
-    conditions: [
-      { id: generateConditionId(), questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' },
-    ],
-    groupIndex,
-  }), [firstCandidateId]);
+  const createEmptyGroup = useCallback((groupIndex: number): UIRuleGroup => {
+    const depQ = getQuestionById(firstCandidateId);
+    const defaultOp = getDefaultOperatorForType(depQ?.type);
+    return {
+      conditions: [
+        { id: generateConditionId(), questionId: firstCandidateId, operator: defaultOp, value: '', logical: 'OR' },
+      ],
+      groupIndex,
+    };
+  }, [firstCandidateId]);
 
   useEffect(() => {
     if (!question) return;
@@ -185,12 +215,56 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     setGroups(grouped.length ? grouped : [createEmptyGroup(0)]);
   }, [question, existingRules, createEmptyGroup]);
 
-  const operatorOptions = [
-    { value: 'equals', label: 'Equals' },
-    { value: 'contains', label: 'Contains' },
-    { value: 'greater_than', label: 'Greater than' },
-    { value: 'less_than', label: 'Less than' },
-  ];
+  function getOperatorOptions(depQ: Question | undefined) {
+    const textOps = [
+      { value: 'equals', label: '=' },
+      { value: 'not_equals', label: '!=' },
+      { value: 'contains', label: 'Contains' },
+      { value: 'not_contains', label: 'Not contains' },
+    ];
+
+    const checkboxOps = [
+      { value: 'count_eq', label: 'Count() =' },
+      { value: 'count_gt', label: 'Count() >' },
+      { value: 'count_lt', label: 'Count() <' },
+      { value: 'has_selected', label: 'Has Selected' },
+    ];
+
+    const choiceOps = [
+      { value: 'has_selected', label: 'Has Selected' },
+    ];
+
+    const numberOps = [
+      { value: 'equals', label: '=' },
+      { value: 'not_equals', label: '!=' },
+      { value: 'less_than', label: '<' },
+      { value: 'greater_than', label: '>' },
+    ];
+
+    if (!depQ) return textOps;
+
+    switch (depQ.type) {
+      case 'textShort':
+      case 'textLong':
+      case 'email':
+        return textOps;
+      case 'singleChoice': 
+      case 'dropdown':  
+        return choiceOps;
+      case 'multiChoice':
+        return checkboxOps;
+      case 'ratingNumber':
+      case 'ratingStar':
+      case 'ratingSmiley':
+      case 'slider':
+        return numberOps;
+      default:
+        return textOps;
+    }
+  }
+
+  const isCountOperator = (operator: UICondition['operator']): boolean =>
+    operator === 'count_eq' || operator === 'count_gt' || operator === 'count_lt';
 
   function updateCondition(
     groupIndex: number,
@@ -219,9 +293,11 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
 
 
   function addCondition(groupIndex: number) {
+    const depQ = getQuestionById(firstCandidateId);
+    const defaultOp = getDefaultOperatorForType(depQ?.type);
     setGroups(prev => prev.map((g, gi) => (
       gi === groupIndex
-        ? { ...g, conditions: [...g.conditions, { id: generateConditionId(), questionId: firstCandidateId, operator: 'equals', value: '', logical: 'OR' }] }
+        ? { ...g, conditions: [...g.conditions, { id: generateConditionId(), questionId: firstCandidateId, operator: defaultOp, value: '', logical: 'OR' }] }
         : g
     )));
   }
@@ -277,7 +353,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
 
     const flattened: VisibilityRule[] = [];
     for (const group of groups) {
-      const validConds = group.conditions.filter(c => c.value !== '' && c.value !== undefined && c.value !== null);
+      const validConds = group.conditions.filter(c => (c.value !== '' && c.value !== undefined && c.value !== null));
       if (validConds.length === 0) continue;
 
       for (let condIndex = 0; condIndex < validConds.length; condIndex++) {
@@ -336,6 +412,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                 const valueInputType = getValueInputType(depQ);
                 const valueInputMin = getValueInputMin(depQ);
                 const valueInputMax = getValueInputMax(depQ);
+              const ops = getOperatorOptions(depQ);
                 return (
                   <div key={cond.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                     <div className="md:col-span-3">
@@ -343,40 +420,50 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                         label={condIndex === 0 ? 'Based on question' : 'And also based on'}
                         options={candidateQuestions.map(q => ({ value: q.id, label: q.title }))}
                         value={cond.questionId}
-                        onChange={(e) => updateCondition(groupIndex, condIndex, { questionId: e.target.value })}
+                        onChange={(e) => {
+                          const nextQId = e.target.value;
+                          const nextQ = getQuestionById(nextQId);
+                          const nextOp = getDefaultOperatorForType(nextQ?.type);
+                          const resetValue = isCountOperator(nextOp) ? '' : '';
+                          updateCondition(groupIndex, condIndex, { questionId: nextQId, operator: nextOp, value: resetValue });
+                        }}
                       />
                     </div>
                     <div className="md:col-span-2">
                       <Select
                         label={condIndex === 0 ? 'If answer' : 'Then also'}
-                        options={operatorOptions}
+                      options={ops}
                         value={cond.operator}
-                        onChange={(e) => updateCondition(groupIndex, condIndex, { operator: e.target.value as UICondition['operator'] })}
+                        onChange={(e) => {
+                          const nextOp = e.target.value as UICondition['operator'];
+                          const nextVal = isCountOperator(nextOp) ? '' : cond.value;
+                          updateCondition(groupIndex, condIndex, { operator: nextOp, value: nextVal });
+                        }}
                       />
                     </div>
-                    <div className="md:col-span-4">
-                      {valueOptions ? (
-                        <Select
+                  <div className="md:col-span-4">
+                    {depQ?.options && !isCountOperator(cond.operator) ? (
+                      <Select
+                        label="Value"
+                        options={valueOptions || []}
+                        value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
+                        onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
+                        placeholder="Select an option"
+                      />
+                    ) : (
+                      <div>
+                        <Input
                           label="Value"
-                          options={valueOptions}
+                          type={isCountOperator(cond.operator) ? 'number' : valueInputType}
                           value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
                           onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
-                          placeholder="Select an option"
+                          placeholder={isCountOperator(cond.operator) ? 'Enter count' : 'Enter value'}
+                          min={isCountOperator(cond.operator) ? 0 : valueInputMin}
+                          max={isCountOperator(cond.operator) ? undefined : valueInputMax}
                         />
-                      ) : (
-                        <div>
-                          <Input
-                            label="Value"
-                            type={valueInputType}
-                            value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
-                            onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
-                            placeholder="Enter value"
-                            min={valueInputMin}
-                            max={valueInputMax}
-                          />
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
+                  </div>
                     <div className="md:col-span-2">
                       {group.conditions.length >= 2 && condIndex < group.conditions.length - 1 && (
                         <Select
