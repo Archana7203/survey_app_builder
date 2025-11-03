@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Button from '../ui/Button';
-import Alert from '../ui/Alert';
 import { fetchRespondentsApi, updateSurveyRespondentsApi, sendSurveyInvitations } from '../../api-paths/surveysApi';
 import { useRespondents } from '../../contexts/RespondentContext';
 import { fetchRespondentsApi as fetchAllRespondentsApi } from '../../api-paths/respondentsApi';
@@ -39,12 +38,33 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       setError(null);
       setSuccess(null);
       
-      loadSurveyRespondents();
+      // Only load survey respondents if NOT in draft mode
+      if (surveyStatus !== 'draft') {
+        loadSurveyRespondents();
+      } else {
+        setLoading(false);
+      }
+      
       fetchRespondents();
       loadAllRespondents();
       fetchGroups();
     }
-  }, [isOpen, surveyId]);
+  }, [isOpen, surveyId, surveyStatus]);
+  
+  // Show browser alerts for error and success messages
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      setError(null);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (success) {
+      alert(success);
+      setSuccess(null);
+    }
+  }, [success]);
 
   const loadSurveyRespondents = async () => {
     setLoading(true);
@@ -266,19 +286,6 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
               ✕
             </button>
           </div>
-
-          {/* Alerts */}
-          {error && (
-            <Alert variant="error" onClose={() => setError(null)} className="mb-4">
-              {error}
-            </Alert>
-          )}
-
-          {success && (
-            <Alert variant="success" onClose={() => setSuccess(null)} className="mb-4">
-              {success}
-            </Alert>
-          )}
 
           {loading ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">

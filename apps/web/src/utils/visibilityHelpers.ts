@@ -34,13 +34,6 @@ export const evaluateCondition = (
     return String(val).trim().toLowerCase();
   };
 
-  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  const includesWholeWord = (text: string, word: string): boolean => {
-    const pattern = new RegExp(`(^|[^a-zA-Z0-9_])${escapeRegExp(word)}([^a-zA-Z0-9_]|$)`, 'i');
-    return pattern.test(text);
-  };
-
   const equalsMatch = (a: any, b: any): boolean => normalizeString(a) === normalizeString(b);
   
   switch (operator) {
@@ -83,13 +76,13 @@ export const evaluateCondition = (
       if (Array.isArray(responseValue)) {
         return responseValue.some(v => equalsMatch(v, condValue));
       }
-      return includesWholeWord(String(responseValue), String(condValue));
+      return normalizeString(responseValue).includes(normalizeString(condValue));
     }
     case 'not_contains': {
       if (Array.isArray(responseValue)) {
         return !responseValue.some(v => equalsMatch(v, condValue));
       }
-      return !includesWholeWord(String(responseValue), String(condValue));
+      return !normalizeString(responseValue).includes(normalizeString(condValue));
     }
     
     case 'greater_than': {

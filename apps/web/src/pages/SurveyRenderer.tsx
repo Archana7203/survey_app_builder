@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import Alert from '../components/ui/Alert';
 import { evaluateCondition } from '../utils/visibilityHelpers';
 import { fetchPublicSurveyApi } from '../api-paths/surveysApi';
 import { autoSaveResponse, submitSurveyApi } from '../api-paths/responsesApi';
@@ -73,9 +72,14 @@ export default function SurveyRenderer() {
   const [submitting, setSubmitting] = useState(false);
   const [startTime] = useState(Date.now());
   const [pagesVisited, setPagesVisited] = useState<number[]>([0]);
-  const [autoSaveInterval, setAutoSaveInterval] = useState<number>(60000);
+  const [autoSaveInterval, setAutoSaveInterval] = useState<number>(30000);
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
-
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      setError(null);
+    }
+  }, [error]);
   const draftKey = `survey_${slug}_draft`;
 
   // Helper: extract visibility rules from a question (supports multiple locations for flexibility)
@@ -340,8 +344,8 @@ const saveProgress = useCallback(async () => {
       await autoSaveResponse(survey.id, payload, token || undefined);
       setLastSaveTime(new Date().toISOString());
     } catch (error: any) {
-      alert("Auto save error")
       console.error('Auto-save error:', error);
+      throw error;
     }
   }, [responses, currentPageIndex, pagesVisited, survey, isQuestionVisible, startTime, token]);
 
@@ -395,9 +399,11 @@ const saveProgress = useCallback(async () => {
       navigate(`/s/${slug}/thank-you`);
     } catch (error: any) {
       console.error('Submit error:', error);
-      setError(error.message || 'Error submitting survey');
+      //setError(error.message || 'Error submitting survey');
+      alert(error.message);
     } finally {
       setSubmitting(false);
+      window.close();
     }
   };
 
@@ -412,7 +418,7 @@ const saveProgress = useCallback(async () => {
   if (error && !survey) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>
-        <Card className="max-w-md w-full mx-4">
+        <div className="max-w-md w-full mx-4 rounded-lg border border-gray-200 bg-white shadow">
           <div className="p-6 text-center">
             <div className="text-red-600 mb-4">
               <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -426,7 +432,7 @@ const saveProgress = useCallback(async () => {
               {error}
             </p>
           </div>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -741,13 +747,6 @@ const saveProgress = useCallback(async () => {
               Page {currentPageIndex + 1} of {survey.pages.length}
             </p>
           </div>
-        )}
-
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="error" onClose={() => setError(null)} className="mb-6">
-            {error}
-          </Alert>
         )}
 
         {/* Questions */}

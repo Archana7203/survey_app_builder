@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { listSurveysApi } from "../../api-paths/surveysApi";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import Alert from "../../components/ui/Alert";
 import SurveyActionsDropdown from "../../components/survey/SurveyActionsDropdown";
 import {
   exportSurveyToFile,
@@ -34,6 +33,13 @@ const ArchivedSurveys: React.FC = () => {
   useEffect(() => {
     fetchArchivedSurveys();
   }, []);
+
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      setError(null);
+    }
+  }, [error]);
 
   useEffect(() => {
     const handleClickOutside = () => setOpenDropdown(null);
@@ -143,12 +149,6 @@ const ArchivedSurveys: React.FC = () => {
           </Link>
         </div>
       </div>
-
-      {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
 
       {/* Survey List - Same structure as Surveys.tsx */}
       {surveys.length === 0 ? (

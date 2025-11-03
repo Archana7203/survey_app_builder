@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import Alert from '../components/ui/Alert';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from '../components/ui/ThemeToggle';
 
@@ -14,7 +13,12 @@ const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      setError(null);
+    }
+  }, [error]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -68,8 +72,6 @@ const AuthPage: React.FC = () => {
               ? 'Access your survey dashboard'
               : 'Sign up and start creating surveys in minutes!'}
           </p>
-
-          {error && <Alert variant="error" onClose={() => setError(null)}>{error}</Alert>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input

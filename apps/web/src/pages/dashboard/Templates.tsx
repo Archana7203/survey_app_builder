@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import Alert from '../../components/ui/Alert';
 import { fetchTemplates, instantiateTemplate } from '../../utils/templateService';
 import { ensureTemplateSamples } from '../../api-paths/templatesApi';
 
@@ -27,7 +26,12 @@ const Templates: React.FC = () => {
   useEffect(() => {
     loadTemplates();
   }, []);
-
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      setError(null);
+    }
+  }, [error]);
   const loadTemplates = async () => {
     setLoading(true);
     setError(null);
@@ -142,12 +146,6 @@ const Templates: React.FC = () => {
           </svg>
         </div>
       </div>
-
-      {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
 
       {/* Main Content with Sidebar */}
       <div className="flex gap-6">

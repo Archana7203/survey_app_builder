@@ -24,6 +24,12 @@ interface RespondentProgressData {
     totalPages: number;
     totalRespondents: number;
   };
+  summary?: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    notStarted: number;
+  };
   respondentProgress: RespondentProgress[];
   pagination?: {
     page: number;
@@ -174,9 +180,10 @@ export default function RespondentProgress({ surveyId }: Props) {
   if (!data) return null;
 
   const { survey, respondentProgress } = data;
-  const completedCount = respondentProgress.filter(r => r.status === 'Completed').length;
-  const inProgressCount = respondentProgress.filter(r => r.status === 'InProgress').length;
-  const notStartedCount = survey.totalRespondents - completedCount - inProgressCount;
+  const totalCount = data.summary?.total ?? survey.totalRespondents;
+  const completedCount = data.summary?.completed ?? respondentProgress.filter(r => r.status === 'Completed').length;
+  const inProgressCount = data.summary?.inProgress ?? respondentProgress.filter(r => r.status === 'InProgress').length;
+  const notStartedCount = data.summary?.notStarted ?? (totalCount - completedCount - inProgressCount);
 
   return (
     <div className="space-y-6">
@@ -184,7 +191,7 @@ export default function RespondentProgress({ surveyId }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <div className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{survey.totalRespondents}</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalCount}</div>
             <div className="text-sm text-gray-600 dark:text-white">Total Respondents</div>
           </div>
         </Card>

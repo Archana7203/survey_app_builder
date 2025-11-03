@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import Alert from "../../components/ui/Alert";
 import ReorderableQuestions from "../../components/survey/ReorderableQuestions";
 import VisibilityRulesModal from "../../components/modals/VisibilityRulesModal";
 import AddQuestionModal from "../../components/modals/AddQuestionModal";
@@ -181,6 +180,19 @@ export default function SurveyBuilderContent({
   const [statusChanging, setStatusChanging] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (validationError) {
+      alert(validationError);
+      setValidationError(null);
+    }
+  }, [validationError]);
+
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      setError(null);
+    }
+  }, [error]);
 
   const formatToLocalDatetime = (dateStr: string | undefined) => {
     if (!dateStr) return "";
@@ -736,23 +748,12 @@ export default function SurveyBuilderContent({
 
   return (
     <div className="space-y-6">
-      {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
       <div className="flex items-center justify-between">
         {renderHeader()}
         <div className="flex items-center space-x-3">
           {renderActionButtons()}
         </div>
       </div>
-      {validationError && (
-        <Alert variant="error" onClose={() => setValidationError(null)}>
-          {validationError}
-        </Alert>
-      )}
       {renderMainContent()}
 
       <VisibilityRulesModal

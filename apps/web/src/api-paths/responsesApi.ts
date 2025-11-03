@@ -12,7 +12,7 @@ export const autoSaveResponse = async (surveyId: string, payload: any, token?: s
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(`${res.status} ${errorData.error || 'Auto-save failed'}`)
+        new Error(`${errorData.error || 'Auto-save failed'}`)
       );
     }
     const data = await res.json();

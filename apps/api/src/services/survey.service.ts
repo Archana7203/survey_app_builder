@@ -514,6 +514,11 @@ export class SurveyService {
       return a.lastUpdated ? -1 : 1;
     });
     const start = (page - 1) * limit;
+
+    // Global counts across all respondents (not just current page)
+    const completedGlobal = allRespondents.filter((r) => r.status === 'Completed').length;
+    const inProgressGlobal = allRespondents.filter((r) => r.status === 'InProgress').length;
+    const notStartedGlobal = allRespondents.length - completedGlobal - inProgressGlobal;
     log.info('Respondent progress retrieved', 'getRespondentProgress', { 
       userId, 
       surveyId, 
@@ -526,6 +531,12 @@ export class SurveyService {
         title: survey.title,
         totalPages: survey.pages.length,
         totalRespondents: allRespondents.length,
+      },
+      summary: {
+        total: allRespondents.length,
+        completed: completedGlobal,
+        inProgress: inProgressGlobal,
+        notStarted: notStartedGlobal,
       },
       respondentProgress: allRespondents.slice(start, start + limit),
       pagination: {
@@ -563,7 +574,8 @@ export class SurveyService {
     });
     Object.assign(survey, filteredUpdates);
     // If endDate is set to a past or current time, immediately close survey
-    if (typeof filteredUpdates.endDate !== 'undefined' && filteredUpdates.endDate) {
+    // But only if survey is not in draft mode (drafts should allow any date for editing purposes)
+    if (typeof filteredUpdates.endDate !== 'undefined' && filteredUpdates.endDate && survey.status === 'live') {
       const endDateCandidate = new Date(filteredUpdates.endDate);
       if (!Number.isNaN(endDateCandidate.getTime()) && new Date() >= endDateCandidate) {
         survey.status = 'closed';

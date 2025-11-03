@@ -7,7 +7,6 @@ import {
 } from "../../api-paths/surveysApi";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import Alert from "../../components/ui/Alert";
 import NewSurveyModal from "../../components/modals/NewSurveyModal";
 import RespondentsModal from "../../components/modals/RespondentsModal";
 import SurveyFilters from "../../components/survey/SurveyFilters";
@@ -64,6 +63,13 @@ const Surveys: React.FC = () => {
     hasPrev: false,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      setError(null);
+    }
+  }, [error]);
 
   // Use custom hook for filters
   const {
@@ -354,12 +360,6 @@ const Surveys: React.FC = () => {
           </Link>
         </div>
       </div>
-
-      {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
 
       {/* Search and Filter Section */}
       <SurveyFilters

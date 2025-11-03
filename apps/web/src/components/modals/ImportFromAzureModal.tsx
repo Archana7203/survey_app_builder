@@ -2,7 +2,6 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRespondents } from '../../contexts/RespondentContext';
 import Button from '../ui/Button';
-import Alert from '../ui/Alert';
 
 interface ImportFromAzureModalProps {
   isOpen: boolean;
@@ -30,6 +29,20 @@ const ImportFromAzureModal: React.FC<ImportFromAzureModalProps> = ({
       setSearchQuery('');
     }
   }, [isOpen, fetchAzureUsers]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      alert(errorMessage);
+      setErrorMessage(null);
+    }
+  }, [errorMessage]);
+
+  useEffect(() => {
+    if (successMessage) {
+      alert(successMessage);
+      setSuccessMessage(null);
+    }
+  }, [successMessage]);
 
   const filteredUsers = azureUsers.filter(user => {
     if (!searchQuery) return true;
@@ -141,18 +154,6 @@ const ImportFromAzureModal: React.FC<ImportFromAzureModalProps> = ({
 
                 {/* Content */}
                 <div className="px-6 py-4">
-                  {/* Alerts */}
-                  {successMessage && (
-                    <Alert variant="success" onClose={() => setSuccessMessage(null)} className="mb-4">
-                      {successMessage}
-                    </Alert>
-                  )}
-                  {errorMessage && (
-                    <Alert variant="error" onClose={() => setErrorMessage(null)} className="mb-4">
-                      {errorMessage}
-                    </Alert>
-                  )}
-
                   {/* Search */}
                   <div className="mb-4">
                     <input

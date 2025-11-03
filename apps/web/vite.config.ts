@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://jewelry-electrical-barry-firm.trycloudflare.com',  
+        target: 'https://nhs-burke-anthony-brussels.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'benz-festival-survivor-powerseller.trycloudflare.com', 
+      'trusted-winston-vii-mission.trycloudflare.com', 
     ],
   },
 });

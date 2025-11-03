@@ -52,12 +52,9 @@ export default function ThankYou() {
             {/* Actions */}
             <div className="space-y-3">
               {/* Desktop close button */}
-              <button
-                onClick={() => window.close()}
-                className="hidden md:block w-full px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"
-              >
-                Close Window
-              </button>
+              <p className="text-gray-600 dark:text-gray-400 font-medium">
+                  You may now exit the survey and close the window
+                </p>
               
               {/* Mobile close text */}
               <div className="md:hidden text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
