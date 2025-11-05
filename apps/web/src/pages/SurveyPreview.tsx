@@ -80,29 +80,42 @@ export default function SurveyPreview() {
     ) as Array<BranchingRule & { groupIndex?: number }>;
   }, []);
 
+  // Helper: evaluate a group of rules
+  const evaluateRuleGroup = useCallback((groupRules: Array<BranchingRule & { groupIndex?: number }>): boolean => {
+    return groupRules.reduce<boolean | null>((combined, r, idx) => {
+      const resp = responses[r.questionId];
+      const conditionMet = resp !== undefined && evaluateCondition(r.condition.operator, r.condition.value, resp);
+
+      if (combined === null) return conditionMet;
+
+      const prevLogical = (groupRules[idx - 1].logical as 'AND' | 'OR') ?? 'OR';
+      return prevLogical === 'AND' ? (combined && conditionMet) : (combined || conditionMet);
+    }, null) ?? false;
+  }, [responses]);
+
   // Helper: check if a question should be visible based on visibility rules
   const isQuestionVisible = useCallback((question: Question): boolean => {
     const rules = getVisibilityRules(question);
-    if (rules.length === 0) return true;
+    if (!rules?.length) return true;
 
-    // Group rules by their groupIndex
-    const groupedRules = rules.reduce((acc: { [key: string]: typeof rules }, rule) => {
-      const groupKey = rule.groupIndex?.toString() || 'default';
-      if (!acc[groupKey]) acc[groupKey] = [];
-      acc[groupKey].push(rule);
+    // Check if any dependent question has been answered
+    const anyDependencyAnswered = rules.some(r => responses[r.questionId] !== undefined);
+    if (!anyDependencyAnswered) return false;
+
+    // Group rules by groupIndex
+    const byGroup = rules.reduce((acc: Record<number, typeof rules>, rule) => {
+      const gi = rule.groupIndex ?? 0;
+      if (!acc[gi]) acc[gi] = [];
+      acc[gi].push(rule);
       return acc;
     }, {});
 
-    // Evaluate each group (groups are combined with OR)
-    return Object.values(groupedRules).some(group => {
-      // Within each group, rules are combined with AND
-      return group.every(rule => {
-        const responseValue = responses[rule.questionId];
-        if (responseValue === undefined) return false; // Hide if no response
-        return evaluateCondition(rule.condition.operator, rule.condition.value, responseValue);
-      });
-    });
-  }, [responses, getVisibilityRules]);
+    // Evaluate each group: visible if ANY group evaluates to true
+    return Object.keys(byGroup)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .some(gi => evaluateRuleGroup(byGroup[gi]));
+  }, [responses, getVisibilityRules, evaluateRuleGroup]);
 
   // Fetch survey data
   const fetchSurvey = useCallback(async () => {

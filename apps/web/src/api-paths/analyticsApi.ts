@@ -8,7 +8,7 @@ export const fetchAnalyticsApi = async (surveyId: string) => {
     
     if (!response.ok) {
       const errorText = await response.text();
-      return Promise.reject(new Error(`${response.status} ${errorText}`));  
+      return Promise.reject(new Error(`${errorText}`));  
     }
     
     const data = await response.json();

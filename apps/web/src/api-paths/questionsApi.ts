@@ -7,7 +7,7 @@ export const fetchQuestionTypesApi = async () => {
     
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      return Promise.reject(new Error(errorData.error || `HTTP ${res.status}: Failed to fetch question types`));
+      return Promise.reject(new Error(errorData.error ||  "Failed to fetch question types"));
     }
     return Promise.resolve(await res.json());
   } catch (error) {

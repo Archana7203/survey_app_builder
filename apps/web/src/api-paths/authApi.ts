@@ -4,7 +4,7 @@ export const fetchMeApi = async () => {
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error("Error:"+ res.status + ' ' + errorText);
+    throw new Error(errorText);
   }
 
   return res.json(); 
@@ -47,7 +47,7 @@ export const logoutApi = async () => {
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Logout failed: ${res.status} ${errorText}`);
+    throw new Error(`${errorText}`);
   }
 };
 
@@ -69,7 +69,7 @@ export const fetchSSOUserApi = async () => {
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error("Error:"+ res.status + ' ' + errorText);
+    throw new Error(errorText);
   }
 
   return res.json();

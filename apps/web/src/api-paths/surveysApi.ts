@@ -45,7 +45,7 @@ export const exportSurveyApi = async (surveyId: string): Promise<Blob> => {
     });
     if (!response.ok) {
       const errorText = await response.text();
-      return Promise.reject(new Error(`${response.status} ${errorText}`));
+      return Promise.reject(new Error(`${errorText}`));
     }
     const blob = await response.blob();
     return Promise.resolve(blob);
@@ -72,7 +72,7 @@ export const fetchRespondentProgressApi = async (
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");
       return Promise.reject(
-        new Error(`${res.status} ${errorText || "Failed to fetch progress"}`)
+        new Error(`${errorText || "Failed to fetch progress"}`)
       );
     }
     const data = await res.json();
@@ -177,7 +177,7 @@ export const fetchSurveyApi = async (slugOrId: string) => {
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");
       return Promise.reject(
-        new Error(`${res.status} ${errorText || "Failed to fetch survey"}`)
+        new Error(`${errorText || "Failed to fetch survey"}`)
       );
     }
     const data = await res.json();
@@ -196,7 +196,7 @@ export const fetchPublicSurveyApi = async (slug: string, token?: string) => {
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch survey (status ${res.status})`)
+        new Error(errorData.error || `Failed to fetch survey`)
       );
     }
     const data = await res.json();
@@ -215,7 +215,7 @@ export const fetchSurveyByIdApi = async (surveyId: string) => {
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");
       return Promise.reject(
-        new Error(errorText || `Failed to fetch survey (status ${res.status})`)
+        new Error(errorText || `Failed to fetch survey`)
       );
     }
     const data = await res.json();
@@ -246,7 +246,7 @@ export const listSurveysApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to list surveys (status ${res.status})`)
+        new Error(errorData.error || `Failed to list surveys`)
       );
     }
     const data = await res.json();
@@ -272,7 +272,7 @@ export const createSurveyApi = async (data: {
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");
       return Promise.reject(
-        new Error(errorText || `Failed to create survey (status ${res.status})`)
+        new Error(errorText || `Failed to create survey`)
       );
     }
     const result = await res.json();
@@ -297,7 +297,7 @@ export const updateSurveyStatusApi = async (
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       return Promise.reject(
-        new Error(txt || `Failed to update survey status (status ${res.status})`)
+        new Error(txt || `Failed to update survey status`)
       );
     }
     const data = await res.json();
@@ -317,7 +317,7 @@ export const deleteSurveyApi = async (surveyId: string) => {
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       return Promise.reject(
-        new Error(txt || `Failed to delete survey (status ${res.status})`)
+        new Error(txt || `Failed to delete survey`)
       );
     }
     return Promise.resolve(true);
@@ -360,7 +360,7 @@ export const uploadImportedSurveyApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to import survey (status ${res.status})`)
+        new Error(errorData.error || `Failed to import survey`)     
       );
     }
     const data = await res.json();

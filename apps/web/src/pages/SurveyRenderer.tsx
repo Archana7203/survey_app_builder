@@ -265,10 +265,62 @@ const saveProgress = useCallback(async () => {
     return true;
   };
 
-  const getNextPageIndex = (): number | null => {
+  // Helper: check if a page has visible questions
+  const hasVisibleQuestions = useCallback((pageIndex: number): boolean => {
+    if (!survey || pageIndex < 0 || pageIndex >= survey.pages.length) return false;
+    const page = survey.pages[pageIndex];
+    return page.questions.some(q => isQuestionVisible(q));
+  }, [survey, isQuestionVisible]);
+
+  // Helper: find next page with visible questions (skips empty pages)
+  const getNextPageWithQuestions = useCallback((): number | null => {
     if (!survey) return null;
-    return currentPageIndex + 1 < survey.pages.length ? currentPageIndex + 1 : null;
-  };
+    
+    for (let i = currentPageIndex + 1; i < survey.pages.length; i++) {
+      if (hasVisibleQuestions(i)) {
+        return i;
+      }
+    }
+    
+    return null; // No more pages with questions
+  }, [survey, currentPageIndex, hasVisibleQuestions]);
+
+  // Helper: find previous page with visible questions (skips empty pages)
+  const getPreviousPageWithQuestions = useCallback((): number | null => {
+    if (!survey) return null;
+    
+    for (let i = currentPageIndex - 1; i >= 0; i--) {
+      if (hasVisibleQuestions(i)) {
+        return i;
+      }
+    }
+    
+    return null; // No previous pages with questions
+  }, [survey, currentPageIndex, hasVisibleQuestions]);
+
+  // Auto-skip empty pages when navigating to them (e.g., from state restoration)
+  useEffect(() => {
+    if (!survey || loading || submitting) return;
+    
+    const currentPage = survey.pages[currentPageIndex];
+    if (!currentPage) return;
+    
+    const hasVisible = currentPage.questions.some(q => isQuestionVisible(q));
+    
+    if (!hasVisible) {
+      // Current page has no visible questions, try to skip forward
+      const nextPageIndex = getNextPageWithQuestions();
+      
+      if (nextPageIndex !== null) {
+        // Skip to next page with questions
+        setCurrentPageIndex(nextPageIndex);
+        setPagesVisited(prev => [...new Set([...prev, nextPageIndex])]);
+      }
+      // If no next page with questions exists, stay on current page
+      // User can manually submit if needed
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [survey, currentPageIndex, responses, loading, submitting, isQuestionVisible, getNextPageWithQuestions]);
 
   const goToNextPage = () => {
     if (!validateCurrentPage()) {
@@ -277,10 +329,10 @@ const saveProgress = useCallback(async () => {
     }
     
     setError(null);
-    const nextPageIndex = getNextPageIndex();
+    const nextPageIndex = getNextPageWithQuestions();
     
     if (nextPageIndex === null) {
-      // End of survey or branching rule triggered end
+      // No more pages with questions - end of survey
       submitSurvey();
     } else {
       setCurrentPageIndex(nextPageIndex);
@@ -289,8 +341,10 @@ const saveProgress = useCallback(async () => {
   };
 
   const goToPreviousPage = () => {
-    if (currentPageIndex > 0) {
-      setCurrentPageIndex(currentPageIndex - 1);
+    const previousPageIndex = getPreviousPageWithQuestions();
+    
+    if (previousPageIndex !== null) {
+      setCurrentPageIndex(previousPageIndex);
       setError(null);
     }
   };
@@ -430,7 +484,8 @@ const saveProgress = useCallback(async () => {
   }
 
   const currentPage = survey.pages[currentPageIndex];
-  const isLastPage = currentPageIndex === survey.pages.length - 1;
+  // Check if there's a next page with visible questions (not just the last page index)
+  const hasNextPageWithQuestions = getNextPageWithQuestions() !== null;
 
   // Get theme colors
   const getThemeColors = () => {
@@ -688,14 +743,14 @@ const saveProgress = useCallback(async () => {
                 variant="secondary"
                 size="sm"
                 onClick={goToPreviousPage}
-                disabled={currentPageIndex === 0 || submitting}
-                className={`text-xs ${currentPageIndex === 0 || submitting ? 'opacity-50' : ''}`}
+                disabled={getPreviousPageWithQuestions() === null || submitting}
+                className={`text-xs ${getPreviousPageWithQuestions() === null || submitting ? 'opacity-50' : ''}`}
               >
                 ← Previous
               </Button>
               
               <div className="flex items-center space-x-2">
-                {isLastPage ? (
+                {!hasNextPageWithQuestions ? (
                   <Button
                     variant="primary"
                     size="sm"

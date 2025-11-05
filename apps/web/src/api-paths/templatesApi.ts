@@ -9,7 +9,7 @@ export const ensureTemplateSamples = async (): Promise<void> => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return Promise.reject(new Error(`${response.status} ${errorText}`));
+      return Promise.reject(new Error(`${errorText}`));
     }
 
     return Promise.resolve(); // Explicit void return

@@ -72,7 +72,7 @@ export const fetchRespondentsApi = async (params?: {
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch respondents (status ${res.status})`)
+        new Error(errorData.error || `Failed to fetch respondents`)
       );
     }
 
@@ -93,7 +93,7 @@ export const fetchRespondentByIdApi = async (id: string): Promise<Respondent> =>
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch respondent (status ${res.status})`)
+        new Error(errorData.error || `Failed to fetch respondent `)
       );
     }
 
@@ -119,7 +119,7 @@ export const createRespondentApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to create respondent (status ${res.status})`)
+        new Error(errorData.error || `Failed to create respondent `)
       );
     }
 
@@ -146,7 +146,7 @@ export const updateRespondentApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to update respondent (status ${res.status})`)
+        new Error(errorData.error || `Failed to update respondent`)
       );
     }
 
@@ -168,7 +168,7 @@ export const deleteRespondentApi = async (id: string): Promise<{ message: string
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to delete respondent (status ${res.status})`)
+        new Error(errorData.error || `Failed to delete respondent `)
       );
     }
 
@@ -196,7 +196,7 @@ export const importAzureRespondentsApi = async (profiles: AzureUser[]): Promise<
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to import Azure respondents (status ${res.status})`)
+        new Error(errorData.error || `Failed to import Azure respondents`)
       );
     }
 
@@ -230,7 +230,7 @@ export const fetchRespondentGroupsApi = async (params?: {
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch groups (status ${res.status})`)
+        new Error(errorData.error || `Failed to fetch groups`)
       );
     }
 
@@ -251,7 +251,7 @@ export const fetchRespondentGroupByIdApi = async (id: string): Promise<Responden
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch group (status ${res.status})`)
+        new Error(errorData.error || `Failed to fetch group`)
       );
     }
 
@@ -279,7 +279,7 @@ export const createRespondentGroupApi = async (group: {
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to create group (status ${res.status})`)
+        new Error(errorData.error || `Failed to create group`)
       );
     }
 
@@ -306,7 +306,7 @@ export const updateRespondentGroupApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to update group (status ${res.status})`)
+        new Error(errorData.error || `Failed to update group`)
       );
     }
 
@@ -328,7 +328,7 @@ export const deleteRespondentGroupApi = async (id: string): Promise<{ message: s
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to delete group (status ${res.status})`)
+        new Error(errorData.error || `Failed to delete group`)
       );
     }
 
@@ -355,7 +355,7 @@ export const addMembersToGroupApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to add members to group (status ${res.status})`)
+        new Error(errorData.error || `Failed to add members to group `)
       );
     }
 
@@ -382,7 +382,7 @@ export const removeMembersFromGroupApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to remove members from group (status ${res.status})`)
+        new Error(errorData.error || `Failed to remove members from group`)
       );
     }
 
@@ -409,7 +409,7 @@ export const duplicateRespondentGroupApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to duplicate group (status ${res.status})`)
+        new Error(errorData.error || `Failed to duplicate group`)
       );
     }
 
@@ -449,7 +449,7 @@ export const fetchAzureUsersApi = async (params?: {
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch Azure users (status ${res.status})`)
+        new Error(errorData.error || `Failed to fetch Azure users`)
       );
     }
 
@@ -470,7 +470,7 @@ export const fetchAzureUserByIdApi = async (id: string): Promise<AzureUser> => {
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch Azure user (status ${res.status})`)
+        new Error(errorData.error || `Failed to fetch Azure user`)
       );
     }
 

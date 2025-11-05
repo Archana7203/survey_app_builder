@@ -40,7 +40,7 @@ export const submitSurveyApi = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(`${res.status} ${errorData.error || 'Failed to submit survey'}`)
+        new Error(`${errorData.error || 'Failed to submit survey'}`)
       );
     }
     const data = await res.json();

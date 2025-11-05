@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://passion-leonard-confidence-attorneys.trycloudflare.com',  
+        target: 'https://shame-sellers-rebound-naturals.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'loading-determination-developing-glass.trycloudflare.com', 
+      'hosts-ccd-focusing-vancouver.trycloudflare.com', 
     ],
   },
 });
