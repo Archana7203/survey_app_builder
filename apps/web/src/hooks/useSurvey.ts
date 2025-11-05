@@ -1,10 +1,21 @@
 // hooks/useSurvey.ts
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { fetchSurveyByIdApi } from "../api-paths/surveysApi";
 export const useSurvey = (surveyId?: string) => {
   const [survey, setSurvey] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const previousSurveyIdRef = useRef<string | undefined>(undefined);
+
+  // Immediately set loading to true when surveyId changes
+  useEffect(() => {
+    if (previousSurveyIdRef.current !== surveyId) {
+      setLoading(true);
+      setSurvey(null);
+      setError(null);
+      previousSurveyIdRef.current = surveyId;
+    }
+  }, [surveyId]);
 
   const fetchSurvey = useCallback(async () => {
     if (!surveyId) return;
@@ -43,5 +54,9 @@ export const useSurvey = (surveyId?: string) => {
     }
   }, [survey]);
 
-  return { survey, setSurvey, loading, error, setError };
+  // Check if survey is ready (has valid structure with pages)
+  const isSurveyReady = survey && survey.pages && Array.isArray(survey.pages) && survey.pages.length > 0;
+  const isLoading = loading || (surveyId && !isSurveyReady);
+
+  return { survey, setSurvey, loading: isLoading, error, setError };
 };

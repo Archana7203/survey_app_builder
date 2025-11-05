@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
@@ -74,12 +74,6 @@ export default function SurveyRenderer() {
   const [pagesVisited, setPagesVisited] = useState<number[]>([0]);
   const [autoSaveInterval, setAutoSaveInterval] = useState<number>(30000);
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
-  useEffect(() => {
-    if (error) {
-      alert(error);
-      setError(null);
-    }
-  }, [error]);
   const draftKey = `survey_${slug}_draft`;
 
   // Helper: extract visibility rules from a question (supports multiple locations for flexibility)
@@ -130,10 +124,6 @@ export default function SurveyRenderer() {
 
   // Get token from URL
   const token = new URLSearchParams(globalThis.location.search).get('token');
-  const pagesWithKeys = useMemo(() => {
-    if (!survey) return [];
-    return survey.pages.map(page => ({ ...page, _key: crypto.randomUUID() }));
-  }, [survey]);
 
   const fetchSurvey = useCallback(async () => {
     if (!slug) return;
@@ -399,11 +389,9 @@ const saveProgress = useCallback(async () => {
       navigate(`/s/${slug}/thank-you`);
     } catch (error: any) {
       console.error('Submit error:', error);
-      //setError(error.message || 'Error submitting survey');
-      alert(error.message);
+      setError(error.message || 'Error submitting survey');
     } finally {
       setSubmitting(false);
-      window.close();
     }
   };
 
@@ -415,414 +403,331 @@ const saveProgress = useCallback(async () => {
     );
   }
 
-  if (error && !survey) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>
-        <div className="max-w-md w-full mx-4 rounded-lg border border-gray-200 bg-white shadow">
-          <div className="p-6 text-center">
-            <div className="text-red-600 mb-4">
-              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+  if (!survey) {
+    // Show error if survey failed to load
+    if (error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>
+          <div className="max-w-md w-full mx-4 rounded-lg border border-gray-200 bg-white shadow">
+            <div className="p-6 text-center">
+              <div className="text-red-600 mb-4">
+                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium mb-2" style={{ color: '#111827' }}>
+                Survey Not Available
+              </h3>
+              <p style={{ color: '#374151' }}>
+                {error}
+              </p>
             </div>
-            <h3 className="text-lg font-medium mb-2" style={{ color: '#111827' }}>
-              Survey Not Available
-            </h3>
-            <p style={{ color: '#374151' }}>
-              {error}
-            </p>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
+    return null;
   }
-
-  if (!survey) return null;
 
   const currentPage = survey.pages[currentPageIndex];
   const isLastPage = currentPageIndex === survey.pages.length - 1;
 
-  const pageBg = currentPage.backgroundColor || survey.backgroundColor;
-  
   // Get theme colors
   const getThemeColors = () => {
-    const palette: Record<string, { bg: string; text: string; primary: string }> = {
-      default: { bg: '#f9fafb', text: '#111827', primary: '#2563eb' },
-      emerald: { bg: '#f0fdf4', text: '#064e3b', primary: '#059669' },
-      purple: { bg: '#faf5ff', text: '#581c87', primary: '#7c3aed' },
-      rose: { bg: '#fff1f2', text: '#881337', primary: '#e11d48' },
-      amber: { bg: '#fffbeb', text: '#78350f', primary: '#d97706' },
-      indigo: { bg: '#eef2ff', text: '#312e81', primary: '#4f46e5' },
-      teal: { bg: '#f0fdfa', text: '#134e4a', primary: '#0d9488' },
-      slate: { bg: '#f8fafc', text: '#0f172a', primary: '#475569' },
+    const palette: Record<string, { primary: string }> = {
+      default: { primary: '#2563eb' },
+      emerald: { primary: '#059669' },
+      purple: { primary: '#7c3aed' },
+      rose: { primary: '#e11d48' },
+      amber: { primary: '#d97706' },
+      indigo: { primary: '#4f46e5' },
+      teal: { primary: '#0d9488' },
+      slate: { primary: '#475569' },
     };
     
-    // Always use the survey's actual theme, regardless of custom colors
     const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-    
-    return { 
-      backgroundColor: survey.backgroundColor || theme.bg, 
-      color: survey.textColor || theme.text, 
-      primary: theme.primary  // Always use theme primary color
-    };
+    return { primary: theme.primary };
   };
   
   const themeColors = getThemeColors();
-
   const visibleQuestions = currentPage.questions.filter(q => isQuestionVisible(q));
-
   const surveyTextColor = survey.textColor;
 
-  const finalStyle = { 
-    backgroundColor: survey.backgroundColor || pageBg || themeColors.backgroundColor, 
-    color: surveyTextColor || themeColors.color 
+  const getPageStyle = () => {
+    const pageBg = currentPage.backgroundColor || survey.backgroundColor;
+    const pageTextColor = survey.textColor || '#111827';
+    return {
+      backgroundColor: pageBg || '#ffffff',
+      color: pageTextColor,
+    } as React.CSSProperties;
   };
-  
 
   return (
-    <div
+    <div 
       id="survey-root"
       className="min-h-screen py-8 survey-no-dark-mode"
-      style={{
-        ...finalStyle,
-        minHeight: '100vh',
-        width: '100%'
-      }}
+      style={getPageStyle()}
     >
-      <style>
-        {` 
-        /* Force light mode for survey pages - override dark mode styles */
-        .survey-no-dark-mode,
-        .survey-no-dark-mode * {
-          /* Prevent dark mode from applying to surveys */
-        }
+      {/* Survey Container */}
+      <div className="max-w-4xl mx-auto px-4 relative">
         
-        .survey-no-dark-mode .question-container {
-          background-color: #ffffff !important;
-          border-color: #e5e7eb !important;
-          color: #000000 !important;
-        }
-        
-        .survey-no-dark-mode input,
-        .survey-no-dark-mode textarea,
-        .survey-no-dark-mode select {
-          background-color: #ffffff !important;
-          border-color: #d1d5db !important;
-          color: #000000 !important;
-        }
-        
-        /* Only apply primary color to navigation buttons, not rating buttons */
-        .survey-no-dark-mode button[data-variant="primary"],
-        .survey-no-dark-mode button[data-variant="secondary"] {
-          background-color: var(--color-primary) !important;
-        }
-        
-        #survey-root { 
-          --color-primary: ${themeColors.primary}; 
-          --color-secondary: ${(() => {
-            const palette: Record<string, { secondary: string }> = {
-              default: { secondary: '#dbeafe' },
-              emerald: { secondary: '#d1fae5' },
-              purple: { secondary: '#ede9fe' },
-              rose: { secondary: '#ffe4e6' },
-              amber: { secondary: '#fef3c7' },
-              indigo: { secondary: '#e0e7ff' },
-              teal: { secondary: '#ccfbf1' },
-              slate: { secondary: '#e2e8f0' },
-            };
-            const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-            return theme.secondary;
-          })()}; 
-          --color-accent: ${(() => {
-            const palette: Record<string, { accent: string }> = {
-              default: { accent: '#3b82f6' },
-              emerald: { accent: '#10b981' },
-              purple: { accent: '#8b5cf6' },
-              rose: { accent: '#f43f5e' },
-              amber: { accent: '#f59e0b' },
-              indigo: { accent: '#6366f1' },
-              teal: { accent: '#14b8a6' },
-              slate: { accent: '#64748b' },
-            };
-            const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-            return theme.accent;
-          })()}; 
-          --color-on-primary: #ffffff; 
-          --color-background: ${survey.backgroundColor || pageBg || themeColors.backgroundColor};
-          --color-text: ${surveyTextColor || themeColors.color};
-        }
-        
-        /* Ensure global background color is applied */
-        #survey-root {
-          background-color: ${survey.backgroundColor || pageBg || themeColors.backgroundColor} !important;
-        }
-        
-        /* Ensure global text color is applied to all text elements */
-        #survey-root {
-          color: ${surveyTextColor || themeColors.color} !important;
-        }
-        
-        /* Progress bar removed - no longer needed */
-        
-        /* Ensure consistent spacing */
-        #survey-root .question-container {
-          /* No shadows needed - match preview */
-        }
-        
-        /* Force button colors with maximum specificity */
-        #survey-root button[data-variant="primary"] {
-          background-color: var(--color-primary) !important;
-          border-color: var(--color-primary) !important;
-          color: var(--color-on-primary) !important;
-        }
-        
-        #survey-root button[data-variant="secondary"] {
-          background-color: var(--color-secondary) !important;
-          border-color: var(--color-primary) !important;
-          color: var(--color-primary) !important;
-          border-width: 1px !important;
-          border-style: solid !important;
-        }
-        
-        /* Additional button styling to ensure theme colors are applied */
-        #survey-root button[data-variant="primary"]:hover {
-          background-color: var(--color-primary) !important;
-          opacity: 0.9 !important;
-        }
-        
-        #survey-root button[data-variant="secondary"]:hover {
-          background-color: var(--color-secondary) !important;
-          border-color: var(--color-primary) !important;
-          color: var(--color-primary) !important;
-        }
-        
-        /* Override any conflicting button styles */
-        #survey-root button[data-variant="primary"],
-        #survey-root button[data-variant="secondary"] {
-          transition: all 0.15s ease-in-out !important;
-        }
-        
-        /* Fix rating component backgrounds - Ultra specific */
-        #survey-root .star-rating button,
-        #survey-root button.star-filled,
-        #survey-root button.star-unfilled,
-        #survey-root button[class*="star-filled"],
-        #survey-root button[class*="star-unfilled"],
-        /* Smiley rating buttons */
-        #survey-root fieldset button[type="button"],
-        /* Number rating buttons */
-        #survey-root fieldset button[aria-pressed] {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-          border: none !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          /* Override any CSS custom properties that might be setting blue */
-          --color-primary: #ffffff !important;
-          --color-secondary: #ffffff !important;
-          --color-accent: #ffffff !important;
-        }
-        
-        #survey-root .star-rating button:hover,
-        #survey-root button.star-filled:hover,
-        #survey-root button.star-unfilled:hover,
-        #survey-root button[class*="star-filled"]:hover,
-        #survey-root button[class*="star-unfilled"]:hover,
-        #survey-root fieldset button[type="button"]:hover,
-        #survey-root fieldset button[aria-pressed]:hover {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-        }
-        
-        #survey-root .star-rating button:focus,
-        #survey-root button.star-filled:focus,
-        #survey-root button.star-unfilled:focus,
-        #survey-root button[class*="star-filled"]:focus,
-        #survey-root button[class*="star-unfilled"]:focus,
-        #survey-root fieldset button[type="button"]:focus,
-        #survey-root fieldset button[aria-pressed]:focus {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-        }
-        
-        #survey-root .star-rating button:active,
-        #survey-root button.star-filled:active,
-        #survey-root button.star-unfilled:active,
-        #survey-root button[class*="star-filled"]:active,
-        #survey-root button[class*="star-unfilled"]:active,
-        #survey-root fieldset button[type="button"]:active,
-        #survey-root fieldset button[aria-pressed]:active {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-        }
-        
-        /* Override any browser default button styles - but not rating buttons */
-        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]) {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-        }
-        
-        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]):hover {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-        }
-        
-        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]):focus {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-        }
-        
-        #survey-root button[type="button"]:not([aria-pressed]):not([aria-label*="Rate"]):active {
-          background: #ffffff !important;
-          background-color: #ffffff !important;
-        }
-        `}
-      </style>
-      {surveyTextColor && (
-        <style>
-          {`
-          /* Apply text color to survey header */
-          #survey-root .survey-header h1,
-          #survey-root .survey-header h2,
-          #survey-root .survey-header h3,
-          #survey-root .survey-header p {
-            color: ${surveyTextColor} !important;
-          }
-          
-          /* Apply text color to progress indicators */
-          #survey-root .progress-text {
-            color: ${surveyTextColor} !important;
-          }
-          `}
-        </style>
-      )}
-      {survey.backgroundColor && (
-        <style>
-          {`
-          /* Apply survey background color to main container */
-          #survey-root {
-            background-color: ${survey.backgroundColor} !important;
-          }
-          
-          /* Ensure question containers keep white background */
-          #survey-root .question-container {
-            background-color: #ffffff !important;
-            border: 1px solid #e5e7eb !important;
-          }
-          `}
-        </style>
-      )}
-      <div className="max-w-2xl mx-auto px-4 relative">
+        <div className="rounded-lg overflow-hidden">
+          <div className="p-4 md:p-5 survey-content" style={{ backgroundColor: 'transparent', color: survey.textColor || '#111827' }}>
+            {/* Add theme CSS - match preview exactly */}
+            <style>
+              {`
+                /* Force light mode for survey pages - override dark mode styles */
+                .survey-no-dark-mode .question-container {
+                  background-color: #ffffff !important;
+                  border-color: #e5e7eb !important;
+                  color: #000000 !important;
+                }
+                /* Ensure non-question areas stay transparent */
+                #survey-root .survey-header,
+                #survey-root .survey-content {
+                  background-color: transparent !important;
+                  border: none !important;
+                }
+                
+                .survey-no-dark-mode input,
+                .survey-no-dark-mode textarea,
+                .survey-no-dark-mode select {
+                  background-color: #ffffff !important;
+                  border-color: #d1d5db !important;
+                  color: #000000 !important;
+                }
+                
+                :root { 
+                  --color-primary: ${(() => {
+                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
+                      default: { primary: '#2563eb', secondary: '#dbeafe', accent: '#3b82f6' },
+                      emerald: { primary: '#059669', secondary: '#d1fae5', accent: '#10b981' },
+                      purple: { primary: '#7c3aed', secondary: '#ede9fe', accent: '#8b5cf6' },
+                      rose: { primary: '#e11d48', secondary: '#ffe4e6', accent: '#f43f5e' },
+                      amber: { primary: '#d97706', secondary: '#fef3c7', accent: '#f59e0b' },
+                      indigo: { primary: '#4f46e5', secondary: '#e0e7ff', accent: '#6366f1' },
+                      teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
+                      slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
+                    };
+                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    return theme.primary;
+                  })()}; 
+                  --color-secondary: ${(() => {
+                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
+                      default: { primary: '#2563eb', secondary: '#dbeafe', accent: '#3b82f6' },
+                      emerald: { primary: '#059669', secondary: '#d1fae5', accent: '#10b981' },
+                      purple: { primary: '#7c3aed', secondary: '#ede9fe', accent: '#8b5cf6' },
+                      rose: { primary: '#e11d48', secondary: '#ffe4e6', accent: '#f43f5e' },
+                      amber: { primary: '#d97706', secondary: '#fef3c7', accent: '#f59e0b' },
+                      indigo: { primary: '#4f46e5', secondary: '#e0e7ff', accent: '#6366f1' },
+                      teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
+                      slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
+                    };
+                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    return theme.secondary;
+                  })()}; 
+                  --color-accent: ${(() => {
+                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
+                      default: { primary: '#2563eb', secondary: '#dbeafe', accent: '#3b82f6' },
+                      emerald: { primary: '#059669', secondary: '#d1fae5', accent: '#10b981' },
+                      purple: { primary: '#7c3aed', secondary: '#ede9fe', accent: '#8b5cf6' },
+                      rose: { primary: '#e11d48', secondary: '#ffe4e6', accent: '#f43f5e' },
+                      amber: { primary: '#d97706', secondary: '#fef3c7', accent: '#f59e0b' },
+                      indigo: { primary: '#4f46e5', secondary: '#e0e7ff', accent: '#6366f1' },
+                      teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
+                      slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
+                    };
+                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    return theme.accent;
+                  })()}; 
+                  --color-accent-hover: ${(() => {
+                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
+                      default: { primary: '#1d4ed8', secondary: '#bfdbfe', accent: '#2563eb' },
+                      emerald: { primary: '#047857', secondary: '#a7f3d0', accent: '#059669' },
+                      purple: { primary: '#6d28d9', secondary: '#ddd6fe', accent: '#7c3aed' },
+                      rose: { primary: '#be185d', secondary: '#fecdd3', accent: '#e11d48' },
+                      amber: { primary: '#b45309', secondary: '#fde68a', accent: '#d97706' },
+                      indigo: { primary: '#4338ca', secondary: '#c7d2fe', accent: '#4f46e5' },
+                      teal: { primary: '#0f766e', secondary: '#99f6e4', accent: '#0d9488' },
+                      slate: { primary: '#334155', secondary: '#cbd5e1', accent: '#475569' },
+                    };
+                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    return theme.primary; // Use primary for hover (darker shade)
+                  })()}; 
+                  --color-on-primary: #ffffff; 
+                }
+                `}
+            </style>
+            {surveyTextColor && (
+              <style>
+                {`
+                /* Apply text color to survey header */
+                #survey-root .survey-header h1,
+                #survey-root .survey-header h2,
+                #survey-root .survey-header h3,
+                #survey-root .survey-header p {
+                  color: ${surveyTextColor} !important;
+                }
+                
+                /* Apply text color to progress indicators */
+                #survey-root .progress-text {
+                  color: ${surveyTextColor} !important;
+                }
+                `}
+              </style>
+            )}
+            {survey.backgroundColor && (
+              <style>
+                {`
+                /* Apply survey background color to main container */
+                #survey-root {
+                  background-color: ${survey.backgroundColor} !important;
+                }
+                
+                /* Ensure question containers keep white background */
+                #survey-root .question-container {
+                  background-color: #ffffff !important;
+                  border: 1px solid #e5e7eb !important;
+                }
+                `}
+              </style>
+            )}
 
-        
-        {/* Header */}
-        <div className="text-center mb-6 survey-header">
-          <h2 className="text-xl md:text-2xl font-bold mb-2" style={{ color: surveyTextColor }}>
-            {survey.title}
-          </h2>
-          {survey.description && (
-            <p className="text-sm md:text-base font-medium opacity-80" style={{ color: surveyTextColor }}>
-              {survey.description}
-            </p>
-          )}
-        </div>
-
-        {/* Progress Bar */}
-        {survey.pages.length > 1 && (
-          <div className="mb-6">
-            {/* Page Dots Indicator (like preview) */}
-            <div className="mt-3 flex items-center justify-center space-x-2">
-              {pagesWithKeys.map((page, index) => (
-                <div
-                  key={page._key}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentPageIndex ? 'bg-current' : 'bg-current opacity-20'
-                  }`}
-                  style={{ backgroundColor: surveyTextColor || themeColors.color }}
-                />
-              ))}
-
+            
+            {/* Survey Header */}
+            <div className="text-center mb-6 survey-header" style={{ color: surveyTextColor || '#111827' }}>
+              <h2 className="text-xl md:text-2xl font-bold mb-2">
+                {survey.title || 'Untitled Survey'}
+              </h2>
+              {survey.description && (
+                <p className="text-sm md:text-base font-medium opacity-80">
+                  {survey.description}
+                </p>
+              )}
+              
+              {/* Page Progress */}
+              {survey.pages.length > 1 && (
+                <>
+                  <div className="mt-3 flex items-center justify-center space-x-2">
+                    {survey.pages.map((page, index) => (
+                      <div
+                        key={page.questions.map(q => q.id).join('-') || `page-${index}`}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentPageIndex
+                            ? 'bg-current'
+                            : 'bg-current opacity-20'
+                        }`}
+                        style={{ backgroundColor: surveyTextColor || '#111827' }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs opacity-70 mt-1 progress-text" style={{ color: surveyTextColor || '#111827' }}>
+                    Page {currentPageIndex + 1} of {survey.pages.length}
+                  </p>
+                </>
+              )}
             </div>
-            <p className="text-xs opacity-70 mt-1 text-center" style={{ color: surveyTextColor }}>
-              Page {currentPageIndex + 1} of {survey.pages.length}
-            </p>
-          </div>
-        )}
 
-        {/* Questions */}
-        <div className="space-y-4 mb-8">
-          {visibleQuestions.map((question) => (
-            <Card key={question.id} 
-                  className="question-container border border-gray-200"
-                  data-testid={`question-${question.id}`}
-          >
-              <div className="p-3">
-                <QuestionRenderer
-                  question={question}
-                  value={responses[question.id]}
-                  onChange={(value) => handleQuestionChange(question.id, value)}
-                  themeColors={{
-                    backgroundColor: '#ffffff',
-                    textColor: '#000000',
-                    primaryColor: themeColors.primary
-                  }}
-                />
+            {/* Error Message Display */}
+            {error && (
+              <div className="mb-6 p-4 rounded-lg border border-red-300 bg-red-50">
+                <div className="flex items-center">
+                  <div className="text-red-600 mr-2">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
               </div>
-            </Card>
-          ))}
-        </div>
+            )}
 
-        {/* Navigation */}
-        <div className="mt-6 pt-4 border-t border-gray-300 flex items-center justify-between">
-          <div>
-            {currentPageIndex > 0 && (
+            {/* Questions */}
+            {visibleQuestions.length === 0 ? (
+              <Card className="question-card border border-gray-200" backgroundColor="#ffffff">
+                <div className="text-center py-8 text-black">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-200 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-base font-medium mb-1 text-black">No Visible Questions</p>
+                  <p className="text-xs text-gray-600">
+                    {currentPage?.questions.length === 0 
+                      ? 'This page has no questions yet'
+                      : 'All questions on this page are hidden by visibility rules'
+                    }
+                  </p>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {visibleQuestions.map((question) => (
+                  <Card key={question.id} className="question-card border border-gray-200" backgroundColor="#ffffff">
+                    <div className="p-3">
+                      <QuestionRenderer
+                        question={question}
+                        value={responses[question.id]}
+                        onChange={(value) => handleQuestionChange(question.id, value)}
+                        disabled={false}
+                        themeColors={{
+                          backgroundColor: '#ffffff',
+                          textColor: '#000000',
+                          primaryColor: themeColors.primary
+                        }}
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div className="mt-6 pt-4 border-t border-gray-300 flex items-center justify-between">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={goToPreviousPage}
-                disabled={submitting}
-                data-variant="secondary"
-                className={`text-xs ${submitting ? 'opacity-50' : ''}`}
+                disabled={currentPageIndex === 0 || submitting}
+                className={`text-xs ${currentPageIndex === 0 || submitting ? 'opacity-50' : ''}`}
               >
                 ← Previous
               </Button>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            {isLastPage ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={submitSurvey}
-                disabled={submitting}
-                data-variant="primary"
-                className={`text-xs ${submitting ? 'opacity-50' : ''}`}
-              >
-                {submitting ? 'Submitting...' : 'Submit Survey'}
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={goToNextPage}
-                disabled={submitting}
-                data-variant="primary"
-                className={`text-xs ${submitting ? 'opacity-50' : ''}`}
-              >
-                Next →
-              </Button>
-            )}
-          </div>
-        </div>
+              
+              <div className="flex items-center space-x-2">
+                {isLastPage ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={submitSurvey}
+                    disabled={submitting}
+                    className={`text-xs ${submitting ? 'opacity-50' : ''}`}
+                  >
+                    {submitting ? 'Submitting...' : 'Submit Survey'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={goToNextPage}
+                    disabled={submitting}
+                    className={`text-xs ${submitting ? 'opacity-50' : ''}`}
+                  >
+                    Next →
+                  </Button>
+                )}
+              </div>
+            </div>
 
-        {/* Auto-save indicator */}
-        <div className="mt-3 flex items-center justify-center gap-2 text-xs" style={{ color: surveyTextColor }}>
-          {lastSaveTime ? (
-            <>Progress auto-saved at {new Date(lastSaveTime).toLocaleTimeString()}</>
-          ) : (
-            <>Your progress is automatically saved</>
-          )}
+            {/* Auto-save indicator */}
+            <div className="mt-3 flex items-center justify-center gap-2 text-xs" style={{ color: survey.textColor || '#111827' }}>
+              {lastSaveTime ? (
+                <>Progress auto-saved at {new Date(lastSaveTime).toLocaleTimeString()}</>
+              ) : (
+                <>Your progress is automatically saved</>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

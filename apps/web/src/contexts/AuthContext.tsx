@@ -73,7 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await loginApi(email, password);
       setUser(data.user);
     } catch (error: any) {
-      alert('Login failed'); // optional: use alert instead of state
+      setUser(null);
+      throw error; // Re-throw to let the calling component handle it
     }
   }, []);
 
@@ -82,7 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await registerApi(email, password);
       setUser(data.user);
     } catch (error: any) {
-      alert('Register failed'); // optional: use alert
+      setUser(null);
+      throw error; // Re-throw to let the calling component handle it
     }
   }, []);
 

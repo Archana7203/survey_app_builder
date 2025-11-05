@@ -57,7 +57,7 @@ const RatingSmileyQuestion: React.FC<QuestionProps> = ({
         )}
       </div>
 
-      <fieldset className="flex items-center space-x-4 p-0 m-0" aria-labelledby={`question-${question.id}`}>
+      <fieldset className="flex items-center flex-wrap sm:flex-nowrap justify-center sm:justify-start gap-2 sm:gap-4 p-0 m-0" aria-labelledby={`question-${question.id}`}>
         <legend id={`question-${question.id}`} className="sr-only">
           {question.title}
         </legend>
@@ -67,7 +67,7 @@ const RatingSmileyQuestion: React.FC<QuestionProps> = ({
               type="button"
               onClick={() => handleRatingChange(rating.value)}
               disabled={disabled}
-              className={`text-4xl transition-all duration-200 ${
+              className={`text-3xl sm:text-4xl transition-all duration-200 ${
                 disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-110'
               } ${
                 value === rating.value
@@ -79,7 +79,10 @@ const RatingSmileyQuestion: React.FC<QuestionProps> = ({
             >
               {rating.emoji}
             </button>
-            <span className="text-xs text-center font-medium" style={{ color: themeColors?.textColor || '#111827' }}>
+            <span 
+              className="text-xs text-center font-medium hidden sm:block"
+              style={{ color: themeColors?.textColor || '#111827' }}
+            >
               {rating.label}
             </span>
           </div>

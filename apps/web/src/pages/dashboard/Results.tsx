@@ -106,7 +106,7 @@ const Results: React.FC = () => {
   const setupSocket = useCallback(() => {
     if (!surveyId) return;
     
-    const newSocket = io('http://localhost:3001', {
+    const newSocket = io("http://localhost:3001", {
       withCredentials: true,
     });
 
@@ -145,12 +145,12 @@ const Results: React.FC = () => {
     switch (analyticsType) {
       case 'choice':
       case 'numeric':
-        return ['Bar', 'Pie', 'Doughnut', 'Line', 'Area'];
+        return ['Bar', 'Pie', 'Line'];
       case 'text':
         return ['WordCloud'];
       case 'matrix':
       case 'grid':
-        return ['Bar', 'Pie', 'Doughnut', 'Line', 'Area'];
+        return ['Bar', 'Pie', 'Line'];
       default:
         return ['Bar'];
     }
@@ -283,7 +283,7 @@ const Results: React.FC = () => {
                   <ChartRenderer
                     chartType={chartTypes[question.questionId] || 'Bar'}
                     data={question.analytics}
-                    title={question.title}
+                    title=''
                   />
                 );
               } else {

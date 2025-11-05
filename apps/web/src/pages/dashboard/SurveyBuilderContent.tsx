@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { Users, Circle, CheckSquare2, List, Type, FileText, Star, Smile, Hash, SlidersHorizontal } from "lucide-react";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import ReorderableQuestions from "../../components/survey/ReorderableQuestions";
@@ -29,63 +30,72 @@ const QUESTION_TYPES = [
     type: "single_choice",
     name: "Single choice",
     description: "Single choice question",
-    icon: "◯",
+    icon: "Circle",
+    iconComponent: Circle,
     category: "choice",
   },
   {
     type: "multi_choice",
     name: "Checkboxes",
     description: "Multiple choice question",
-    icon: "☑",
+    icon: "CheckSquare2",
+    iconComponent: CheckSquare2,
     category: "choice",
   },
   {
     type: "dropdown",
     name: "Dropdown",
     description: "Dropdown selection",
-    icon: "📋",
+    icon: "List",
+    iconComponent: List,
     category: "choice",
   },
   {
     type: "text_short",
     name: "Short text",
     description: "Short text input",
-    icon: "✏️",
+    icon: "Type",
+    iconComponent: Type,
     category: "input",
   },
   {
     type: "text_long",
     name: "Long text",
     description: "Long text input",
-    icon: "📝",
+    icon: "FileText",
+    iconComponent: FileText,
     category: "input",
   },
   {
     type: "rating_star",
     name: "Star rating",
     description: "Star rating question",
-    icon: "⭐",
+    icon: "Star",
+    iconComponent: Star,
     category: "rating",
   },
   {
     type: "rating_smiley",
     name: "Smiley rating",
     description: "Smiley face rating",
-    icon: "😊",
+    icon: "Smile",
+    iconComponent: Smile,
     category: "rating",
   },
   {
     type: "rating_number",
     name: "Number rating",
     description: "Number rating question",
-    icon: "🔢",
+    icon: "Hash",
+    iconComponent: Hash,
     category: "rating",
   },
   {
     type: "slider",
     name: "Slider",
     description: "Slider question",
-    icon: "🎯",
+    icon: "SlidersHorizontal",
+    iconComponent: SlidersHorizontal,
     category: "rating",
   },
 ] as const;
@@ -218,7 +228,7 @@ export default function SurveyBuilderContent({
       // Get the updated survey ID from the returned survey
       const updatedSurveyId = savedSurvey?.id;
       if (!updatedSurveyId || updatedSurveyId === "new") {
-        setError("Failed to save survey or survey ID is missing");
+        setError("Failed to save survey");
         setStatusChanging(false);
         setIsConfirmModalOpen(false);
         return;
@@ -319,7 +329,7 @@ export default function SurveyBuilderContent({
       }
     } catch (err: any) {
       console.error("Status change error:", err);
-      setError(err.message || "Failed to update survey");
+      setError("Failed to update survey status");
     } finally {
       setStatusChanging(false);
       setIsConfirmModalOpen(false);
@@ -332,7 +342,11 @@ export default function SurveyBuilderContent({
     }
   }, [survey?.theme, setSurveyTheme]);
 
-  if (loading) {
+  // Show loading immediately until all content is loaded
+  const isContentReady = survey && survey.pages && Array.isArray(survey.pages);
+  const isLoading = loading || !isContentReady;
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-600 dark:text-gray-400">
@@ -342,6 +356,7 @@ export default function SurveyBuilderContent({
     );
   }
 
+  // Only show error if loading is false but content is still invalid (actual error state)
   if (!survey?.pages || !Array.isArray(survey.pages)) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -403,6 +418,7 @@ export default function SurveyBuilderContent({
           message:
             "Are you sure you want to delete this survey? This action cannot be undone.",
           actionText: "Delete",
+          loadingText: "Deleting...",
         };
       case "publish":
         return {
@@ -410,6 +426,7 @@ export default function SurveyBuilderContent({
           message:
             "Once published, your survey will move to Published state. Proceed?",
           actionText: "Publish",
+          loadingText: "Publishing...",
         };
       case "live":
         return {
@@ -417,12 +434,14 @@ export default function SurveyBuilderContent({
           message:
             "Going live will make the survey accessible to respondents. Continue?",
           actionText: "Go Live",
+          loadingText: "Processing...",
         };
       case "close":
         return {
           title: "Close Survey",
           message: "Closing the survey will prevent new responses. Continue?",
           actionText: "Close",
+          loadingText: "Closing...",
         };
       case "archive":
         return {
@@ -430,9 +449,10 @@ export default function SurveyBuilderContent({
           message:
             "Archiving will remove this survey from the active list but keep it for record. Continue?",
           actionText: "Archive",
+          loadingText: "Archiving...",
         };
       default:
-        return { title: "", message: "", actionText: "Confirm" };
+        return { title: "", message: "", actionText: "Confirm", loadingText: "Processing..." };
     }
   })();
 
@@ -517,18 +537,18 @@ export default function SurveyBuilderContent({
             >
               {statusChanging ? "Publishing..." : "Publish"}
             </Button>
-            <Button variant="secondary" onClick={openPreviewInNewTab}>
+            <Button variant="outline" onClick={openPreviewInNewTab}>
               Preview
-            </Button>
+            </Button> 
             <Button 
-              variant="secondary" 
+              variant="outline" 
               onClick={() => setRespondentsModalOpen(true)}
               title="Add Respondents"
             >
-              👥
+              <Users />
             </Button>
             <Button variant="outline" onClick={saveSurvey} disabled={saving}>
-              {saving ? "Saving..." : "Save Survey"}
+              {saving ? "Saving..." : "Save"}
             </Button>
             <Button variant="danger" onClick={() => openConfirmation("delete")}>
               Delete
@@ -541,21 +561,21 @@ export default function SurveyBuilderContent({
         Buttons = (
           <>
             <Button
-              variant="primary"
+              variant="live"
               onClick={() => openConfirmation("live")}
               disabled={statusChanging}
             >
               {statusChanging ? "Processing..." : "Go Live"}
             </Button>
-            <Button variant="secondary" onClick={openPreviewInNewTab}>
+            <Button variant="outline" onClick={openPreviewInNewTab}>
               Preview
             </Button>
             <Button 
-              variant="secondary" 
+              variant="outline" 
               onClick={() => setRespondentsModalOpen(true)}
               title="Add Respondents"
             >
-              👥
+              <Users />
             </Button>
           </>
         );
@@ -571,21 +591,21 @@ export default function SurveyBuilderContent({
             >
               {statusChanging ? "Closing..." : "Close Survey"}
             </Button>
-            <Button variant="secondary" onClick={openPreviewInNewTab}>
+            <Button variant="outline" onClick={openPreviewInNewTab}>
               Preview
             </Button>
             <Button 
-              variant="secondary" 
+              variant="outline" 
               onClick={() => setRespondentsModalOpen(true)}
               title="Add Respondents"
             >
-              👥
+              <Users/>
             </Button>
-            <Button variant="secondary" onClick={copyLink}>
+            <Button variant="outline" onClick={copyLink}>
               Copy Link
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => navigate(`/dashboard/results/${surveyId}`)}
             >
               Analytics
@@ -598,17 +618,17 @@ export default function SurveyBuilderContent({
         Buttons = (
           <>
             <Button
-              variant="primary"
+              variant="archive"
               onClick={() => openConfirmation("archive")}
               disabled={statusChanging}
             >
               {statusChanging ? "Archiving..." : "Archive"}
             </Button>
-            <Button variant="secondary" onClick={openPreviewInNewTab}>
+            <Button variant="outline" onClick={openPreviewInNewTab}>
               Preview
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => navigate(`/dashboard/results/${surveyId}`)}
             >
               Analytics
@@ -820,7 +840,9 @@ export default function SurveyBuilderContent({
         onConfirm={handleConfirmAction}
         title={modalProps.title}
         message={modalProps.message}
-        {...{ action: modalProps.actionText }}
+        action={modalProps.actionText}
+        loading={statusChanging}
+        loadingText={modalProps.loadingText}
       />
       <RespondentsModal
         isOpen={respondentsModalOpen}

@@ -38,8 +38,8 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       setError(null);
       setSuccess(null);
       
-      // Only load survey respondents if NOT in draft mode
-      if (surveyStatus !== 'draft') {
+      // Only load survey respondents if NOT in draft mode and status exists
+      if (surveyStatus) {
         loadSurveyRespondents();
       } else {
         setLoading(false);
@@ -185,7 +185,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       if (surveyStatus === 'live') {
         try {
           const sendResult = await sendSurveyInvitations(surveyId);
-          setSuccess(`Respondents updated and invitations sent to ${sendResult.message || 'all recipients'}`);
+          setSuccess(`Respondents updated and ${sendResult.message || 'inviattions sent to all recipients'}`);
         } catch (sendError) {
           setSuccess('Respondents updated, but failed to send some invitations');
         }

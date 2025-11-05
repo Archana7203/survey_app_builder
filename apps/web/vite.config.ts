@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://nhs-burke-anthony-brussels.trycloudflare.com',  
+        target: 'https://passion-leonard-confidence-attorneys.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'trusted-winston-vii-mission.trycloudflare.com', 
+      'loading-determination-developing-glass.trycloudflare.com', 
     ],
   },
 });

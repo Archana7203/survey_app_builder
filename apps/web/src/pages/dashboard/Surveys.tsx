@@ -153,7 +153,7 @@ const Surveys: React.FC = () => {
       setSurveys(response.surveys);
       setPagination(response.pagination);
     } catch (error: any) {
-      setError(error.message || "Failed to fetch surveys");
+      setError("Failed to fetch surveys");
     } finally {
       setLoading(false);
     }
@@ -568,7 +568,10 @@ const Surveys: React.FC = () => {
                       <td className="hidden md:table-cell px-6 py-4 text-sm text-gray-500 dark:text-white">
                         {formatDate(survey.createdAt)}
                       </td>
-                      <td className="px-3 sm:px-6 py-4 text-sm font-medium">
+                      <td 
+                        className="px-3 sm:px-6 py-4 text-sm font-medium"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="relative flex justify-end">
                           <button
                             onClick={(e) => {

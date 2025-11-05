@@ -9,6 +9,7 @@ interface QuestionType {
   name: string;
   description: string;
   icon: string;
+  iconComponent?: React.ComponentType<{ className?: string }>;
   category: string;
 }
 
@@ -54,7 +55,13 @@ const QuestionTypeSelector: React.FC<{
             : 'border-gray-300 dark:border-gray-600'
         }`}
       >
-        <div className="text-2xl mb-2">{type.icon}</div>
+        <div className="text-2xl mb-2 flex items-center justify-center">
+          {type.iconComponent ? (
+            <type.iconComponent className="w-6 h-6" />
+          ) : (
+            type.icon
+          )}
+        </div>
         <div className="text-sm font-medium text-gray-900 dark:text-white">
           {type.name}
         </div>

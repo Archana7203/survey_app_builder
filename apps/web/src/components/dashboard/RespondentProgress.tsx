@@ -1,139 +1,78 @@
 import { useState, useEffect } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { loadConfig, getRespondentProgressPaginationConfig } from '../../utils/config';
+import { useRespondentProgress } from '../../hooks/useRespondentProgress';
 import { fetchRespondentProgressApi } from '../../api-paths/surveysApi';
-import RespondentResponseModal from '../modals/RespondentResponseModal';
+import ViewResponseTab from './ViewResponseTab';
+import ViewQuestionWiseAnalyticsTab from './ViewQuestionWiseAnalyticsTab';
 
-interface RespondentProgress {
-  email: string;
-  status: string;
-  startedAt: string;
-  lastUpdated: string;
-  progress: number;
-  totalPages: number;
-  timeSpent: number;
-  pagesVisited: number[];
-  completionPercentage: number;
-}
-
-interface RespondentProgressData {
-  survey: {
-    id: string;
-    title: string;
-    totalPages: number;
-    totalRespondents: number;
-  };
-  summary?: {
-    total: number;
-    completed: number;
-    inProgress: number;
-    notStarted: number;
-  };
-  respondentProgress: RespondentProgress[];
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-}
+type TabType = 'progress' | 'response' | 'analytics';
 
 interface Props {
   readonly surveyId: string;
 }
 
 export default function RespondentProgress({ surveyId }: Props) {
-  const [data, setData] = useState<RespondentProgressData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
+  const [activeTab, setActiveTab] = useState<TabType>('progress');
+  const [selectedRespondent, setSelectedRespondent] = useState<string>('');
+  const [respondentEmails, setRespondentEmails] = useState<string[]>([]);
+  
+  // Pagination state for all tabs
+  const [commonPagination, setCommonPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 5,
     total: 0,
     totalPages: 1,
     hasNext: false,
     hasPrev: false
   });
 
-  const [viewEmail, setViewEmail] = useState<string | null>(null);
-  const [isViewOpen, setIsViewOpen] = useState(false);
+  const {
+    data,
+    loading,
+    error,
+    pagination,
+    fetchProgress,
+    handlePageChange,
+    handleLimitChange,
+    setError
+  } = useRespondentProgress(surveyId);
 
-  const handleOpenView = (email: string) => {
-    setViewEmail(email);
-    setIsViewOpen(true);
-  };
-
-  const handleCloseView = () => {
-    setIsViewOpen(false);
-    setViewEmail(null);
-  };
-
+  // Sync pagination when tab changes or when progress data changes
   useEffect(() => {
-    if (surveyId && surveyId !== 'new') {
-      loadConfig().then(() => {
-        const config = getRespondentProgressPaginationConfig();
-        if (config) {
-          const newPagination = {
-            page: 1,
-            limit: config.defaultLimit,
-            total: 0,
-            totalPages: 0,
-            hasNext: false,
-            hasPrev: false
-          };
-          setPagination(newPagination);
-          fetchProgress(1, config.defaultLimit);
-        } else {
-          fetchProgress(1, 5); // fallback to 5
-        }
-      });
+    if (activeTab === 'progress') {
+      setCommonPagination(pagination);
     } else {
-      setLoading(false);
+      // Reset pagination for other tabs
+      setCommonPagination({
+        page: 1,
+        limit: 5,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false
+      });
     }
-  }, [surveyId]);
+  }, [activeTab, pagination]);
 
-  const fetchProgress = async (page: number = 1, limit: number = 20) => {
-    try {
-      setLoading(true);
-
-      const progressData = await fetchRespondentProgressApi(surveyId, page, limit);
-      setData(progressData);
-
-      if (progressData.pagination) {
-        const paginationData = {
-          page: progressData.pagination.page || 1,
-          limit: progressData.pagination.limit || 5,
-          total: progressData.pagination.total || 0,
-          totalPages: progressData.pagination.totalPages || 0,
-          hasNext: progressData.pagination.hasNext || false,
-          hasPrev: progressData.pagination.hasPrev || false
-        };
-        setPagination(paginationData);
-      } else {
-        console.warn('No pagination data in response');
-      }
-
-    } catch (error: any) {
-      console.error('Fetch error:', error);
-      setError(error.message || 'Error fetching progress data');
-    } finally {
-      setLoading(false);
+  // Load respondent emails for View Response tab
+  useEffect(() => {
+    if ((activeTab === 'response' || activeTab === 'analytics') && surveyId && surveyId !== 'new') {
+      const loadRespondentEmails = async () => {
+        try {
+          const progressData = await fetchRespondentProgressApi(surveyId, 1, 1000);
+          const emails = progressData.respondentProgress?.map((r: any) => r.email) || [];
+          setRespondentEmails(emails);
+          if (activeTab === 'response' && emails.length > 0 && !selectedRespondent) {
+            setSelectedRespondent(emails[0]);
+          }
+        } catch (err) {
+          console.error('Failed to load respondent emails:', err);
+        }
+      };
+      loadRespondentEmails();
     }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    fetchProgress(newPage, pagination.limit);
-  };
-
-  const handleLimitChange = (newLimit: number) => {
-    const config = getRespondentProgressPaginationConfig();
-    const limit = Math.min(newLimit, config?.maxLimit || 200);
-    setPagination(prev => ({ ...prev, limit }));
-    fetchProgress(1, limit);
-  };
+  }, [activeTab, surveyId, selectedRespondent]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -162,28 +101,87 @@ export default function RespondentProgress({ surveyId }: Props) {
     );
   }
 
-  if (loading) {
-    return (
-      <Card>
-        <div className="p-6 text-center">
-          <div className="text-gray-600 dark:text-gray-400">Loading respondent progress...</div>
-        </div>
-      </Card>
-    );
-  }
-
   if (error) {
-      alert(error);
-      setError(null);
+    alert(error);
+    setError(null);
   }
 
-  if (!data) return null;
+  if (!data) {
+    if (loading) {
+      return (
+        <Card>
+          <div className="p-6 text-center">
+            <div className="text-gray-600 dark:text-gray-400">Loading respondent progress...</div>
+          </div>
+        </Card>
+      );
+    }
+    return null;
+  }
 
   const { survey, respondentProgress } = data;
   const totalCount = data.summary?.total ?? survey.totalRespondents;
   const completedCount = data.summary?.completed ?? respondentProgress.filter(r => r.status === 'Completed').length;
   const inProgressCount = data.summary?.inProgress ?? respondentProgress.filter(r => r.status === 'InProgress').length;
   const notStartedCount = data.summary?.notStarted ?? (totalCount - completedCount - inProgressCount);
+
+  // Calculate pagination for current tab
+  const getCurrentPageData = () => {
+    if (activeTab === 'progress') {
+      return respondentProgress;
+    }
+    return [];
+  };
+
+  const currentPageData = getCurrentPageData();
+  
+  // Common pagination handlers
+  const handleCommonPageChange = (newPage: number) => {
+    if (activeTab === 'progress') {
+      handlePageChange(newPage);
+    } else {
+      setCommonPagination(prev => ({ ...prev, page: newPage }));
+    }
+  };
+
+  const handleCommonLimitChange = (newLimit: number) => {
+    if (activeTab === 'progress') {
+      handleLimitChange(newLimit);
+    } else {
+      setCommonPagination(prev => {
+        const totalPages = prev.total > 0 ? Math.ceil(prev.total / newLimit) : 0;
+        return {
+          ...prev,
+          limit: newLimit,
+          page: 1,
+          totalPages,
+          hasNext: totalPages > 1,
+          hasPrev: false
+        };
+      });
+    }
+  };
+
+  const shouldShowPagination = () => {
+    if (activeTab === 'progress') {
+      return pagination.total > pagination.limit;
+    }
+    return commonPagination.total > commonPagination.limit;
+  };
+
+  const getCurrentPagination = () => {
+    return activeTab === 'progress' ? pagination : commonPagination;
+  };
+
+  const getPaginationLabel = () => {
+    if (activeTab === 'progress') {
+      return 'respondents';
+    } else if (activeTab === 'response') {
+      return 'respondents';
+    } else {
+      return 'results';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -215,184 +213,232 @@ export default function RespondentProgress({ surveyId }: Props) {
         </Card>
       </div>
 
-      {/* Progress Table */}
+      {/* Tabs */}
       <Card>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              Respondent Progress
-            </h3>
-            <Button variant="outline" size="sm" onClick={() => fetchProgress(pagination.page, pagination.limit)}>
-              Refresh
-            </Button>
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-6 pt-4">
+            <div className="flex space-x-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab('progress')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeTab === 'progress'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                Respondent Progress
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('response')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeTab === 'response'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                View Response
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('analytics')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeTab === 'analytics'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                View Question Wise Responses
+              </button>
+            </div>
+            {activeTab === 'progress' && (
+              <Button variant="outline" size="sm" onClick={() => fetchProgress(pagination.page, pagination.limit)}>
+                Refresh
+              </Button>
+            )}
           </div>
-          
-          {respondentProgress.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              No responses yet. Share your survey link to start collecting responses!
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Respondent
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Progress
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Time Spent
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Last Activity
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      View
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {respondentProgress.map((respondent) => (
-                    <tr key={respondent.email} className="text-gray-700 hover:ring-1 hover:ring-gray-200 dark:text-gray-300 dark:hover:ring-gray-600 transition-all duration-200">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {respondent.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(respondent.status)}`}>
-                          {respondent.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${respondent.completionPercentage}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-gray-600 dark:text-white">
-                            {respondent.progress}/{respondent.totalPages} ({respondent.completionPercentage}%)
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-white">
-                        {respondent.timeSpent > 0 ? formatTime(respondent.timeSpent) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-white">
-                        {respondent.lastUpdated ? new Date(respondent.lastUpdated).toLocaleDateString() : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenView(respondent.email)}
-                          aria-label={`View responses for ${respondent.email}`}
-                          className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          tabIndex={0}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpenView(respondent.email); } }}
-                        >
-                          {/* Eye icon (Lucide Eye outline) */}
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="">
-                            <path d="M2.06 12.34a1 1 0 0 1 0-.68C3.68 7.85 7.57 5 12 5s8.32 2.85 9.94 6.66a1 1 0 0 1 0 .68C20.32 16.15 16.43 19 12 19s-8.32-2.85-9.94-6.66" />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        </div>
+
+        <div className="p-6">
+          {/* Tab Content */}
+          {activeTab === 'progress' && (
+            <>
+              {loading ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Loading respondent progress...
+                </div>
+              ) : currentPageData.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  No responses yet. Share your survey link to start collecting responses!
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Respondent
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Progress
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Time Spent
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Last Activity
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                      {currentPageData.map((respondent) => (
+                        <tr key={respondent.email} className="text-gray-700 hover:ring-1 hover:ring-gray-200 dark:text-gray-300 dark:hover:ring-gray-600 transition-all duration-200">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                            {respondent.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(respondent.status)}`}>
+                              {respondent.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{ width: `${respondent.completionPercentage}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-sm text-gray-600 dark:text-white">
+                                {respondent.progress}/{respondent.totalPages} ({respondent.completionPercentage}%)
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-white">
+                            {respondent.timeSpent > 0 ? formatTime(respondent.timeSpent) : '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-white">
+                            {respondent.lastUpdated ? new Date(respondent.lastUpdated).toLocaleDateString() : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'response' && (
+            <ViewResponseTab
+              surveyId={survey.id}
+              selectedRespondent={selectedRespondent}
+              respondentEmails={respondentEmails}
+              onRespondentChange={(email) => {
+                setSelectedRespondent(email);
+                setCommonPagination(prev => ({ ...prev, page: 1 }));
+              }}
+              pagination={commonPagination}
+              onPaginationChange={setCommonPagination}
+            />
+          )}
+
+          {activeTab === 'analytics' && (
+            <ViewQuestionWiseAnalyticsTab
+              surveyId={survey.id}
+              pagination={commonPagination}
+              onPaginationChange={setCommonPagination}
+            />
           )}
         </div>
 
-        {/* Pagination Controls - Integrated into the same card */}
-        {pagination.total > pagination.limit && (
-          <div className="border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} respondents
-                </span>
-                
-                <div className="flex items-center space-x-2">
-                  <label htmlFor="page-no" className="text-sm text-gray-600 dark:text-gray-400">Show:</label>
-                  <select
-                    value={pagination.limit}
-                    onChange={(e) => handleLimitChange(Number.parseInt(e.target.value))}
-                    className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  >
-                    <option value={5}>5</option>
-                  </select>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">per page</span>
+        {/* Pagination Controls - Common for all tabs */}
+        {shouldShowPagination() && (() => {
+          const currentPagination = getCurrentPagination();
+          const label = getPaginationLabel();
+          return (
+            <div className="border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing {((currentPagination.page - 1) * currentPagination.limit) + 1} to {Math.min(currentPagination.page * currentPagination.limit, currentPagination.total)} of {currentPagination.total} {label}
+                  </span>
+                  
+                  <div className="flex items-center space-x-2">
+                    <label htmlFor="page-no" className="text-sm text-gray-600 dark:text-gray-400">Show:</label>
+                    <select
+                      value={currentPagination.limit}
+                      onChange={(e) => handleCommonLimitChange(Number.parseInt(e.target.value))}
+                      className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">per page</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={!pagination.hasPrev}
-                  className="px-3 py-1"
-                >
-                  ← Previous
-                </Button>
-                
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (pagination.totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (pagination.page <= 3) {
-                      pageNum = i + 1;
-                    } else if (pagination.page >= pagination.totalPages - 2) {
-                      pageNum = pagination.totalPages - 4 + i;
-                    } else {
-                      pageNum = pagination.page - 2 + i;
-                    }
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-1 text-sm rounded transition-all duration-200 ${
-                          pageNum === pagination.page
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:ring-1 hover:ring-gray-300 dark:hover:ring-gray-500'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCommonPageChange(currentPagination.page - 1)}
+                    disabled={!currentPagination.hasPrev}
+                    className="px-3 py-1"
+                  >
+                    ← Previous
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, currentPagination.totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (currentPagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPagination.page <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPagination.page >= currentPagination.totalPages - 2) {
+                        pageNum = currentPagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPagination.page - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handleCommonPageChange(pageNum)}
+                          className={`px-3 py-1 text-sm rounded transition-all duration-200 ${
+                            pageNum === currentPagination.page
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:ring-1 hover:ring-gray-300 dark:hover:ring-gray-500'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCommonPageChange(currentPagination.page + 1)}
+                    disabled={!currentPagination.hasNext}
+                    className="px-3 py-1"
+                  >
+                    Next →
+                  </Button>
                 </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={!pagination.hasNext}
-                  className="px-3 py-1"
-                >
-                  Next →
-                </Button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </Card>
-
-      <RespondentResponseModal
-        isOpen={isViewOpen}
-        onClose={handleCloseView}
-        surveyId={survey.id}
-        respondentEmail={viewEmail || ''}
-      />
     </div>
   );
 }

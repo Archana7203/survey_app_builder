@@ -49,15 +49,16 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   transports: [
-    // Console transport (I/O output)
+    // Console transport (I/O output) - logs all levels
     new winston.transports.Console({
       format: consoleFormat
     }),
     
-    // MongoDB Atlas transport
+    // MongoDB Atlas transport - only stores error and warn logs
     new MongoDB({
       db: MONGO_ATLAS_URI as string,
       collection: 'application_logs',
+      level: 'warn', // Only log 'warn' and 'error' levels (error has higher priority than warn)
       options: {
         maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '10'),
         minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '1'),

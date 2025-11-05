@@ -28,6 +28,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@tailwindcss/vite": "^4.1.11",
     "autoprefixer": "^10.4.21",
+    "lucide-react": "^0.552.0",
     "pdfmake": "^0.2.20",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

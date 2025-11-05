@@ -61,7 +61,7 @@ export const fetchRespondentResponseByEmail = async (
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return Promise.reject(
-        new Error(errorData.error || `Failed to fetch respondent response (${res.status})`)
+        new Error(errorData.error || `Failed to fetch respondent response`)
       );
     }
     const data = await res.json();

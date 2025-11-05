@@ -858,15 +858,48 @@ export class SurveyService {
           respondentCount: originalSurveyRespondents.allowedRespondents?.length || 0,
           groupCount: originalSurveyRespondents.allowedGroups?.length || 0
         });
-        const respondentIds = (originalSurveyRespondents.allowedRespondents || []).map((id: any) => {
-          if (typeof id === 'string') return id;
-          if (id && typeof id === 'object' && id._id) return String(id._id);
-          return String(id);
-        });
-        const groupIds = (originalSurveyRespondents.allowedGroups || []).map((id: any) => {
-          if (typeof id === 'string') return id;
-          if (id && typeof id === 'object' && id._id) return String(id._id);
-          return String(id);
+        
+        // Helper function to convert ObjectId to string
+        const convertToIdString = (id: any): string | null => {
+          if (!id) return null;
+          
+          // Handle string IDs
+          if (typeof id === 'string') {
+            return mongoose.Types.ObjectId.isValid(id) ? id : null;
+          }
+          
+          // Handle Mongoose ObjectId instances (they have toString method)
+          if (id && typeof id === 'object' && typeof id.toString === 'function') {
+            const idStr = id.toString();
+            return mongoose.Types.ObjectId.isValid(idStr) ? idStr : null;
+          }
+          
+          // Handle objects with _id property
+          if (id && typeof id === 'object' && id._id) {
+            const idStr = typeof id._id === 'string' 
+              ? id._id 
+              : (typeof id._id?.toString === 'function' ? id._id.toString() : String(id._id));
+            return mongoose.Types.ObjectId.isValid(idStr) ? idStr : null;
+          }
+          
+          return null;
+        };
+        
+        const respondentIds = (originalSurveyRespondents.allowedRespondents || [])
+          .map(convertToIdString)
+          .filter((id): id is string => id !== null);
+        
+        const groupIds = (originalSurveyRespondents.allowedGroups || [])
+          .map(convertToIdString)
+          .filter((id): id is string => id !== null);
+        
+        log.debug('Extracted IDs for duplication', 'duplicateSurvey', {
+          originalSurveyId: surveyId,
+          newSurveyId,
+          respondentIdsCount: respondentIds.length,
+          groupIdsCount: groupIds.length,
+          respondentIds: respondentIds.slice(0, 5), // Log first 5 for debugging
+          groupIds: groupIds.slice(0, 5), // Log first 5 for debugging
         });
         
         await this.surveyRespondentsService.mergeRecipients(
@@ -878,7 +911,9 @@ export class SurveyService {
         log.info('Respondents and groups duplicated successfully', 'duplicateSurvey', { 
           userId, 
           originalSurveyId: surveyId, 
-          newSurveyId
+          newSurveyId,
+          respondentCount: respondentIds.length,
+          groupCount: groupIds.length
         });
       } else {
         log.info('No respondents or groups to duplicate', 'duplicateSurvey', { 
@@ -892,7 +927,8 @@ export class SurveyService {
         userId, 
         originalSurveyId: surveyId, 
         newSurveyId: String(duplicated._id),
-        error: error.message 
+        error: error.message,
+        stack: error.stack
       });
     }
     

@@ -75,7 +75,10 @@ const SurveyActionsDropdown: React.FC<SurveyActionsDropdownProps> = ({
   // Draft mode adds Delete
   if (survey.status === "draft") {
     return (
-      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+      <div 
+        className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+        onClick={(e) => e.stopPropagation()}
+      >
         {renderCommonActions()}
         <button
           onClick={() => {
@@ -94,7 +97,10 @@ const SurveyActionsDropdown: React.FC<SurveyActionsDropdownProps> = ({
   // Live mode adds Copy Link
   if (survey.status === "live") {
     return (
-      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+      <div 
+        className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+        onClick={(e) => e.stopPropagation()}
+      >
         {renderCommonActions()}
         <button
           onClick={() => {
@@ -116,7 +122,10 @@ const SurveyActionsDropdown: React.FC<SurveyActionsDropdownProps> = ({
     survey.status === "archived"
   ) {
     return (
-      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+      <div 
+        className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+        onClick={(e) => e.stopPropagation()}
+      >
         {renderCommonActions()}
       </div>
     );

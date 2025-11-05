@@ -8,6 +8,8 @@ interface ConfirmationModalProps {
   title: string;
   message: string;
   action: string;
+  loading?: boolean;
+  loadingText?: string;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -17,8 +19,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   title,
   message,
   action,
+  loading = false,
+  loadingText,
 }) => {
   if (!isOpen) return null;
+
+  const displayText = loading ? (loadingText || `${action}...`) : action;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -30,11 +36,11 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           {message}
         </p>
         <div className="flex justify-end space-x-3">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={onConfirm}>
-            {action}
+          <Button variant="primary" onClick={onConfirm} disabled={loading}>
+            {displayText}
           </Button>
         </div>
       </div>

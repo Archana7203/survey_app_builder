@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accent';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accent' | 'live' | 'archive';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
 }
@@ -28,7 +28,9 @@ const Button: React.FC<ButtonProps> = ({
     outline: 'border text-gray-700 dark:border-gray-600 dark:text-gray-300',
     ghost: 'text-gray-700 dark:text-gray-300',
     danger: 'text-white',
+    live: 'text-white',
     accent: 'text-white',
+    archive: 'text-white',
   };
 
   const getButtonStyle = (): React.CSSProperties => {
@@ -43,6 +45,8 @@ const Button: React.FC<ButtonProps> = ({
       };
     if (variant === 'accent') return { backgroundColor: 'var(--color-accent-button)', borderRadius: '9999px' };
     if (variant === 'danger') return { backgroundColor: '#dc2626', color: '#fff' }; // red bg, white text
+    if (variant === 'live') return { backgroundColor: '#008000', color: '#fff' }; // green bg, white text
+    if (variant === 'archive') return { backgroundColor: '#FFA500', color: '#fff' }; // yellow bg, white text
     return {};
   };
 

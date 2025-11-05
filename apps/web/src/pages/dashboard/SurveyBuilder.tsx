@@ -349,7 +349,7 @@ export default function SurveyBuilder() {
         setPreviewResponses={setPreviewResponses}
         error={error}
         setError={setError}
-        loading={loading}
+        loading={loading || false}
         saving={saving}
         navigate={navigate}
         saveSurvey={saveSurvey}
