@@ -53,11 +53,12 @@ export class SurveyRepository {
       matchStage.status = { $ne: 'archived' };
     }
     
-    // Search filter (title OR description)
+    // Search filter (title OR description OR status)
     if (filters?.search) {
       matchStage.$or = [
         { title: { $regex: filters.search, $options: 'i' } },
-        { description: { $regex: filters.search, $options: 'i' } }
+        { description: { $regex: filters.search, $options: 'i' } },
+        { status: { $regex: filters.search, $options: 'i' } }
       ];
     }
     
@@ -152,7 +153,8 @@ export class SurveyRepository {
     if (filters?.search) {
       query.$or = [
         { title: { $regex: filters.search, $options: 'i' } },
-        { description: { $regex: filters.search, $options: 'i' } }
+        { description: { $regex: filters.search, $options: 'i' } },
+        { status: { $regex: filters.search, $options: 'i' } }
       ];
     }
     
