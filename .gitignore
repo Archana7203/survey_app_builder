@@ -39,6 +39,7 @@ playwright-report/
 **/.env.*
 !**/.env.example
 env.example
+.env.heroku
 
 # Editor directories and files
 .vscode/*
@@ -89,3 +90,15 @@ __tests__/
 PLAN.md
 SSO-GUIDE.md
 SSO-PLAN.md
+.env.example
+PLAN2.md
+PLAN2.MD
+README.md
+.vscode/
+.qodo/
+.sfdx/
+.cursor/
+/apps/api/data/
+/apps/api/docs/
+/apps/api/src/data/
+/apps/web/
