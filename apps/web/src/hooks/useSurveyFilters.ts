@@ -45,7 +45,7 @@ export const useSurveyFilters = (surveys: Survey[]) => {
     // Apply status filter
     if (filterBy === "status" && statusValue) {
       result = result.filter((survey) => survey.status === statusValue);
-    } // ✅ Added closing brace
+    } 
 
     // Apply date range filter
     if (dateFrom && (filterBy === "createdAt" || filterBy === "closeDate")) {
@@ -65,41 +65,6 @@ export const useSurveyFilters = (surveys: Survey[]) => {
         return new Date(dateField) <= new Date(dateTo);
       });
     }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortBy) {
-        case "title":
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
-          break;
-        case "status":
-          aValue = a.status;
-          bValue = b.status;
-          break;
-        case "createdAt":
-          aValue = new Date(a.createdAt).getTime();
-          bValue = new Date(b.createdAt).getTime();
-          break;
-        case "closeDate":
-          aValue = a.closeDate ? new Date(a.closeDate).getTime() : 0;
-          bValue = b.closeDate ? new Date(b.closeDate).getTime() : 0;
-          break;
-        default:
-          aValue = a.createdAt;
-          bValue = b.createdAt;
-      }
-
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
     setFilteredSurveys(result);
   };
 

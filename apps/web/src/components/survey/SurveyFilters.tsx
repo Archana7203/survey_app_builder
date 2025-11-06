@@ -19,6 +19,7 @@ interface SurveyFiltersProps {
   statusValue: string; 
   setStatusValue: (value: string) => void; 
   onSearchTrigger?: () => void;
+  onSortChange?: () => void;
 }
 
 const SurveyFilters: React.FC<SurveyFiltersProps> = ({
@@ -38,6 +39,7 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
   statusValue, 
   setStatusValue,
   onSearchTrigger,
+  onSortChange,
 }) => {
   // When filterBy changes, reset statusValue
   React.useEffect(() => {
@@ -79,7 +81,10 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
             <div className="flex gap-1.5">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  if (onSortChange) onSortChange();
+                }}
                 className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="createdAt">Created Date</option>
@@ -88,7 +93,10 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
                 <option value="closeDate">Close Date</option>
               </select>
               <button
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                onClick={() => {
+                  setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                  if (onSortChange) onSortChange();
+                }}
                 className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 bg-white text-gray-700"
                 title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"}`}
               >

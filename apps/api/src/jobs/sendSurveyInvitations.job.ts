@@ -288,7 +288,7 @@ export class SendSurveyInvitationsJob {
       const token = generateSurveyToken(surveyId, respondentEmail);
 
       // Build survey link
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL;
       const surveyLink = `${frontendUrl}/s/${surveySlug}?token=${token}`;
 
       // Send email

@@ -36,7 +36,9 @@ export class SurveyRepository {
       search?: string; 
       dateFrom?: string; 
       dateTo?: string; 
-      dateField?: string; 
+      dateField?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
     }
   ) {
     const matchStage: any = { 
@@ -110,10 +112,19 @@ export class SurveyRepository {
           locked: 1,
         },
       },
-      { $sort: { updatedAt: -1 } }, // Default backend sort
+      { 
+        $sort: this.getSortStage(filters?.sortBy, filters?.sortOrder)
+      },
       { $skip: skip },
       { $limit: limit },
     ]);
+  }
+
+  private getSortStage(sortBy?: string, sortOrder?: 'asc' | 'desc'): Record<string, 1 | -1> {
+    const order = sortOrder === 'asc' ? 1 : -1;
+    const validSortFields = ['title', 'status', 'createdAt', 'updatedAt', 'closeDate'];
+    const sortField = sortBy && validSortFields.includes(sortBy) ? sortBy : 'updatedAt';
+    return { [sortField]: order };
   }
 
   async countByCreator(

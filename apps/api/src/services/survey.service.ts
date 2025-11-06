@@ -62,7 +62,9 @@ export class SurveyService {
       search?: string; 
       dateFrom?: string; 
       dateTo?: string; 
-      dateField?: string; 
+      dateField?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
     }
   ) {
     log.info('Fetching all surveys for user', 'getAllSurveys', { userId, page, limit, filters });
@@ -420,11 +422,19 @@ export class SurveyService {
       }
     }
 
-    // Filter out: already sent emails AND completed surveys (case-insensitive)
-    const newRespondents = allEmails.filter(email => {
-      const emailLower = email.toLowerCase();
-      return !sentEmails.has(emailLower) && !completedEmails.has(emailLower);
-    });
+    // Deduplicate emails (case-insensitive) and filter out already sent/completed
+    const uniqueEmails = new Set<string>();
+    const newRespondents: string[] = [];
+    
+    for (const email of allEmails) {
+      const emailLower = email.toLowerCase().trim();
+      if (!uniqueEmails.has(emailLower) && 
+          !sentEmails.has(emailLower) && 
+          !completedEmails.has(emailLower)) {
+        uniqueEmails.add(emailLower);
+        newRespondents.push(emailLower);
+      }
+    }
 
     log.info('Preparing to send invitations', 'sendInvitations', { 
       userId, 
@@ -440,7 +450,7 @@ export class SurveyService {
         try {
           const token = generateSurveyToken(surveyId, email);
           const frontendUrl =
-            process.env.FRONTEND_URL || 'http://localhost:3000';
+            process.env.FRONTEND_URL;
           const surveyLink = `${frontendUrl}/s/${survey.slug}?token=${token}`;
           await sendSurveyInvite(email, survey.title, surveyLink);
           
@@ -1086,6 +1096,8 @@ export class SurveyService {
       survey: {
         title: survey.title,
         description: survey.description,
+        backgroundColor: survey.backgroundColor,
+        textColor: survey.textColor,
         theme: survey.theme,
         pages: survey.pages,
       },

@@ -402,6 +402,7 @@ export class SurveyRespondentsService {
 
     let sent = 0;
     let failed = 0;
+    const sentEmails = new Set<string>();
 
     // Simple pool
     const pool: Promise<void>[] = [];
@@ -415,7 +416,7 @@ export class SurveyRespondentsService {
         if (!respondent?.mail) throw new Error('Respondent email missing');
 
         // Skip if respondent has already completed the survey
-        const emailLower = String(respondent.mail).toLowerCase();
+        const emailLower = String(respondent.mail).toLowerCase().trim();
         if (completedEmails.has(emailLower)) {
           log.debug('Skipping invitation - respondent already completed survey', 'sendPendingInvitations', {
             surveyId,
@@ -427,10 +428,22 @@ export class SurveyRespondentsService {
           return;
         }
 
+        // Skip if we've already sent to this email in this batch
+        if (sentEmails.has(emailLower)) {
+          log.debug('Skipping duplicate invitation - email already sent in this batch', 'sendPendingInvitations', {
+            surveyId,
+            respondentId,
+            email: respondent.mail
+          });
+          await this.updateInvitationStatus(surveyId, respondentId, 'sent');
+          return;
+        }
+
         const token = generateSurveyToken(surveyId, respondent.mail);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = process.env.FRONTEND_URL;
         const surveyLink = `${frontendUrl}/s/${survey.slug}?token=${token}`;
         await sendSurveyInvite(respondent.mail, survey.title, surveyLink);
+        sentEmails.add(emailLower);
         await this.updateInvitationStatus(surveyId, respondentId, 'sent');
         sent++;
       } catch (e) {
@@ -506,7 +519,7 @@ export class SurveyRespondentsService {
       const respondents = await this.repo.getRespondentsByIds(respondentIds);
       for (const respondent of respondents) {
         if (respondent.mail) {
-          emails.add(respondent.mail);
+          emails.add(String(respondent.mail).toLowerCase().trim());
         }
       }
     }
@@ -532,7 +545,7 @@ export class SurveyRespondentsService {
             const members = await this.repo.getRespondentsByIds(memberIds);
             for (const member of members) {
               if (member.mail) {
-                emails.add(member.mail);
+                emails.add(String(member.mail).toLowerCase().trim());
               }
             }
           }
@@ -541,7 +554,6 @@ export class SurveyRespondentsService {
         }
       }
     }
-
 
     return Array.from(emails);
   }

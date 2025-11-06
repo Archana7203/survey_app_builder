@@ -46,6 +46,14 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       filters.dateField = req.query.dateField as string;
     }
     
+    if (req.query.sortBy) {
+      filters.sortBy = req.query.sortBy as string;
+    }
+    
+    if (req.query.sortOrder) {
+      filters.sortOrder = req.query.sortOrder as 'asc' | 'desc';
+    }
+    
     log.info('Fetching surveys', 'GET_SURVEYS', {
       userId: req.user._id.toString(),
       page,

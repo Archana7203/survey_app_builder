@@ -112,7 +112,7 @@ const Surveys: React.FC = () => {
     });
   }, []);
 
-  // Fetch when filters change (except search - handled by manual trigger)
+  // Fetch when filters change (except search and sorting - handled by manual trigger)
   useEffect(() => {
     fetchSurveys(1, pagination.limit);
   }, [filterBy, statusValue, dateFrom, dateTo]); 
@@ -147,6 +147,10 @@ const Surveys: React.FC = () => {
         params.append("dateTo", dateTo);
         params.append("dateField", filterBy);
       }
+
+      // Add sorting parameters
+      params.append("sortBy", sortBy);
+      params.append("sortOrder", sortOrder);
 
       const response = await listSurveysApi(params.toString());
 
@@ -378,6 +382,7 @@ const Surveys: React.FC = () => {
         statusValue={statusValue} 
         setStatusValue={setStatusValue}
         onSearchTrigger={() => fetchSurveys(1, pagination.limit)}
+        onSortChange={() => fetchSurveys(1, pagination.limit)}
       />
 
       {/* Survey List */}

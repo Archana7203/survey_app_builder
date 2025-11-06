@@ -59,6 +59,10 @@ env.example
 **/.temp
 .eslintcache
 
+# Backup files
+*.bak
+**/*.bak
+
 # Storybook
 *storybook.log
 storybook-static
@@ -98,7 +102,15 @@ README.md
 .qodo/
 .sfdx/
 .cursor/
-/apps/api/data/
-/apps/api/docs/
-/apps/api/src/data/
-/apps/web/
+apps/api/data/
+apps/api/docs/
+apps/api/src/data/
+apps/web/src/api-paths/apiConfig.ts.bak
+apps/api/src/test/
+/apps/web/playwright.config.ts
+/apps/web/README.md
+/apps/web/vitest.config.ts
+/apps/web/src/test/
+
+/apps/api/vitest.config.ts
+/apps/api/.prettierrc

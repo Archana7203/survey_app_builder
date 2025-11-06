@@ -7,8 +7,8 @@ config();
 
 async function runMigration() {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/survey_app';
-    await mongoose.connect(mongoUri);
+    const mongoUri = process.env.MONGODB_URI;
+    await mongoose.connect(mongoUri!);
     console.log('Connected to MongoDB');
     
     const result = await migrateSurveyLock();

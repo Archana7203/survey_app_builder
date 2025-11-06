@@ -9,13 +9,10 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://pit-federation-evaluation-premises.trycloudflare.com',  
+        target: process.env.VITE_API_BASE_URL!,
         changeOrigin: true,
         secure: false,
       },
     },
-    allowedHosts: [
-      'garden-interest-tunes-require.trycloudflare.com', 
-    ],
   },
 });
