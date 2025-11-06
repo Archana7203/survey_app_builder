@@ -314,6 +314,31 @@ router.get('/public/:slug', async (req, res) => {
   }
 });
 
+// POST /api/surveys/:surveyId/generate-token - Generate JWT token for respondent email
+router.post('/:surveyId/generate-token', async (req, res) => {
+  try {
+    const { surveyId } = req.params;
+    const { email } = req.body;
+
+    const token = await service.generateRespondentToken(surveyId, email);
+    res.json({ token });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate token';
+    const statusCode = 
+      errorMessage.includes('required') || errorMessage.includes('Invalid email') ? 400 :
+      errorMessage.includes('not found') ? 404 :
+      errorMessage.includes('not available') || errorMessage.includes('closed') ? 403 :
+      500;
+
+    log.error('Failed to generate token', 'GENERATE_TOKEN', {
+      surveyId: req.params.surveyId,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    res.status(statusCode).json({ error: errorMessage });
+  }
+});
+
 // GET /api/surveys/:surveyId/respondents
 router.get('/:surveyId/respondents', requireAuth, async (req: AuthRequest, res) => {
   try {

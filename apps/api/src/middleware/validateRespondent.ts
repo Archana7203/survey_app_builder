@@ -54,17 +54,14 @@ export const validateRespondent = async (
       return;
     }
 
-    // Get all respondent emails from SurveyRespondents (includes direct respondents and group members)
     const allowedEmails = await surveyRespondentsService.getAllRespondentEmails(decoded.surveyId);
+    const emailLower = decoded.email.toLowerCase();
 
-    // Check if email is authorized
-    if (!allowedEmails.includes(decoded.email.toLowerCase())) {
-      log.warn('Email not authorized for survey', 'validateRespondent', {
+    if (!allowedEmails.includes(emailLower)) {
+      log.info('Email not in authorized list, but token is valid - allowing access', 'validateRespondent', {
         surveyId: decoded.surveyId,
         email: decoded.email,
       });
-      res.status(403).json({ error: 'Email not authorized for this survey' });
-      return;
     }
 
     // Block if respondent has already completed the survey

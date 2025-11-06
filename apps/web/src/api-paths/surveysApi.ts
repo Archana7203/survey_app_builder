@@ -55,6 +55,26 @@ export const exportSurveyApi = async (surveyId: string): Promise<Blob> => {
   }
 };
 
+export const generateSurveyTokenApi = async (surveyId: string, email: string) => {
+  try {
+    const res = await fetch(buildApiUrl(`/api/surveys/${surveyId}/generate-token`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      return Promise.reject(new Error(errorData.error || 'Failed to generate token'));
+    }
+    const data = await res.json();
+    return Promise.resolve(data.token);
+  } catch (error) {
+    console.error('Failed to generate survey token:', error);
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
 export const fetchRespondentProgressApi = async (
   surveyId: string,
   page: number = 1,

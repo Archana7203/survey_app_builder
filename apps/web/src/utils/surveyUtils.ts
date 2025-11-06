@@ -116,6 +116,20 @@ export const validateSurveyForPublish = (
     return { valid: false, error: "Survey must have at least one question" };
   }
 
+  const emptyPages: number[] = [];
+  survey.pages.forEach((page: any, pageIndex: number) => {
+    if (!page.questions || !Array.isArray(page.questions) || page.questions.length === 0) {
+      emptyPages.push(pageIndex + 1);
+    }
+  });
+
+  if (emptyPages.length > 0) {
+    return {
+      valid: false,
+      error: `Cannot publish survey with empty pages. Please add questions to page(s): ${emptyPages.join(', ')}`,
+    };
+  }
+
   // Check for empty question titles - must be done before any other checks
   const emptyQuestions: Array<{ pageIndex: number; questionIndex: number; questionId?: string }> = [];
   survey.pages.forEach((page: any, pageIndex: number) => {

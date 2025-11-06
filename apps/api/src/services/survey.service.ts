@@ -7,6 +7,7 @@ import { generateUniqueSlug } from '../utils/slug';
 import { generateSurveyToken, sendSurveyInvite } from '../utils/email';
 import mongoose from 'mongoose';
 import validator from 'validator';
+import crypto from 'crypto';
 import log from '../logger'
 
 //Helper
@@ -576,11 +577,14 @@ export class SurveyService {
     }
     const allResponses = await this.responseRepo.findBySurvey(surveyId);
     const responseMap = new Map(
-      allResponses.map((r) => [r.respondentEmail, r])
+      allResponses.map((r) => [r.respondentEmail?.toLowerCase(), r])
     );
     
-    // Get all respondent emails from the new service
-    const respondentEmails = await this.surveyRespondentsService.getAllRespondentEmails(surveyId);
+    const authorizedEmails = await this.surveyRespondentsService.getAllRespondentEmails(surveyId);
+    const responseEmails = Array.from(responseMap.keys());
+    
+    const allUniqueEmails = new Set([...authorizedEmails.map(e => e.toLowerCase()), ...responseEmails]);
+    const respondentEmails = Array.from(allUniqueEmails);
     
     const allRespondents = respondentEmails.map((email) => {
       const response = responseMap.get(email);
@@ -1144,7 +1148,54 @@ export class SurveyService {
     });
     return importedSurvey;
   }
-  // 17. Static method to delete survey (used in user deletion)
+  // 17. Generate token for respondent
+  async generateRespondentToken(surveyId: string, email: string): Promise<string> {
+    log.info('Generating token for respondent', 'generateRespondentToken', { surveyId });
+
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      throw new Error('Email is required');
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      throw new Error('Invalid email format');
+    }
+
+    const survey = await this.repo.findById(surveyId);
+    if (!survey) {
+      log.warn('Survey not found for token generation', 'generateRespondentToken', { surveyId });
+      throw new Error('Survey not found');
+    }
+
+    if (survey.status !== 'published' && survey.status !== 'live') {
+      log.warn('Survey not available for token generation', 'generateRespondentToken', {
+        surveyId,
+        status: survey.status
+      });
+      throw new Error('Survey is not available for responses');
+    }
+
+    const now = new Date();
+    if (survey.endDate && now >= new Date(survey.endDate)) {
+      log.warn('Survey closed for token generation', 'generateRespondentToken', {
+        surveyId,
+        endDate: survey.endDate
+      });
+      throw new Error('This survey is closed');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const token = generateSurveyToken(surveyId, normalizedEmail);
+
+    log.info('Token generated successfully', 'generateRespondentToken', {
+      surveyId,
+      emailHash: crypto.createHash('sha256').update(normalizedEmail).digest('hex').substring(0, 12)
+    });
+
+    return token;
+  }
+
+  // 18. Static method to delete survey (used in user deletion)
   static async deleteSurvey(surveyId: string, userId: string): Promise<void> {
     log.info('Static deleteSurvey called', 'deleteSurvey', { surveyId, userId });
     const repo = new SurveyRepository();

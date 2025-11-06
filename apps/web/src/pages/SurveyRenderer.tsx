@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import QuestionRenderer from '../components/questions/QuestionRenderer';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import EmailPromptModal from '../components/modals/EmailPromptModal';
 import { evaluateCondition } from '../utils/visibilityHelpers';
-import { fetchPublicSurveyApi } from '../api-paths/surveysApi';
+import { fetchPublicSurveyApi, generateSurveyTokenApi } from '../api-paths/surveysApi';
 import { autoSaveResponse, submitSurveyApi } from '../api-paths/responsesApi';
 import { buildApiUrl } from '../api-paths/apiConfig';
 
@@ -74,6 +75,9 @@ export default function SurveyRenderer() {
   const [pagesVisited, setPagesVisited] = useState<number[]>([0]);
   const [autoSaveInterval, setAutoSaveInterval] = useState<number>(30000);
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const draftKey = `survey_${slug}_draft`;
 
   // Helper: extract visibility rules from a question (supports multiple locations for flexibility)
@@ -110,25 +114,43 @@ export default function SurveyRenderer() {
   }, [getVisibilityRules, responses]);
 
 
-  // Get token from URL
   const token = new URLSearchParams(globalThis.location.search).get('token');
 
   const fetchSurvey = useCallback(async () => {
     if (!slug) return;
 
     try {
-      console.log('Fetching survey with slug:', slug);
       const data = await fetchPublicSurveyApi(slug, token||undefined);
-      console.log('Survey data received:', data);
       setSurvey(data);
       setError(null);
+      if (!token && (data.status === 'live' || data.status === 'published')) {
+        setShowEmailModal(true);
+      }
     } catch (error: any) {
-      console.error('Survey fetch error:', error);
       setError(error.message || 'Error loading survey');
     } finally {
       setLoading(false);
     }
   }, [slug, token]);
+
+  const handleEmailSubmit = useCallback(async (email: string) => {
+    if (!survey?.id) return;
+    
+    setEmailLoading(true);
+    setEmailError(null);
+
+    try {
+      const newToken = await generateSurveyTokenApi(survey.id, email);
+      const newUrl = `${window.location.pathname}?token=${newToken}`;
+      window.history.replaceState({}, '', newUrl);
+      setShowEmailModal(false);
+      setEmailLoading(false);
+      window.location.reload();
+    } catch (err: any) {
+      setEmailError(err.message || 'Failed to generate token');
+      setEmailLoading(false);
+    }
+  }, [survey]);
 
   // Fetch config.json
   const fetchConfig = useCallback(async () => {
@@ -773,6 +795,12 @@ const saveProgress = useCallback(async () => {
           </div>
         </div>
       </div>
+      <EmailPromptModal
+        isOpen={showEmailModal}
+        onSubmit={handleEmailSubmit}
+        loading={emailLoading}
+        error={emailError}
+      />
     </div>
   );
 }
