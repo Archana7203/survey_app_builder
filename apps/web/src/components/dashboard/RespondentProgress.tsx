@@ -191,6 +191,11 @@ export default function RespondentProgress({ surveyId }: Props) {
 
   const shouldShowPagination = () => {
     const currentPagination = getCurrentPagination();
+    // Show pagination if there are items OR if we're on response tab with a selected respondent
+    // (to keep pagination visible even when respondent hasn't answered)
+    if (activeTab === 'response' && selectedRespondent) {
+      return true;
+    }
     return currentPagination.total > 0;
   };
 
@@ -386,12 +391,22 @@ export default function RespondentProgress({ surveyId }: Props) {
         {shouldShowPagination() && (() => {
           const currentPagination = getCurrentPagination();
           const label = getPaginationLabel();
+          // Calculate display values, handling the case when total is 0
+          const start = currentPagination.total > 0 
+            ? ((currentPagination.page - 1) * currentPagination.limit) + 1 
+            : 0;
+          const end = currentPagination.total > 0
+            ? Math.min(currentPagination.page * currentPagination.limit, currentPagination.total)
+            : 0;
           return (
             <div className="border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Showing {((currentPagination.page - 1) * currentPagination.limit) + 1} to {Math.min(currentPagination.page * currentPagination.limit, currentPagination.total)} of {currentPagination.total} {label}
+                    {currentPagination.total > 0 
+                      ? `Showing ${start} to ${end} of ${currentPagination.total} ${label}`
+                      : `Showing 0 of 0 ${label}`
+                    }
                   </span>
                   
                   <div className="flex items-center space-x-2">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   listSurveysApi,
@@ -44,8 +44,10 @@ interface PaginationInfo {
 
 const Surveys: React.FC = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [respondentsModalOpen, setRespondentsModalOpen] = useState(false);
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
@@ -99,27 +101,16 @@ const Surveys: React.FC = () => {
     }
   }, [openDropdown]);
 
-  useEffect(() => {
-    loadConfig().then(() => {
-      const config = getSurveyPaginationConfig();
-      if (config) {
-        setPagination((prev) => ({
-          ...prev,
-          limit: config.defaultLimit,
-        }));
-      }
-      fetchSurveys(1, config?.defaultLimit || 5);
-    });
-  }, []);
-
-  // Fetch when filters change (except search and sorting - handled by manual trigger)
-  useEffect(() => {
-    fetchSurveys(1, pagination.limit);
-  }, [filterBy, statusValue, dateFrom, dateTo]); 
-
-  const fetchSurveys = async (page: number, limit: number) => {
+  const fetchSurveys = useCallback(async (page: number, limit: number, isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) {
+        setInitialLoading(true);
+      } else {
+        // Only show loading indicator after 300ms to prevent flickering
+        loadingTimeoutRef.current = setTimeout(() => {
+          setLoading(true);
+        }, 300);
+      }
       setError(null);
 
       const params = new URLSearchParams({
@@ -127,7 +118,7 @@ const Surveys: React.FC = () => {
         limit: limit.toString(),
       });
 
-      // Add status filter
+      // Add status filter - only send when filterBy is "status" to avoid persistent filtering
       if (filterBy === "status" && statusValue) {
         params.append("status", statusValue);
       }
@@ -159,9 +150,64 @@ const Surveys: React.FC = () => {
     } catch (error: any) {
       setError("Failed to fetch surveys");
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setInitialLoading(false);
+      } else {
+        // Clear the loading timeout if it hasn't fired yet
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
+        setLoading(false);
+      }
     }
-  };
+  }, [filterBy, statusValue, searchQuery, dateFrom, dateTo, sortBy, sortOrder]);
+
+  useEffect(() => {
+    loadConfig().then(() => {
+      const config = getSurveyPaginationConfig();
+      if (config) {
+        setPagination((prev) => ({
+          ...prev,
+          limit: config.defaultLimit,
+        }));
+      }
+      fetchSurveys(1, config?.defaultLimit || 5, true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch when filters change
+  useEffect(() => {
+    fetchSurveys(1, pagination.limit);
+  }, [filterBy, statusValue, dateFrom, dateTo, fetchSurveys, pagination.limit]);
+
+  // Debounced search - fetch surveys dynamically as user types
+  useEffect(() => {
+    // Clear any pending loading timeout when search query changes
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+    
+    const timeoutId = setTimeout(() => {
+      fetchSurveys(1, pagination.limit);
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => {
+      clearTimeout(timeoutId);
+      // Also clear loading timeout on cleanup
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    };
+  }, [searchQuery, fetchSurveys, pagination.limit]);
+
+  // Fetch when sort changes
+  useEffect(() => {
+    fetchSurveys(1, pagination.limit);
+  }, [sortBy, sortOrder, fetchSurveys, pagination.limit]);
 
   const handlePageChange = (newPage: number) => {
     fetchSurveys(newPage, pagination.limit);
@@ -313,7 +359,7 @@ const Surveys: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-600 dark:text-gray-400">
@@ -365,25 +411,34 @@ const Surveys: React.FC = () => {
       </div>
 
       {/* Search and Filter Section */}
-      <SurveyFilters
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        sortOrder={sortOrder}
-        setSortOrder={setSortOrder}
-        filterBy={filterBy}
-        setFilterBy={setFilterBy}
-        dateFrom={dateFrom}
-        setDateFrom={setDateFrom}
-        dateTo={dateTo}
-        setDateTo={setDateTo}
-        onClearFilters={clearFilters}
-        statusValue={statusValue} 
-        setStatusValue={setStatusValue}
-        onSearchTrigger={() => fetchSurveys(1, pagination.limit)}
-        onSortChange={() => fetchSurveys(1, pagination.limit)}
-      />
+      <div className="relative">
+        {loading && (
+          <div className="absolute top-0 right-0 z-10 flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <svg className="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-sm text-blue-600 dark:text-blue-400">Searching...</span>
+          </div>
+        )}
+        <SurveyFilters
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
+          filterBy={filterBy}
+          setFilterBy={setFilterBy}
+          dateFrom={dateFrom}
+          setDateFrom={setDateFrom}
+          dateTo={dateTo}
+          setDateTo={setDateTo}
+          onClearFilters={clearFilters}
+          statusValue={statusValue} 
+          setStatusValue={setStatusValue}
+        />
+      </div>
 
       {/* Survey List */}
       {displaySurveys.length === 0 ? (
@@ -410,94 +465,63 @@ const Surveys: React.FC = () => {
           {/* Mobile Card View */}
           <div className="block sm:hidden space-y-3">
             <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Showing {displaySurveys.length} survey
-              {displaySurveys.length !== 1 ? "s" : ""}
+              Showing {displaySurveys.length} of {pagination.total || displaySurveys.length} survey
+              {(pagination.total || displaySurveys.length) !== 1 ? "s" : ""}
               {searchQuery && ` matching "${searchQuery}"`}
             </div>
             {displaySurveys.filter(survey => survey && survey.title).map((survey) => (
               <Card key={survey.id} className="p-4">
                 <div className="space-y-3">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                      {survey.title}
-                    </h3>
-                    {survey.description && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {survey.description}
-                      </p>
-                    )}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                        {survey.title}
+                      </h3>
+                      {survey.description && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                          {survey.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenDropdown(
+                            openDropdown === survey.id ? null : survey.id
+                          );
+                        }}
+                        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                        title="Survey actions"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <circle cx="3" cy="10" r="2" />
+                          <circle cx="10" cy="10" r="2" />
+                          <circle cx="17" cy="10" r="2" />
+                        </svg>
+                      </button>
+                      <SurveyActionsDropdown
+                        survey={survey}
+                        isOpen={openDropdown === survey.id}
+                        onClose={() => setOpenDropdown(null)}
+                        duplicating={duplicating}
+                        exporting={exporting}
+                        deleting={deleting}
+                        onDuplicate={handleDuplicate}
+                        onExport={handleExport}
+                        onDelete={handleDelete}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                     <span>{getStatusBadge(survey.status, survey.closeDate)}</span>
                     <span>{formatDate(survey.createdAt)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-center gap-1 pt-2 border-t border-gray-200 dark:border-gray-700 flex-nowrap">
-                    {!survey.locked && (
-                      <Link to={`/dashboard/surveys/${survey.id}/edit`}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          title="Edit survey"
-                          className="text-xs px-2 py-1"
-                        >
-                          ✏️
-                        </Button>
-                      </Link>
-                    )}
-                    {survey.locked && (
-                      <Link to={`/dashboard/surveys/${survey.id}/view`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title="View survey"
-                          className="text-xs px-2 py-1"
-                        >
-                          🔍
-                        </Button>
-                      </Link>
-                    )}
-                    <Link to={`/dashboard/results/${survey.id}`}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        title="View results"
-                        className="text-xs px-2 py-1"
-                      >
-                        📊
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDuplicate(survey.id)}
-                      disabled={duplicating === survey.id}
-                      title="Duplicate survey"
-                      className="text-xs px-2 py-1"
-                    >
-                      {duplicating === survey.id ? "⏳" : "📄"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleExport(survey.id)}
-                      disabled={exporting === survey.id}
-                      title="Export survey"
-                      className="text-xs px-2 py-1"
-                    >
-                      {exporting === survey.id ? "⏳" : "📤"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(survey.id)}
-                      disabled={deleting === survey.id}
-                      title="Delete survey"
-                      className="text-xs px-2 py-1 text-red-600"
-                    >
-                      {deleting === survey.id ? "⏳" : "🗑️"}
-                    </Button>
                   </div>
                 </div>
               </Card>
@@ -508,8 +532,8 @@ const Surveys: React.FC = () => {
           <Card className="hidden sm:block">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Showing {displaySurveys.length} survey
-                {displaySurveys.length !== 1 ? "s" : ""}
+                Showing {displaySurveys.length} of {pagination.total || displaySurveys.length} survey
+                {(pagination.total || displaySurveys.length) !== 1 ? "s" : ""}
                 {searchQuery && ` matching "${searchQuery}"`}
               </div>
             </div>

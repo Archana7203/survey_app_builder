@@ -1,5 +1,5 @@
 // hooks/useSurveyFilters.ts
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface Survey {
   id: string;
@@ -15,7 +15,6 @@ interface Survey {
 }
 
 export const useSurveyFilters = (surveys: Survey[]) => {
-  const [filteredSurveys, setFilteredSurveys] = useState<Survey[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -24,49 +23,10 @@ export const useSurveyFilters = (surveys: Survey[]) => {
   const [dateTo, setDateTo] = useState("");
   const [statusValue, setStatusValue] = useState("");
 
-  useEffect(() => {
-    applyFiltersAndSearch();
-  }, [surveys, searchQuery, sortBy, sortOrder, filterBy, dateFrom, dateTo, statusValue]); // ✅ Added statusValue
-
-  const applyFiltersAndSearch = () => {
-    let result = [...surveys].filter(survey => survey && survey.title);    // Filter out invalid surveys first
-    
-    // Apply search filter (title and status only)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((survey) => {
-        return (
-          survey?.title?.toLowerCase().includes(query) ||
-          survey?.status?.toLowerCase().includes(query)
-        );
-      });
-    }
-
-    // Apply status filter
-    if (filterBy === "status" && statusValue) {
-      result = result.filter((survey) => survey.status === statusValue);
-    } 
-
-    // Apply date range filter
-    if (dateFrom && (filterBy === "createdAt" || filterBy === "closeDate")) {
-      result = result.filter((survey) => {
-        const dateField =
-          filterBy === "createdAt" ? survey.createdAt : survey.closeDate;
-        if (!dateField) return false;
-        return new Date(dateField) >= new Date(dateFrom);
-      });
-    }
-
-    if (dateTo && (filterBy === "createdAt" || filterBy === "closeDate")) {
-      result = result.filter((survey) => {
-        const dateField =
-          filterBy === "createdAt" ? survey.createdAt : survey.closeDate;
-        if (!dateField) return false;
-        return new Date(dateField) <= new Date(dateTo);
-      });
-    }
-    setFilteredSurveys(result);
-  };
+  // NOTE: All filtering (search, status, dates, sorting) is handled server-side via API
+  // The surveys array already contains the filtered results from the server
+  // We only filter out invalid surveys (those without titles) for display purposes
+  const filteredSurveys = surveys.filter(survey => survey && survey.title);
 
   const clearFilters = () => {
     setSearchQuery("");

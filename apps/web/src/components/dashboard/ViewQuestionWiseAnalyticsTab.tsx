@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { fetchSurveyByIdApi } from '../../api-paths/surveysApi';
 import { fetchRespondentResponseByEmail } from '../../api-paths/responsesApi';
 import { fetchRespondentProgressApi } from '../../api-paths/surveysApi';
@@ -56,6 +56,124 @@ const getQuestionType = (type: QuestionType): 'text' | 'number' | 'choice' => {
   if (type === 'singleChoice' || type === 'multiChoice' || type === 'dropdown') return 'choice';
   return 'text'; // default
 };
+
+// Memoized dropdown component with internal state to prevent parent re-renders
+const QuestionDropdown = memo(({
+  selectedQuestionId,
+  selectedQuestionTitle,
+  allQuestions,
+  onSelect
+}: {
+  selectedQuestionId: string;
+  selectedQuestionTitle: string;
+  allQuestions: SurveyQuestion[];
+  onSelect: (questionId: string) => void;
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const filteredQuestions = useMemo(() => {
+    if (!searchQuery.trim()) return allQuestions;
+    const query = searchQuery.toLowerCase();
+    return allQuestions.filter(q => q.title.toLowerCase().includes(query));
+  }, [allQuestions, searchQuery]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setIsOpen(true);
+    setIsTyping(true);
+  }, []);
+
+  const handleInputFocus = useCallback(() => {
+    setIsOpen(true);
+    setIsTyping(true);
+    if (selectedQuestionTitle) {
+      setSearchQuery('');
+    }
+  }, [selectedQuestionTitle]);
+
+  const handleInputClick = useCallback(() => {
+    setIsOpen(true);
+    setIsTyping(true);
+    if (selectedQuestionTitle) {
+      setSearchQuery('');
+    }
+  }, [selectedQuestionTitle]);
+
+  const handleItemClick = useCallback((questionId: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSearchQuery('');
+    setIsOpen(false);
+    setIsTyping(false);
+    onSelect(questionId);
+  }, [onSelect]);
+
+  const handleItemMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setIsTyping(false);
+    // Reset to show selected value when closing
+    setSearchQuery('');
+  }, []);
+
+  return (
+    <div className="flex-1 relative">
+      <input
+        id="question-select"
+        type="text"
+        placeholder="Search or select a question..."
+        value={isTyping ? searchQuery : (selectedQuestionTitle || '')}
+        onChange={handleInputChange}
+        onFocus={handleInputFocus}
+        onClick={handleInputClick}
+        className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        aria-label="Search or select a question"
+      />
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={handleClose}
+          />
+          <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {filteredQuestions.length > 0 ? (
+              filteredQuestions.map((q) => (
+                <button
+                  key={q.id}
+                  type="button"
+                  onMouseDown={handleItemMouseDown}
+                  onClick={handleItemClick(q.id)}
+                  className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 cursor-pointer ${
+                    q.id === selectedQuestionId ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  }`}
+                >
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {q.title}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                {allQuestions.length === 0 
+                  ? 'No questions available' 
+                  : 'No questions found matching your search'}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+});
+
+QuestionDropdown.displayName = 'QuestionDropdown';
 
 const renderAnswer = (question: SurveyQuestion, value: any): string => {
   if (value === null || value === undefined) return '-';
@@ -245,46 +363,14 @@ export default function ViewQuestionWiseAnalyticsTab({ surveyId, pagination, onP
   const [multiChoiceDropdownValue, setMultiChoiceDropdownValue] = useState<string>('');
   const [allRespondentAnswers, setAllRespondentAnswers] = useState<RespondentAnswer[]>([]);
   const [filteredAnswers, setFilteredAnswers] = useState<Array<{ email: string; answer: string }>>([]);
-  const [questionSearchQuery, setQuestionSearchQuery] = useState('');
-  const [isQuestionDropdownOpen, setIsQuestionDropdownOpen] = useState(false);
 
   const selectedQuestion = useMemo(() => {
     return questions.find(q => q.id === selectedQuestionId);
   }, [questions, selectedQuestionId]);
 
-  const filteredQuestions = useMemo(() => {
-    if (!questionSearchQuery.trim()) return questions;
-    const query = questionSearchQuery.toLowerCase();
-    return questions.filter(q => q.title.toLowerCase().includes(query));
-  }, [questions, questionSearchQuery]);
-
-  const handleQuestionSelect = (questionId: string) => {
+  const handleQuestionSelect = useCallback((questionId: string) => {
     setSelectedQuestionId(questionId);
-    setQuestionSearchQuery('');
-    setIsQuestionDropdownOpen(false);
-  };
-
-  const handleQuestionSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setQuestionSearchQuery(value);
-    setIsQuestionDropdownOpen(true);
-    // If user starts typing different text, clear selection
-    if (selectedQuestion && value !== selectedQuestion.title) {
-      setSelectedQuestionId('');
-    }
-  };
-
-  const handleQuestionInputFocus = () => {
-    setIsQuestionDropdownOpen(true);
-    // Clear search query on focus to allow typing
-    if (selectedQuestion) {
-      setQuestionSearchQuery('');
-    }
-  };
-
-  const handleQuestionInputBlur = () => {
-    setTimeout(() => setIsQuestionDropdownOpen(false), 300);
-  };
+  }, []);
 
   const questionType = useMemo(() => {
     if (!selectedQuestion) return null;
@@ -307,7 +393,6 @@ export default function ViewQuestionWiseAnalyticsTab({ surveyId, pagination, onP
 
         if (surveyQuestions.length > 0) {
           setSelectedQuestionId(surveyQuestions[0].id);
-          setQuestionSearchQuery('');
         }
 
         // Fetch all respondent responses
@@ -492,53 +577,12 @@ export default function ViewQuestionWiseAnalyticsTab({ surveyId, pagination, onP
         <label htmlFor="question-select" className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap w-20">
           Question:
         </label>
-        <div className="flex-1 relative">
-          <input
-            id="question-select"
-            type="text"
-            placeholder="Search or select a question..."
-            value={selectedQuestion && !questionSearchQuery ? selectedQuestion.title : questionSearchQuery}
-            onChange={handleQuestionSearchChange}
-            onFocus={handleQuestionInputFocus}
-            onBlur={handleQuestionInputBlur}
-            className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Search or select a question"
-          />
-          {isQuestionDropdownOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {filteredQuestions.length > 0 ? (
-                filteredQuestions.map((q) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleQuestionSelect(q.id);
-                    }}
-                    className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 cursor-pointer ${
-                      q.id === selectedQuestionId ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                    }`}
-                  >
-                    <div className="font-medium text-gray-900 dark:text-white">
-                      {q.title}
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                  {questions.length === 0 
-                    ? 'No questions available' 
-                    : 'No questions found matching your search'}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <QuestionDropdown
+          selectedQuestionId={selectedQuestionId}
+          selectedQuestionTitle={selectedQuestion?.title || ''}
+          allQuestions={questions}
+          onSelect={handleQuestionSelect}
+        />
       </div>
 
       {/* Filter and Value */}

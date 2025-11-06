@@ -17,9 +17,7 @@ interface SurveyFiltersProps {
   setDateTo: (value: string) => void;
   onClearFilters: () => void;
   statusValue: string; 
-  setStatusValue: (value: string) => void; 
-  onSearchTrigger?: () => void;
-  onSortChange?: () => void;
+  setStatusValue: (value: string) => void;
 }
 
 const SurveyFilters: React.FC<SurveyFiltersProps> = ({
@@ -38,8 +36,6 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
   onClearFilters,
   statusValue, 
   setStatusValue,
-  onSearchTrigger,
-  onSortChange,
 }) => {
   // When filterBy changes, reset statusValue
   React.useEffect(() => {
@@ -65,11 +61,6 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
             placeholder="Search surveys by title or status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && onSearchTrigger) {
-                onSearchTrigger();
-              }
-            }}
             className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-400"
           />
         </div>
@@ -81,10 +72,7 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
             <div className="flex gap-1.5">
               <select
                 value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value);
-                  if (onSortChange) onSortChange();
-                }}
+                onChange={(e) => setSortBy(e.target.value)}
                 className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="createdAt">Created Date</option>
@@ -95,7 +83,6 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
               <button
                 onClick={() => {
                   setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                  if (onSortChange) onSortChange();
                 }}
                 className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 bg-white text-gray-700"
                 title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"}`}

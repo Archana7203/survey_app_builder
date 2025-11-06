@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { fetchRespondentResponseByEmail } from '../../api-paths/responsesApi';
 import { buildApiUrl } from '../../api-paths/apiConfig';
 
@@ -49,6 +49,122 @@ const truncateWords = (text: string, maxWords: number) => {
   return { truncated: words.slice(0, maxWords).join(' ') + '…', isTruncated: true };
 };
 
+// Memoized dropdown component with internal state to prevent parent re-renders
+const RespondentDropdown = memo(({
+  selectedValue,
+  allOptions,
+  onSelect
+}: {
+  selectedValue: string;
+  allOptions: string[];
+  onSelect: (value: string) => void;
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery.trim()) return allOptions;
+    const query = searchQuery.toLowerCase();
+    return allOptions.filter(email => email.toLowerCase().includes(query));
+  }, [allOptions, searchQuery]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setIsOpen(true);
+    setIsTyping(true);
+  }, []);
+
+  const handleInputFocus = useCallback(() => {
+    setIsOpen(true);
+    setIsTyping(true);
+    if (selectedValue) {
+      setSearchQuery('');
+    }
+  }, [selectedValue]);
+
+  const handleInputClick = useCallback(() => {
+    setIsOpen(true);
+    setIsTyping(true);
+    if (selectedValue) {
+      setSearchQuery('');
+    }
+  }, [selectedValue]);
+
+  const handleItemClick = useCallback((email: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSearchQuery('');
+    setIsOpen(false);
+    setIsTyping(false);
+    onSelect(email);
+  }, [onSelect]);
+
+  const handleItemMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setIsTyping(false);
+    // Reset to show selected value when closing
+    setSearchQuery('');
+  }, []);
+
+  return (
+    <div className="relative">
+      <input
+        id="respondent-select"
+        type="text"
+        placeholder="Search or select a respondent..."
+        value={isTyping ? searchQuery : (selectedValue || '')}
+        onChange={handleInputChange}
+        onFocus={handleInputFocus}
+        onClick={handleInputClick}
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        aria-label="Search or select a respondent"
+      />
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={handleClose}
+          />
+          <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((email) => (
+                <button
+                  key={email}
+                  type="button"
+                  onMouseDown={handleItemMouseDown}
+                  onClick={handleItemClick(email)}
+                  className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 cursor-pointer ${
+                    email === selectedValue ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  }`}
+                >
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {email}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                {allOptions.length === 0 
+                  ? 'No respondents available' 
+                  : 'No respondents found matching your search'}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+});
+
+RespondentDropdown.displayName = 'RespondentDropdown';
+
 export default function ViewResponseTab({ 
   surveyId, 
   selectedRespondent, 
@@ -66,12 +182,12 @@ export default function ViewResponseTab({
   }>(null);
   const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [respondentSearchQuery, setRespondentSearchQuery] = useState('');
-  const [isRespondentDropdownOpen, setIsRespondentDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!selectedRespondent) {
       setResponseDoc(null);
+      setLoading(false);
+      setInitialLoad(false);
       return;
     }
 
@@ -80,7 +196,7 @@ export default function ViewResponseTab({
         setLoading(true);
         setError(null);
         const [respRes, surveyRes] = await Promise.all([
-          fetchRespondentResponseByEmail(surveyId, selectedRespondent),
+          fetchRespondentResponseByEmail(surveyId, selectedRespondent).catch(() => null),
           fetch(buildApiUrl(`/api/surveys/${surveyId}`), { credentials: 'include' }),
         ]);
         const surveyData = surveyRes.ok ? await surveyRes.json() : null;
@@ -89,9 +205,14 @@ export default function ViewResponseTab({
               .map((q: any) => ({ id: q.id, title: q.title, type: q.type, options: q.options }))
           : [];
         setQuestions(surveyQuestions);
+        // If respondent hasn't answered, respRes will be null, but that's okay
         setResponseDoc(respRes);
+        if (!respRes) {
+          setError(null); // Don't show error if they just haven't answered yet
+        }
       } catch (e: any) {
         setError(e?.message || 'Failed to load responses');
+        setResponseDoc(null);
       } finally {
         setLoading(false);
         setInitialLoad(false);
@@ -136,6 +257,7 @@ export default function ViewResponseTab({
   // Update pagination when responses change
   useEffect(() => {
     const total = sortedResponses.length;
+    // Always update pagination, even if total is 0 (so footer stays visible)
     if (total > 0) {
       const totalPages = Math.ceil(total / pagination.limit);
       const currentPage = pagination.page > totalPages ? 1 : pagination.page;
@@ -149,10 +271,12 @@ export default function ViewResponseTab({
         hasPrev: currentPage > 1
       });
     } else {
+      // Keep pagination visible even when no responses (respondent hasn't answered)
       onPaginationChange({
         ...pagination,
         total: 0,
         totalPages: 0,
+        page: 1,
         hasNext: false,
         hasPrev: false
       });
@@ -164,40 +288,10 @@ export default function ViewResponseTab({
     setExpanded((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
   };
 
-  const filteredRespondents = useMemo(() => {
-    if (!respondentSearchQuery.trim()) return respondentEmails;
-    const query = respondentSearchQuery.toLowerCase();
-    return respondentEmails.filter(email => email.toLowerCase().includes(query));
-  }, [respondentEmails, respondentSearchQuery]);
-
-  const handleRespondentSelect = (email: string) => {
+  const handleRespondentSelect = useCallback((email: string) => {
     onRespondentChange(email);
     onPaginationChange({ ...pagination, page: 1 });
-    setRespondentSearchQuery('');
-    setIsRespondentDropdownOpen(false);
-  };
-
-  const handleRespondentSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setRespondentSearchQuery(value);
-    setIsRespondentDropdownOpen(true);
-    // If user starts typing different text, clear selection
-    if (selectedRespondent && value !== selectedRespondent) {
-      onRespondentChange('');
-    }
-  };
-
-  const handleRespondentInputFocus = () => {
-    setIsRespondentDropdownOpen(true);
-    // Clear search query on focus to allow typing
-    if (selectedRespondent) {
-      setRespondentSearchQuery('');
-    }
-  };
-
-  const handleRespondentInputBlur = () => {
-    setTimeout(() => setIsRespondentDropdownOpen(false), 300);
-  };
+  }, [onRespondentChange, onPaginationChange, pagination]);
 
   const renderAnswer = (q: SurveyQuestion | undefined, value: any) => {
     if (!q) return '-';
@@ -289,93 +383,47 @@ export default function ViewResponseTab({
     }
   };
 
-  // Show loading during initial load or when actually loading
-  if (initialLoad || loading || (selectedRespondent && !responseDoc)) {
-    return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-        Loading responses…
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-8 text-red-600 dark:text-red-400">{error}</div>
-    );
-  }
-
-  if (!selectedRespondent) {
-    return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-        Select a respondent to view their responses.
-      </div>
-    );
-  }
-
-  if (!responseDoc) {
-    return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-        No response found.
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div>
         <label htmlFor="respondent-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Respondent
         </label>
-        <div className="relative">
-          <input
-            id="respondent-select"
-            type="text"
-            placeholder="Search or select a respondent..."
-            value={selectedRespondent && !respondentSearchQuery ? selectedRespondent : respondentSearchQuery}
-            onChange={handleRespondentSearchChange}
-            onFocus={handleRespondentInputFocus}
-            onBlur={handleRespondentInputBlur}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Search or select a respondent"
-          />
-          {isRespondentDropdownOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {filteredRespondents.length > 0 ? (
-                filteredRespondents.map((email) => (
-                  <button
-                    key={email}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleRespondentSelect(email);
-                    }}
-                    className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 cursor-pointer ${
-                      email === selectedRespondent ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                    }`}
-                  >
-                    <div className="font-medium text-gray-900 dark:text-white">
-                      {email}
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                  {respondentEmails.length === 0 
-                    ? 'No respondents available' 
-                    : 'No respondents found matching your search'}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <RespondentDropdown
+          selectedValue={selectedRespondent}
+          allOptions={respondentEmails}
+          onSelect={handleRespondentSelect}
+        />
       </div>
       
-      {selectedRespondent && (
+      {/* Show loading only when actually loading */}
+      {(initialLoad || loading) && selectedRespondent && (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          Loading responses…
+        </div>
+      )}
+
+      {/* Show error only if there's an actual error (not just no response) */}
+      {error && selectedRespondent && (
+        <div className="text-center py-8 text-red-600 dark:text-red-400">{error}</div>
+      )}
+
+      {/* Show message when no respondent is selected */}
+      {!selectedRespondent && (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          Select a respondent to view their responses.
+        </div>
+      )}
+
+      {/* Show message when respondent is selected but hasn't answered yet */}
+      {selectedRespondent && !loading && !initialLoad && !responseDoc && !error && (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          This respondent hasn't answered the survey yet.
+        </div>
+      )}
+      
+      {/* Show table only when there's a response */}
+      {selectedRespondent && responseDoc && !loading && (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800">
