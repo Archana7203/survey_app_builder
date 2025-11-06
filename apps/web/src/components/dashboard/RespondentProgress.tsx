@@ -5,6 +5,7 @@ import { useRespondentProgress } from '../../hooks/useRespondentProgress';
 import { fetchRespondentProgressApi } from '../../api-paths/surveysApi';
 import ViewResponseTab from './ViewResponseTab';
 import ViewQuestionWiseAnalyticsTab from './ViewQuestionWiseAnalyticsTab';
+import { loadConfig, getRespondentProgressPaginationConfig } from '../../utils/config';
 
 type TabType = 'progress' | 'response' | 'analytics';
 
@@ -17,10 +18,10 @@ export default function RespondentProgress({ surveyId }: Props) {
   const [selectedRespondent, setSelectedRespondent] = useState<string>('');
   const [respondentEmails, setRespondentEmails] = useState<string[]>([]);
   
-  // Pagination state for all tabs
+  // Single pagination state for all tabs - initialized with config default (20)
   const [commonPagination, setCommonPagination] = useState({
     page: 1,
-    limit: 5,
+    limit: 20,
     total: 0,
     totalPages: 1,
     hasNext: false,
@@ -38,20 +39,25 @@ export default function RespondentProgress({ surveyId }: Props) {
     setError
   } = useRespondentProgress(surveyId);
 
-  // Sync pagination when tab changes or when progress data changes
+  // Initialize pagination limit from config
   useEffect(() => {
-    if (activeTab === 'progress') {
-      setCommonPagination(pagination);
-    } else {
-      // Reset pagination for other tabs
-      setCommonPagination({
-        page: 1,
-        limit: 5,
-        total: 0,
-        totalPages: 0,
-        hasNext: false,
-        hasPrev: false
+    if (surveyId && surveyId !== 'new') {
+      loadConfig().then(() => {
+        const config = getRespondentProgressPaginationConfig();
+        if (config) {
+          setCommonPagination(prev => ({
+            ...prev,
+            limit: config.defaultLimit
+          }));
+        }
       });
+    }
+  }, [surveyId]);
+
+  // Sync commonPagination with hook's pagination when on progress tab
+  useEffect(() => {
+    if (activeTab === 'progress' && pagination) {
+      setCommonPagination(pagination);
     }
   }, [activeTab, pagination]);
 
@@ -73,6 +79,17 @@ export default function RespondentProgress({ surveyId }: Props) {
       loadRespondentEmails();
     }
   }, [activeTab, surveyId, selectedRespondent]);
+
+  useEffect(() => {
+    if (activeTab !== 'progress') {
+      setCommonPagination(prev => ({
+        ...prev,
+        page: 1,
+        hasNext: false,
+        hasPrev: false
+      }));
+    }
+  }, [activeTab]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -134,50 +151,59 @@ export default function RespondentProgress({ surveyId }: Props) {
   };
 
   const currentPageData = getCurrentPageData();
-  
-  // Common pagination handlers
   const handleCommonPageChange = (newPage: number) => {
     if (activeTab === 'progress') {
+      setCommonPagination(prev => ({ ...prev, page: newPage }));
       handlePageChange(newPage);
     } else {
-      setCommonPagination(prev => ({ ...prev, page: newPage }));
-    }
-  };
-
-  const handleCommonLimitChange = (newLimit: number) => {
-    if (activeTab === 'progress') {
-      handleLimitChange(newLimit);
-    } else {
+      // For response and analytics tabs, update page and recalculate hasPrev/hasNext
       setCommonPagination(prev => {
-        const totalPages = prev.total > 0 ? Math.ceil(prev.total / newLimit) : 0;
+        const totalPages = prev.totalPages || 1;
+        const validPage = Math.max(1, Math.min(newPage, totalPages));
         return {
           ...prev,
-          limit: newLimit,
-          page: 1,
-          totalPages,
-          hasNext: totalPages > 1,
-          hasPrev: false
+          page: validPage,
+          hasPrev: validPage > 1,
+          hasNext: validPage < totalPages
         };
       });
     }
   };
 
-  const shouldShowPagination = () => {
+  const handleCommonLimitChange = (newLimit: number) => {
+    const totalPages = commonPagination.total > 0 ? Math.ceil(commonPagination.total / newLimit) : 0;
+    const updatedPagination = {
+      ...commonPagination,
+      limit: newLimit,
+      page: 1,
+      totalPages,
+      hasNext: totalPages > 1,
+      hasPrev: false
+    };
+    
+    setCommonPagination(updatedPagination);
+    
+    // If on progress tab, also update the hook
     if (activeTab === 'progress') {
-      return pagination.total > pagination.limit;
+      handleLimitChange(newLimit);
     }
-    return commonPagination.total > commonPagination.limit;
   };
 
+  const shouldShowPagination = () => {
+    const currentPagination = getCurrentPagination();
+    return currentPagination.total > 0;
+  };
+
+  // Always use commonPagination for all tabs
   const getCurrentPagination = () => {
-    return activeTab === 'progress' ? pagination : commonPagination;
+    return commonPagination;
   };
 
   const getPaginationLabel = () => {
     if (activeTab === 'progress') {
       return 'respondents';
     } else if (activeTab === 'response') {
-      return 'respondents';
+      return 'responses';
     } else {
       return 'results';
     }
@@ -253,7 +279,7 @@ export default function RespondentProgress({ surveyId }: Props) {
               </button>
             </div>
             {activeTab === 'progress' && (
-              <Button variant="outline" size="sm" onClick={() => fetchProgress(pagination.page, pagination.limit)}>
+              <Button variant="outline" size="sm" onClick={() => fetchProgress(commonPagination.page, commonPagination.limit)}>
                 Refresh
               </Button>
             )}
@@ -371,7 +397,8 @@ export default function RespondentProgress({ surveyId }: Props) {
                   <div className="flex items-center space-x-2">
                     <label htmlFor="page-no" className="text-sm text-gray-600 dark:text-gray-400">Show:</label>
                     <select
-                      value={currentPagination.limit}
+                      id="page-no"
+                      value={commonPagination.limit}
                       onChange={(e) => handleCommonLimitChange(Number.parseInt(e.target.value))}
                       className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >

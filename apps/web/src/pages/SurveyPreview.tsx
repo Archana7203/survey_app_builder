@@ -18,8 +18,8 @@ interface Question {
     value?: string;
   }>;
   settings?: Record<string, unknown>;
-  visibilityRules?: Array<BranchingRule & { groupIndex?: number }>;
-  visibleWhen?: Array<BranchingRule & { groupIndex?: number }>;
+  visibilityRules?: BranchingRule[];
+  visibleWhen?: BranchingRule[];
 }
 
 interface BranchingRule {
@@ -69,29 +69,16 @@ export default function SurveyPreview() {
   const [responses, setResponses] = useState<SurveyResponse>({});
 
   // Helper: extract visibility rules from a question
-  const getVisibilityRules = useCallback((question: Question): Array<BranchingRule & { groupIndex?: number }> => {
+  const getVisibilityRules = useCallback((question: Question): BranchingRule[] => {
     const settings = (question.settings || {});
-    const fromSettings = (settings.visibleWhen || (settings.visibility as any)?.rules) as Array<BranchingRule & { groupIndex?: number }> | undefined;
+    const fromSettings = (settings.visibleWhen || (settings.visibility as any)?.rules) as BranchingRule[] | undefined;
     return (
       question.visibilityRules ||
       question.visibleWhen ||
       fromSettings ||
       []
-    ) as Array<BranchingRule & { groupIndex?: number }>;
+    ) as BranchingRule[];
   }, []);
-
-  // Helper: evaluate a group of rules
-  const evaluateRuleGroup = useCallback((groupRules: Array<BranchingRule & { groupIndex?: number }>): boolean => {
-    return groupRules.reduce<boolean | null>((combined, r, idx) => {
-      const resp = responses[r.questionId];
-      const conditionMet = resp !== undefined && evaluateCondition(r.condition.operator, r.condition.value, resp);
-
-      if (combined === null) return conditionMet;
-
-      const prevLogical = (groupRules[idx - 1].logical as 'AND' | 'OR') ?? 'OR';
-      return prevLogical === 'AND' ? (combined && conditionMet) : (combined || conditionMet);
-    }, null) ?? false;
-  }, [responses]);
 
   // Helper: check if a question should be visible based on visibility rules
   const isQuestionVisible = useCallback((question: Question): boolean => {
@@ -102,20 +89,17 @@ export default function SurveyPreview() {
     const anyDependencyAnswered = rules.some(r => responses[r.questionId] !== undefined);
     if (!anyDependencyAnswered) return false;
 
-    // Group rules by groupIndex
-    const byGroup = rules.reduce((acc: Record<number, typeof rules>, rule) => {
-      const gi = rule.groupIndex ?? 0;
-      if (!acc[gi]) acc[gi] = [];
-      acc[gi].push(rule);
-      return acc;
-    }, {});
+    // Evaluate all rules as a single flat list (no groups)
+    return rules.reduce((acc, rule, idx) => {
+      const resp = responses[rule.questionId];
+      const conditionMet = resp !== undefined && evaluateCondition(rule.condition.operator, rule.condition.value, resp);
 
-    // Evaluate each group: visible if ANY group evaluates to true
-    return Object.keys(byGroup)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .some(gi => evaluateRuleGroup(byGroup[gi]));
-  }, [responses, getVisibilityRules, evaluateRuleGroup]);
+      if (idx === 0) return conditionMet;
+
+      const prevLogical = (rules[idx - 1].logical as 'AND' | 'OR') ?? 'OR';
+      return prevLogical === 'AND' ? acc && conditionMet : acc || conditionMet;
+    }, false);
+  }, [responses, getVisibilityRules]);
 
   // Fetch survey data
   const fetchSurvey = useCallback(async () => {

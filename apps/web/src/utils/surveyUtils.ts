@@ -81,10 +81,6 @@ export const prepareStatusUpdatePayload = (
 ) => {
   const payload: any = { status: newStatus };
 
-  if (newStatus === "live" && currentStatus === "published") {
-    payload.startDate = new Date().toISOString();
-  }
-
   // Handle live → closed transition (Close button)
   if (newStatus === "closed" && currentStatus === "live") {
     payload.endDate = new Date().toISOString();
@@ -120,6 +116,39 @@ export const validateSurveyForPublish = (
     return { valid: false, error: "Survey must have at least one question" };
   }
 
+  // Check for empty question titles - must be done before any other checks
+  const emptyQuestions: Array<{ pageIndex: number; questionIndex: number; questionId?: string }> = [];
+  survey.pages.forEach((page: any, pageIndex: number) => {
+    if (page.questions && Array.isArray(page.questions)) {
+      page.questions.forEach((question: any, questionIndex: number) => {
+        // Check if title is missing, null, undefined, empty string, or only whitespace
+        const title = question.title;
+        if (
+          title === undefined ||
+          title === null ||
+          typeof title !== 'string' ||
+          title.trim() === ''
+        ) {
+          emptyQuestions.push({ 
+            pageIndex: pageIndex + 1, 
+            questionIndex: questionIndex + 1,
+            questionId: question.id || `q_${questionIndex}`
+          });
+        }
+      });
+    }
+  });
+
+  if (emptyQuestions.length > 0) {
+    const emptyQuestionDetails = emptyQuestions
+      .map(({ pageIndex, questionIndex }) => `Page ${pageIndex}, Question ${questionIndex}`)
+      .join('; ');
+    return {
+      valid: false,
+      error: `Cannot publish survey with empty question titles. Please fill in the question titles for: ${emptyQuestionDetails}`,
+    };
+  }
+
   if (!survey?.startDate) {
     return { valid: false, error: "Start date is required to publish" };
   }
@@ -146,21 +175,12 @@ export const validateSurveyForGoingLive = (
     return publishValidation;
   }
 
-  // Check if start date is today or in the past
+  // Note: We don't validate start date here because when going live,
+  // the start date will be automatically updated to current date/time
+  // So even if start date is in the future, it will be corrected
+
   const now = new Date();
-  const startDate = new Date(survey.startDate);
   const endDate = new Date(survey.endDate);
-
-  // Compare only the date part (ignore time)
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const surveyStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-
-  if (surveyStartDate > todayStart) {
-    return {
-      valid: false,
-      error: "Cannot go live before the start date. Start date must be today or earlier.",
-    };
-  }
 
   // Check if survey hasn't expired
   if (endDate <= now) {

@@ -333,7 +333,7 @@ export default function ViewQuestionWiseAnalyticsTab({ surveyId, pagination, onP
 
         setAllRespondentAnswers(answers);
       } catch (e: any) {
-        setError(e?.message || 'Failed to load data');
+        setError(e?.message || 'Failed to load respondent answers data');
       } finally {
         setLoading(false);
       }

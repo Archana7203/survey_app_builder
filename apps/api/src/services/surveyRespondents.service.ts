@@ -375,6 +375,16 @@ export class SurveyRespondentsService {
       }
     }
 
+    // Check for completed survey responses - don't send to those who already completed
+    const { Response } = await import('../models/Response');
+    const completedResponses = await Response.find({
+      survey: surveyId,
+      status: 'Completed'
+    }).select('respondentEmail');
+    const completedEmails = new Set(
+      completedResponses.map(r => r.respondentEmail?.toLowerCase()).filter(Boolean)
+    );
+
     // Load invitations and filter to only pending invitations for currently allowed respondents
     const invitations = await this.repo.getInvitations(surveyId);
     const pending = (invitations || []).filter((inv: any) => {
@@ -403,6 +413,19 @@ export class SurveyRespondentsService {
         if (!respondentId) throw new Error('Invalid respondentId');
         const respondent = await Respondent.findById(respondentId).select('mail');
         if (!respondent?.mail) throw new Error('Respondent email missing');
+
+        // Skip if respondent has already completed the survey
+        const emailLower = String(respondent.mail).toLowerCase();
+        if (completedEmails.has(emailLower)) {
+          log.debug('Skipping invitation - respondent already completed survey', 'sendPendingInvitations', {
+            surveyId,
+            respondentId,
+            email: respondent.mail
+          });
+          // Update invitation status to 'sent' to prevent retries (they completed, so no need to send)
+          await this.updateInvitationStatus(surveyId, respondentId, 'sent');
+          return;
+        }
 
         const token = generateSurveyToken(surveyId, respondent.mail);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';

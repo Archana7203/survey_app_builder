@@ -356,22 +356,81 @@ export class SurveyService {
       throw new Error('No respondents to send invitations to');
     }
 
-    // Get invitations to check who already received emails
-    const invitations = await this.surveyRespondentsService.getInvitations(surveyId);
-    const sentEmails = new Set(
-      invitations
-        .filter((inv: any) => inv.status === 'sent')
-        .map((inv: any) => inv.respondentId?.mail)
-        .filter(Boolean)
+    // Check for completed survey responses - don't send to those who already completed
+    const { Response } = await import('../models/Response');
+    const completedResponses = await Response.find({
+      survey: surveyId,
+      status: 'Completed',
+      respondentEmail: { $in: allEmails.map(e => e.toLowerCase()) }
+    }).select('respondentEmail');
+    const completedEmails = new Set(
+      completedResponses.map(r => r.respondentEmail?.toLowerCase()).filter(Boolean)
     );
 
-    const newRespondents = allEmails.filter(email => !sentEmails.has(email));
+    // Get invitations to check who already received emails
+    const invitations = await this.surveyRespondentsService.getInvitations(surveyId);
+    
+    // Extract emails from invitations that have status='sent'
+    // Handle both populated (object with mail) and non-populated (ObjectId) cases
+    const sentEmails = new Set<string>();
+    const respondentIdsToFetch = new Set<string>();
+    
+    for (const inv of invitations) {
+      if (inv.status !== 'sent' || !inv.respondentId) continue;
+      
+      // Handle populated respondentId (object with mail property) or ObjectId
+      let email: string | null = null;
+      let respondentId: string | null = null;
+      
+      if (typeof inv.respondentId === 'object' && inv.respondentId !== null) {
+        // Populated object
+        const respObj = inv.respondentId as any;
+        if ('mail' in respObj && respObj.mail) {
+          email = String(respObj.mail).toLowerCase();
+        } else {
+          // Might be ObjectId, try to get ID
+          respondentId = respObj._id?.toString() || respObj.toString();
+        }
+      } else {
+        // ObjectId string
+        respondentId = inv.respondentId.toString();
+      }
+      
+      if (email) {
+        sentEmails.add(email);
+      } else if (respondentId) {
+        // Need to fetch email from Respondent model
+        respondentIdsToFetch.add(respondentId);
+      }
+    }
+    
+    // Fetch emails for respondentIds that weren't populated
+    if (respondentIdsToFetch.size > 0) {
+      const { Respondent } = await import('../models/Respondent');
+      const respondents = await Respondent.find({
+        _id: { $in: Array.from(respondentIdsToFetch).map(id => new mongoose.Types.ObjectId(id)) }
+      }).select('_id mail');
+      
+      for (const respondent of respondents) {
+        if (respondent.mail) {
+          const email = String(respondent.mail).toLowerCase();
+          sentEmails.add(email);
+        }
+      }
+    }
+
+    // Filter out: already sent emails AND completed surveys (case-insensitive)
+    const newRespondents = allEmails.filter(email => {
+      const emailLower = email.toLowerCase();
+      return !sentEmails.has(emailLower) && !completedEmails.has(emailLower);
+    });
 
     log.info('Preparing to send invitations', 'sendInvitations', { 
       userId, 
       surveyId, 
       totalRespondents: allEmails.length, 
-      alreadySent: sentEmails.size, 
+      alreadySent: sentEmails.size,
+      alreadyCompleted: completedEmails.size,
       newRespondents: newRespondents.length 
     });
 
@@ -409,14 +468,78 @@ export class SurveyService {
       .filter((r) => r.status === 'fulfilled' && r.value.success)
       .map((r) => (r as PromiseFulfilledResult<any>).value.email);
     
-    // Note: We would need respondent IDs to update invitation status properly
-    // This is a simplified version - in practice, you'd match emails to respondent IDs
+    const failedEmails = results
+      .filter((r) => r.status === 'fulfilled' && !r.value.success)
+      .map((r) => (r as PromiseFulfilledResult<any>).value.email);
+    
+    // Map emails to respondent IDs for updating invitation statuses
+    const { Respondent } = await import('../models/Respondent');
+    const emailToRespondentId = new Map<string, string>();
+    
+    // Get respondent IDs for successful and failed emails
+    const emailsToLookup = [...successfulEmails, ...failedEmails].map(e => e.toLowerCase());
+    if (emailsToLookup.length > 0) {
+      const respondents = await Respondent.find({
+        mail: { $in: emailsToLookup }
+      }).select('_id mail');
+      
+      for (const respondent of respondents) {
+        if (respondent.mail) {
+          const emailLower = String(respondent.mail).toLowerCase();
+          emailToRespondentId.set(emailLower, (respondent._id as any).toString());
+        }
+      }
+    }
+    
+    // Update invitation status to 'sent' for successful emails
+    for (const email of successfulEmails) {
+      const emailLower = email.toLowerCase();
+      const respondentId = emailToRespondentId.get(emailLower);
+      
+      if (respondentId) {
+        try {
+          await this.surveyRespondentsService.updateInvitationStatus(surveyId, respondentId, 'sent');
+          log.debug('Invitation status updated to sent', 'sendInvitations', {
+            email,
+            surveyId,
+            respondentId
+          });
+        } catch (err: any) {
+          log.warn('Failed to update invitation status', 'sendInvitations', {
+            email,
+            surveyId,
+            respondentId,
+            error: err.message
+          });
+        }
+      }
+    }
+    
+    // Update invitation status to 'failed' for failed emails
+    for (const email of failedEmails) {
+      const emailLower = email.toLowerCase();
+      const respondentId = emailToRespondentId.get(emailLower);
+      
+      if (respondentId) {
+        try {
+          await this.surveyRespondentsService.updateInvitationStatus(surveyId, respondentId, 'failed');
+        } catch (err: any) {
+          log.warn('Failed to update invitation status to failed', 'sendInvitations', {
+            email,
+            surveyId,
+            respondentId,
+            error: err.message
+          });
+        }
+      }
+    }
     
     if (successfulEmails.length > 0) {
       log.info('Invitations sent and recorded', 'sendInvitations', { 
         userId, 
         surveyId, 
-        successCount: successfulEmails.length, 
+        successCount: successfulEmails.length,
+        failedCount: failedEmails.length,
         totalAttempted: newRespondents.length 
       });
     } else {

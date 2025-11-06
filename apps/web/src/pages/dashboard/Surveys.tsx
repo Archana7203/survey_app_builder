@@ -176,7 +176,6 @@ const Surveys: React.FC = () => {
 
       setSurveys((prev) => [newSurvey, ...prev]);
       setIsModalOpen(false);
-
       setPagination((prev) => ({
         ...prev,
         total: prev.total + 1,
@@ -185,7 +184,7 @@ const Surveys: React.FC = () => {
 
       fetchSurveys(1, pagination.limit);
     } catch (err: any) {
-      setError(`Error creating survey: ${err.message || "Unknown error"}`);
+      setError(err.message || "Failed to create survey");
     } finally {
       setSubmitting(false);
     }

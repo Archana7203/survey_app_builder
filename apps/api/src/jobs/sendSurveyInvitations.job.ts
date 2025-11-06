@@ -260,6 +260,30 @@ export class SendSurveyInvitationsJob {
     });
 
     try {
+      // Check if respondent has already completed the survey
+      const { Response } = await import('../models/Response');
+      const existingResponse = await Response.findOne({
+        survey: surveyId,
+        respondentEmail: respondentEmail.toLowerCase(),
+        status: 'Completed'
+      }).select('status');
+
+      if (existingResponse?.status === 'Completed') {
+        log.debug('Skipping invitation - respondent already completed survey', 'sendInvitation', {
+          surveyId,
+          respondentId,
+          email: respondentEmail,
+        });
+        // Update invitation status to 'sent' to prevent retries (they completed, so no need to send)
+        await this.updateInvitationStatus(surveyId, respondentId, 'sent');
+        return {
+          surveyId,
+          respondentId,
+          email: respondentEmail,
+          success: true,
+        };
+      }
+
       // Generate survey token
       const token = generateSurveyToken(surveyId, respondentEmail);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
@@ -24,7 +24,6 @@ interface VisibilityRule {
     value: ValueType
   };
   logical?: 'AND' | 'OR';
-  groupIndex?: number;
 }
 
 interface Question {
@@ -62,10 +61,6 @@ interface UICondition {
   logical?: 'AND' | 'OR';
 }
 
-interface UIRuleGroup {
-  conditions: UICondition[];
-  groupIndex: number;
-}
 
 interface VisibilityRulesModalProps {
   readonly isOpen: boolean;
@@ -135,7 +130,7 @@ function getValueInputMax(depQ: Question | undefined): number | undefined {
 }
 
 export default function VisibilityRulesModal({ isOpen, onClose, question, existingRules, candidateQuestions, onSave }: VisibilityRulesModalProps) {
-  const [groups, setGroups] = useState<UIRuleGroup[]>([]);
+  const [conditions, setConditions] = useState<UICondition[]>([]);
 
   const firstCandidateId = candidateQuestions?.[0]?.id || '';
 
@@ -161,59 +156,31 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     return `branch-cond-${Date.now()}-${randomPart}`;
   };
 
-  const createEmptyGroup = useCallback((groupIndex: number): UIRuleGroup => {
-    const depQ = getQuestionById(firstCandidateId);
-    const defaultOp = getDefaultOperatorForType(depQ?.type);
-    return {
-      conditions: [
-        { id: generateConditionId(), questionId: firstCandidateId, operator: defaultOp, value: '', logical: 'OR' },
-      ],
-      groupIndex,
-    };
-  }, [firstCandidateId]);
-
   useEffect(() => {
     if (!question) return;
     const rulesForQuestion = (existingRules || []);
     if (rulesForQuestion.length === 0) {
-      setGroups([createEmptyGroup(0)]);
+      const depQ = getQuestionById(firstCandidateId);
+      const defaultOp = getDefaultOperatorForType(depQ?.type);
+      setConditions([
+        { id: generateConditionId(), questionId: firstCandidateId, operator: defaultOp, value: '', logical: 'OR' },
+      ]);
       return;
     }
 
-    type RuleWithMeta = VisibilityRule & { groupIndex?: number };
-    const byGroupIndex = new Map<number, UIRuleGroup>();
-    let nextTempIndex = 1000000;
+    // Convert rules to flat list of conditions (ignore groupIndex)
+    const convertedConditions: UICondition[] = rulesForQuestion.map((rule) => ({
+      id: generateConditionId(),
+      questionId: rule.questionId,
+      operator: rule.condition.operator,
+      value: rule.condition.value as string | number | boolean,
+      logical: rule.logical || 'OR',
+    }));
 
-    const rulesWithMeta: Array<{ idx: number; rule: RuleWithMeta }> = rulesForQuestion.map((r, idx) => ({ idx, rule: r as RuleWithMeta }));
-    rulesWithMeta.sort((a, b) => {
-      const ga = a.rule.groupIndex ?? Number.MAX_SAFE_INTEGER;
-      const gb = b.rule.groupIndex ?? Number.MAX_SAFE_INTEGER;
-      if (ga !== gb) return ga - gb;
-      return a.idx - b.idx;
-    });
-
-    for (const { rule } of rulesWithMeta) {
-      const key = rule.groupIndex ?? nextTempIndex++;
-      let group = byGroupIndex.get(key);
-      if (!group) {
-        group = { groupIndex: key, conditions: [] } as UIRuleGroup;
-        byGroupIndex.set(key, group);
-      }
-      group.conditions.push({
-        id: generateConditionId(),
-        questionId: rule.questionId,
-        operator: rule.condition.operator,
-        value: rule.condition.value as string | number | boolean,
-        logical: rule.logical || 'OR',
-      });
-    }
-
-    const grouped = Array.from(byGroupIndex.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([, g]) => g);
-
-    setGroups(grouped.length ? grouped : [createEmptyGroup(0)]);
-  }, [question, existingRules, createEmptyGroup]);
+    setConditions(convertedConditions.length ? convertedConditions : [
+      { id: generateConditionId(), questionId: firstCandidateId, operator: getDefaultOperatorForType(getQuestionById(firstCandidateId)?.type), value: '', logical: 'OR' },
+    ]);
+  }, [question, existingRules, firstCandidateId]);
 
   function getOperatorOptions(depQ: Question | undefined) {
     const textOps = [
@@ -267,112 +234,64 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     operator === 'count_eq' || operator === 'count_gt' || operator === 'count_lt';
 
   function updateCondition(
-    groupIndex: number,
     conditionIndex: number,
     updates: Partial<UICondition>
   ) {
-    setGroups(prev => prev.map((g, gi) => updateGroupCondition(g, gi, groupIndex, conditionIndex, updates)));
+    setConditions(prev => prev.map((c, ci) =>
+      ci === conditionIndex ? { ...c, ...updates } : c
+    ));
   }
 
-  function updateGroupCondition(
-    group: UIRuleGroup,
-    gi: number,
-    targetGroupIndex: number,
-    conditionIndex: number,
-    updates: Partial<UICondition>
-  ): UIRuleGroup {
-    if (gi !== targetGroupIndex) return group;
-
-    return {
-      ...group,
-      conditions: group.conditions.map((c, ci) =>
-        ci === conditionIndex ? { ...c, ...updates } : c
-      ),
-    };
-  }
-
-
-  function addCondition(groupIndex: number) {
+  function addCondition() {
     const depQ = getQuestionById(firstCandidateId);
     const defaultOp = getDefaultOperatorForType(depQ?.type);
-    setGroups(prev => prev.map((g, gi) => (
-      gi === groupIndex
-        ? { ...g, conditions: [...g.conditions, { id: generateConditionId(), questionId: firstCandidateId, operator: defaultOp, value: '', logical: 'OR' }] }
-        : g
-    )));
+    setConditions(prev => [...prev, { id: generateConditionId(), questionId: firstCandidateId, operator: defaultOp, value: '', logical: 'OR' }]);
   }
 
-  function removeCondition(groupIndex: number, conditionIndex: number) {
-    setGroups(prev => prev.map((g, gi) => updateGroupConditions(g, gi, groupIndex, conditionIndex)));
-  }
-
-  function updateGroupConditions(
-    group: UIRuleGroup,
-    gi: number,
-    targetGroupIndex: number,
-    conditionIndex: number
-  ): UIRuleGroup {
-    if (gi !== targetGroupIndex) return group;
-
-    return {
-      ...group,
-      conditions: group.conditions.filter((_, ci) => ci !== conditionIndex),
-    };
-  }
-
-  function addGroup() {
-    if (!question) return;
-    setGroups(prev => [...prev, createEmptyGroup(prev.length)]);
+  function removeCondition(conditionIndex: number) {
+    setConditions(prev => prev.filter((_, ci) => ci !== conditionIndex));
   }
 
   function handleSave() {
     if (!question) return;
 
     // Validate all numeric values are within range
-    for (const group of groups) {
-      for (const cond of group.conditions) {
-        if (cond.value === '' || cond.value === undefined || cond.value === null) continue;
-        
-        const depQ = candidateQuestions.find(q => q.id === cond.questionId);
-        const min = getValueInputMin(depQ);
-        const max = getValueInputMax(depQ);
-        
-        // Only validate if this is a numeric input (rating or slider)
-        if (min !== undefined && max !== undefined) {
-          const numValue = typeof cond.value === 'number' ? cond.value : Number(cond.value);
-          if (!isNaN(numValue)) {
-            if (numValue < min || numValue > max) {
-              const questionTitle = depQ?.title || 'the selected question';
-              alert(`Please enter a value between ${min} and ${max} for the question ${questionTitle}.`);
-              return;
-            }
+    for (const cond of conditions) {
+      if (cond.value === '' || cond.value === undefined || cond.value === null) continue;
+      
+      const depQ = candidateQuestions.find(q => q.id === cond.questionId);
+      const min = getValueInputMin(depQ);
+      const max = getValueInputMax(depQ);
+      
+      // Only validate if this is a numeric input (rating or slider)
+      if (min !== undefined && max !== undefined) {
+        const numValue = typeof cond.value === 'number' ? cond.value : Number(cond.value);
+        if (!isNaN(numValue)) {
+          if (numValue < min || numValue > max) {
+            const questionTitle = depQ?.title || 'the selected question';
+            alert(`Please enter a value between ${min} and ${max} for the question ${questionTitle}.`);
+            return;
           }
         }
       }
     }
 
-    const flattened: VisibilityRule[] = [];
-    for (const group of groups) {
-      const validConds = group.conditions.filter(c => (c.value !== '' && c.value !== undefined && c.value !== null));
-      if (validConds.length === 0) continue;
-
-      for (let condIndex = 0; condIndex < validConds.length; condIndex++) {
-        const cond = validConds[condIndex];
-        flattened.push({
-          questionId: cond.questionId,
-          condition: { operator: cond.operator, value: cond.value },
-          ...(condIndex < validConds.length - 1 ? { logical: cond.logical || 'OR' } : {}),
-          groupIndex: group.groupIndex,
-        });
-      }
+    // Convert conditions to rules (no groupIndex)
+    const validConds = conditions.filter(c => (c.value !== '' && c.value !== undefined && c.value !== null));
+    if (validConds.length === 0) {
+      try { onSave([]); } catch (err) { console.error(err); }
+      try { onClose(); } catch (err) { console.error(err); }
+      return;
     }
 
-    try { onSave(flattened); } catch (err) { console.error(err); }
-    try { onClose(); } catch (err) { console.error(err); }
-  }
+    const rules: VisibilityRule[] = validConds.map((cond, condIndex) => ({
+      questionId: cond.questionId,
+      condition: { operator: cond.operator, value: cond.value },
+      ...(condIndex < validConds.length - 1 ? { logical: cond.logical || 'OR' } : {}),
+    }));
 
-  function removeGroup(groupIndex: number) {
-    setGroups(prev => prev.filter((_, i) => i !== groupIndex));
+    try { onSave(rules); } catch (err) { console.error(err); }
+    try { onClose(); } catch (err) { console.error(err); }
   }
 
   if (!question) return null;
@@ -381,32 +300,11 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
     <Modal isOpen={isOpen} onClose={onClose} title={`Visibility Rules: ${question.title}`} size="xl">
       <div className="space-y-6">
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Show this question when any rule group below evaluates to true. Within a group, conditions are joined by AND/OR.
+          Show this question when the conditions below evaluate to true. Conditions are joined by AND/OR.
         </div>
 
-        {groups.map((group, groupIndex) => (
-          <div
-            key={group.groupIndex}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Rule Group {groupIndex + 1}
-              </h3>
-              {groups.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeGroup(groupIndex)}
-                  className="text-red-600"
-                >
-                  Remove Group
-                </Button>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              {group.conditions.map((cond, condIndex) => {
+        <div className="space-y-3">
+          {conditions.map((cond, condIndex) => {
                 const depQ = candidateQuestions.find(q => q.id === cond.questionId);
                 const valueOptions = getValueOptions(depQ);
                 const valueInputType = getValueInputType(depQ);
@@ -425,7 +323,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                           const nextQ = getQuestionById(nextQId);
                           const nextOp = getDefaultOperatorForType(nextQ?.type);
                           const resetValue = isCountOperator(nextOp) ? '' : '';
-                          updateCondition(groupIndex, condIndex, { questionId: nextQId, operator: nextOp, value: resetValue });
+                          updateCondition(condIndex, { questionId: nextQId, operator: nextOp, value: resetValue });
                         }}
                       />
                     </div>
@@ -437,7 +335,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                         onChange={(e) => {
                           const nextOp = e.target.value as UICondition['operator'];
                           const nextVal = isCountOperator(nextOp) ? '' : cond.value;
-                          updateCondition(groupIndex, condIndex, { operator: nextOp, value: nextVal });
+                          updateCondition(condIndex, { operator: nextOp, value: nextVal });
                         }}
                       />
                     </div>
@@ -447,7 +345,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                         label="Value"
                         options={valueOptions || []}
                         value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
-                        onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
+                        onChange={(e) => updateCondition(condIndex, { value: e.target.value })}
                         placeholder="Select an option"
                       />
                     ) : (
@@ -456,7 +354,7 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                           label="Value"
                           type={isCountOperator(cond.operator) ? 'number' : valueInputType}
                           value={typeof cond.value === 'string' ? cond.value : String(cond.value || '')}
-                          onChange={(e) => updateCondition(groupIndex, condIndex, { value: e.target.value })}
+                          onChange={(e) => updateCondition(condIndex, { value: e.target.value })}
                           placeholder={isCountOperator(cond.operator) ? 'Enter count' : 'Enter value'}
                           min={isCountOperator(cond.operator) ? 0 : valueInputMin}
                           max={isCountOperator(cond.operator) ? undefined : valueInputMax}
@@ -465,29 +363,25 @@ export default function VisibilityRulesModal({ isOpen, onClose, question, existi
                     )}
                   </div>
                     <div className="md:col-span-2">
-                      {group.conditions.length >= 2 && condIndex < group.conditions.length - 1 && (
+                      {conditions.length >= 2 && condIndex < conditions.length - 1 && (
                         <Select
                           label="Join"
                           options={[{ value: 'OR', label: 'OR' }, { value: 'AND', label: 'AND' }]}
                           value={cond.logical || 'OR'}
-                          onChange={(e) => updateCondition(groupIndex, condIndex, { logical: e.target.value as 'AND' | 'OR' })}
+                          onChange={(e) => updateCondition(condIndex, { logical: e.target.value as 'AND' | 'OR' })}
                         />
                       )}
                     </div>
                     <div className="md:col-span-1">
-                      {group.conditions.length > 1 && (
-                        <Button variant="ghost" size="sm" onClick={() => removeCondition(groupIndex, condIndex)} className="text-red-600">✕</Button>
+                      {conditions.length > 1 && (
+                        <Button variant="ghost" size="sm" onClick={() => removeCondition(condIndex)} className="text-red-600">✕</Button>
                       )}
                     </div>
                   </div>
                 );
               })}
-              <Button variant="outline" size="sm" onClick={() => addCondition(groupIndex)}>+ Add Condition</Button>
+              <Button variant="outline" size="sm" onClick={addCondition}>+ Add Condition</Button>
             </div>
-          </div>
-        ))}
-
-        <Button variant="outline" onClick={addGroup} className="w-full">+ Add Another Rule Group</Button>
 
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button variant="outline" onClick={() => { try { onClose(); } catch (err) { console.error(err); } }}>Cancel</Button>

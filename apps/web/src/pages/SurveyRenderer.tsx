@@ -20,9 +20,9 @@ interface Question {
     value?: string;
   }>;
   settings?: Record<string, unknown>;
-  // Optional visibility rules (show question when any group matches)
-  visibilityRules?: Array<BranchingRule & { groupIndex?: number }>;
-  visibleWhen?: Array<BranchingRule & { groupIndex?: number }>;
+  // Optional visibility rules
+  visibilityRules?: BranchingRule[];
+  visibleWhen?: BranchingRule[];
 }
 
 interface BranchingRule {
@@ -77,15 +77,15 @@ export default function SurveyRenderer() {
   const draftKey = `survey_${slug}_draft`;
 
   // Helper: extract visibility rules from a question (supports multiple locations for flexibility)
-  const getVisibilityRules = useCallback((question: Question): Array<BranchingRule & { groupIndex?: number }> => {
+  const getVisibilityRules = useCallback((question: Question): BranchingRule[] => {
     const settings = (question.settings || {});
-    const fromSettings = (settings.visibleWhen || (settings.visibility as any)?.rules) as Array<BranchingRule & { groupIndex?: number }> | undefined;
+    const fromSettings = (settings.visibleWhen || (settings.visibility as any)?.rules) as BranchingRule[] | undefined;
     return (
       question.visibilityRules ||
       question.visibleWhen ||
       fromSettings ||
       []
-    ) as Array<BranchingRule & { groupIndex?: number }>;
+    ) as BranchingRule[];
   }, []);
 
   // Helper: is a question visible under current responses?
@@ -97,28 +97,16 @@ export default function SurveyRenderer() {
     const anyDependencyAnswered = rules.some(r => responses[r.questionId] !== undefined);
     if (!anyDependencyAnswered) return false;
 
-    // Group rules by groupIndex
-    const groups: Record<number, typeof rules> = {};
-    for (const rule of rules) {
-      const gi = rule.groupIndex ?? 0;
-      if (!groups[gi]) groups[gi] = [];
-      groups[gi].push(rule);
-    }
+    // Evaluate all rules as a single flat list (no groups)
+    return rules.reduce((acc, rule, idx) => {
+      const resp = responses[rule.questionId];
+      const conditionMet = resp !== undefined && evaluateCondition(rule.condition.operator, rule.condition.value, resp);
 
-  // Helper: evaluate a group of rules
-    const evaluateGroup = (groupRules: typeof rules) =>
-      groupRules.reduce((acc, rule, idx) => {
-        const resp = responses[rule.questionId];
-        const conditionMet = resp !== undefined && evaluateCondition(rule.condition.operator, rule.condition.value, resp);
+      if (idx === 0) return conditionMet;
 
-        if (idx === 0) return conditionMet;
-
-        const prevLogical = (groupRules[idx - 1].logical as 'AND' | 'OR') ?? 'OR';
-        return prevLogical === 'AND' ? acc && conditionMet : acc || conditionMet;
-      }, false);
-
-    // A question is visible if ANY group evaluates to true
-    return Object.values(groups).some(evaluateGroup);
+      const prevLogical = (rules[idx - 1].logical as 'AND' | 'OR') ?? 'OR';
+      return prevLogical === 'AND' ? acc && conditionMet : acc || conditionMet;
+    }, false);
   }, [getVisibilityRules, responses]);
 
 

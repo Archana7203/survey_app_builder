@@ -59,8 +59,8 @@ export const useRespondentProgress = (surveyId: string) => {
 
       if (progressData.pagination) {
         const paginationData = {
-          page: progressData.pagination.page || 1,
-          limit: progressData.pagination.limit || 5,
+          page: progressData.pagination.page || page,
+          limit: progressData.pagination.limit || limit,
           total: progressData.pagination.total || 0,
           totalPages: progressData.pagination.totalPages || 0,
           hasNext: progressData.pagination.hasNext || false,
@@ -68,6 +68,15 @@ export const useRespondentProgress = (surveyId: string) => {
         };
         setPagination(paginationData);
       } else {
+        setPagination(prev => ({
+          ...prev,
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false
+        }));
         console.warn('No pagination data in response');
       }
     } catch (error: any) {
@@ -94,7 +103,8 @@ export const useRespondentProgress = (surveyId: string) => {
           setPagination(newPagination);
           fetchProgress(1, config.defaultLimit);
         } else {
-          fetchProgress(1, 5); // fallback to 5
+          // fallback to 20 (matching config default)
+          fetchProgress(1, 20);
         }
       });
     } else {
@@ -107,10 +117,14 @@ export const useRespondentProgress = (surveyId: string) => {
   };
 
   const handleLimitChange = (newLimit: number) => {
-    const config = getRespondentProgressPaginationConfig();
-    const limit = Math.min(newLimit, config?.maxLimit || 200);
-    setPagination(prev => ({ ...prev, limit }));
-    fetchProgress(1, limit);
+    setPagination(prev => ({
+      ...prev,
+      limit: newLimit,
+      page: 1, 
+      hasNext: false,
+      hasPrev: false
+    }));
+    fetchProgress(1, newLimit);
   };
 
   return {

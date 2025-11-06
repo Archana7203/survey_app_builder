@@ -8,7 +8,6 @@ export interface IBranchingRule {
     value: any;
   };
   logical?: 'AND' | 'OR';
-  groupIndex?: number;
   action: {
     type: 'skip_to_page' | 'end_survey';
     targetPageIndex?: number;
@@ -99,9 +98,6 @@ const SurveySchema: Schema = new Schema({
         type: String,
         enum: ['AND', 'OR'],
         default: 'OR',
-      },
-      groupIndex: {
-        type: Number,
       },
       action: {
         type: {

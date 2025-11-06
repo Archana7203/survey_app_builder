@@ -221,6 +221,17 @@ export default function SurveyBuilderContent({
     setValidationError(null);
 
     try {
+      // Validate BEFORE saving to catch issues early
+      if (newStatus === "published" || newStatus === "live") {
+        const preValidation = validateSurveyForPublish(survey);
+        if (!preValidation.valid) {
+          setValidationError(preValidation.error || "Validation error");
+          setIsConfirmModalOpen(false);
+          setStatusChanging(false);
+          return;
+        }
+      }
+
       // First, save all survey data including colors
       // This will create the survey if it doesn't have an ID yet
       const savedSurvey = await saveSurvey();
@@ -244,8 +255,8 @@ export default function SurveyBuilderContent({
 
       const freshSurvey = await freshResponse.json();
       setSurvey(freshSurvey);
-      console.log("Fetched fresh survey data:", freshSurvey);
 
+      // Validate again after fetching fresh data to ensure backend state matches
       if (newStatus === "published") {
         const validation = validateSurveyForPublish(freshSurvey);
         if (!validation.valid) {
@@ -271,18 +282,16 @@ export default function SurveyBuilderContent({
         freshSurvey.status
       );
 
-      // When going live, always set start date to current date
+      // When going live, ALWAYS set start date to current date/time (overrides any existing start date)
       if (newStatus === "live") {
         const now = new Date();
         updatePayload.startDate = now.toISOString();
-        console.log("Setting start date to current time for go live:", updatePayload.startDate);
       }
 
       // When closing survey, always set end date to current date
       if (newStatus === "closed" && freshSurvey.status === "live") {
         const now = new Date();
         updatePayload.endDate = now.toISOString();
-        console.log("Setting end date to current time for closing:", updatePayload.endDate);
       }
 
       console.log(

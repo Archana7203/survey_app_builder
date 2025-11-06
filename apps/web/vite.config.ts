@@ -9,13 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://shame-sellers-rebound-naturals.trycloudflare.com',  
+        target: 'https://pit-federation-evaluation-premises.trycloudflare.com',  
         changeOrigin: true,
         secure: false,
       },
     },
     allowedHosts: [
-      'hosts-ccd-focusing-vancouver.trycloudflare.com', 
+      'garden-interest-tunes-require.trycloudflare.com', 
     ],
   },
 });
