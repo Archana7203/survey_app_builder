@@ -3,9 +3,35 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 const loadTemplatesData = () => {
-  const templatesPath = path.join(__dirname, '../data/templates.json');
-  const templatesJson = fs.readFileSync(templatesPath, 'utf8');
-  return JSON.parse(templatesJson);
+  // Try multiple possible paths to handle both dev and production builds
+  const possiblePaths = [
+    path.join(__dirname, '../data/templates.json'), // dist/data/templates.json (production - most common)
+    path.join(__dirname, '../../src/data/templates.json'), // src/data/templates.json (dev mode)
+    path.join(__dirname, '../../data/templates.json'), // data/templates.json (alternate location)
+    path.join(process.cwd(), 'apps/api/src/data/templates.json'), // Absolute from project root (monorepo)
+    path.join(process.cwd(), 'apps/api/data/templates.json'), // Absolute from project root (alternate)
+    path.join(process.cwd(), 'src/data/templates.json'), // If running from apps/api directory
+    path.join(process.cwd(), 'data/templates.json'), // If running from apps/api directory (alternate)
+  ];
+
+  for (const templatesPath of possiblePaths) {
+    try {
+      if (fs.existsSync(templatesPath)) {
+        const templatesJson = fs.readFileSync(templatesPath, 'utf8');
+        console.log(`Loaded templates from: ${templatesPath}`);
+        return JSON.parse(templatesJson);
+      }
+    } catch (err) {
+      // Continue to next path if this one fails
+      continue;
+    }
+  }
+
+  // If no file found, return empty array and log warning
+  console.warn('templates.json not found in any expected location. Searched paths:');
+  possiblePaths.forEach(p => console.warn(`  - ${p}`));
+  console.warn('Using empty templates array. Custom templates will still be seeded.');
+  return [];
 };
 
 export const seedTemplates = async () => {
