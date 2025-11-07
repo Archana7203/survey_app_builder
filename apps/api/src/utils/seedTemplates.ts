@@ -1,47 +1,10 @@
 import { Template } from '../models/Template';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-
-const loadTemplatesData = () => {
-  // Try multiple possible paths to handle both dev and production builds
-  const possiblePaths = [
-    path.join(__dirname, '../data/templates.json'), // dist/data/templates.json (production - most common)
-    path.join(__dirname, '../../src/data/templates.json'), // src/data/templates.json (dev mode)
-    path.join(__dirname, '../../data/templates.json'), // data/templates.json (alternate location)
-    path.join(process.cwd(), 'apps/api/src/data/templates.json'), // Absolute from project root (monorepo)
-    path.join(process.cwd(), 'apps/api/data/templates.json'), // Absolute from project root (alternate)
-    path.join(process.cwd(), 'src/data/templates.json'), // If running from apps/api directory
-    path.join(process.cwd(), 'data/templates.json'), // If running from apps/api directory (alternate)
-  ];
-
-  for (const templatesPath of possiblePaths) {
-    try {
-      if (fs.existsSync(templatesPath)) {
-        const templatesJson = fs.readFileSync(templatesPath, 'utf8');
-        console.log(`Loaded templates from: ${templatesPath}`);
-        return JSON.parse(templatesJson);
-      }
-    } catch (err) {
-      // Continue to next path if this one fails
-      continue;
-    }
-  }
-
-  // If no file found, return empty array and log warning
-  console.warn('templates.json not found in any expected location. Searched paths:');
-  possiblePaths.forEach(p => console.warn(`  - ${p}`));
-  console.warn('Using empty templates array. Custom templates will still be seeded.');
-  return [];
-};
 
 export const seedTemplates = async () => {
   try {
     console.log('Seeding templates...');
     
-    // Load templates from JSON file, plus ensure custom samples
-    const templatesData = loadTemplatesData();
-
-    // Custom predefined slides: COVID-19 Vaccination and Impact of Social Media
+    // Custom predefined templates: COVID-19 Vaccination and Impact of Social Media
     const customTemplates = [
       {
         id: 'covid-19-vaccination',
@@ -94,11 +57,11 @@ export const seedTemplates = async () => {
         ],
       },
     ];
-    // If empty, insert all
+    // If empty, insert all custom templates
     const existingCount = await Template.countDocuments();
     if (existingCount === 0) {
-      await Template.insertMany([...templatesData, ...customTemplates]);
-      console.log(`Successfully seeded ${templatesData.length + customTemplates.length} templates`);
+      await Template.insertMany(customTemplates);
+      console.log(`Successfully seeded ${customTemplates.length} templates`);
       return;
     }
 
@@ -124,11 +87,10 @@ export const reseedTemplates = async () => {
     // Clear existing templates
     await Template.deleteMany({});
     
-    // Load and insert templates from JSON file
-    const templatesData = loadTemplatesData();
-    await Template.insertMany(templatesData);
+    // Re-seed with custom templates
+    await seedTemplates();
     
-    console.log(`Successfully re-seeded ${templatesData.length} templates`);
+    console.log('Successfully re-seeded templates');
   } catch (error) {
     console.error('Error re-seeding templates:', error);
     throw error;

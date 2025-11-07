@@ -13,7 +13,7 @@
     "dev:api": "npm --workspace apps/api run dev",
     "lint": "eslint \"**/*.{ts,tsx}\"",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "heroku-postbuild": "npm --workspace apps/web run build && npx copyfiles -u 1 apps/web/src/data/**/* apps/web/dist && npm --workspace apps/api run build"
+    "heroku-postbuild": "npm --workspace apps/web run build && npx copyfiles -u 1 apps/web/src/data/**/* apps/web/dist && npm --workspace apps/api run build && npx copyfiles -u 1 apps/api/src/data/**/* apps/api/dist"
   },
   "devDependencies": {
     "@types/morgan": "^1.9.10",
