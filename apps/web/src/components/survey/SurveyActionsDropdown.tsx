@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { showSuccessToast } from "../../utils/toast";
 
 interface Survey {
   id: string;
@@ -23,7 +24,7 @@ interface SurveyActionsDropdownProps {
   deleting: string | null;
   onDuplicate: (surveyId: string) => void;
   onExport: (surveyId: string) => void;
-  onDelete: (surveyId: string) => void;
+  onDelete: (survey: Survey) => Promise<boolean>;
 }
 
 const SurveyActionsDropdown: React.FC<SurveyActionsDropdownProps> = ({
@@ -81,9 +82,16 @@ const SurveyActionsDropdown: React.FC<SurveyActionsDropdownProps> = ({
       >
         {renderCommonActions()}
         <button
-          onClick={() => {
-            onDelete(survey.id);
+          onClick={async () => {
             onClose();
+            try {
+              const wasDeleted = await onDelete(survey);
+              if (wasDeleted) {
+                showSuccessToast("Survey deleted successfully.");
+              }
+            } catch (error) {
+              console.error("Failed to delete survey:", error);
+            }
           }}
           disabled={deleting === survey.id}
           className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"

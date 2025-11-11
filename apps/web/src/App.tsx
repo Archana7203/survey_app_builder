@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { RespondentProvider } from "./contexts/RespondentContext";
+import { Toaster } from "react-hot-toast";
 import AuthPage from "./pages/Auth";
 import "./styles/darkMode.css";
 import DashboardLayout from "./components/layout/DashboardLayout";
@@ -25,6 +26,7 @@ function App() {
     <AuthProvider>
       <RespondentProvider>
         <Router>
+          <Toaster position="top-right" />
           <Routes>
             <Route path="/" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<AuthPage />} />

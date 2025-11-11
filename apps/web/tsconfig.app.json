@@ -24,7 +24,10 @@
     "noUncheckedSideEffectImports": true,
 
     /* Added for testing */
-    "types": ["vitest/globals", "node", "react"]
+    "types": ["vitest/globals", "node", "react"],
+    "paths": {
+      "react-hot-toast": ["./src/types/react-hot-toast"]
+    }
   },
   "include": ["src"]
 }

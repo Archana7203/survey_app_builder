@@ -6,8 +6,18 @@ interface AuthUser {
   email: string;
   role: 'creator' | 'respondent';
   createdAt: string;
-  name?: string; // For SSO users
+  name?: string | null;
+  ssoAuth?: boolean;
+  oid?: string | null;
 }
+
+type SsoSessionUser = {
+  id?: string;
+  email: string;
+  name?: string;
+  oid?: string;
+  role?: 'creator' | 'respondent';
+};
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -31,38 +41,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const mergeUsers = useCallback((sessionUser: SsoSessionUser | null, apiUser?: Partial<AuthUser>): AuthUser | null => {
+    if (!sessionUser && !apiUser) {
+      return null;
+    }
+
+    const mergedEmail = apiUser?.email ?? sessionUser?.email;
+    if (!mergedEmail) {
+      return null;
+    }
+
+    return {
+      id: apiUser?.id ?? sessionUser?.id ?? sessionUser?.email ?? mergedEmail,
+      email: mergedEmail,
+      role: apiUser?.role ?? sessionUser?.role ?? 'creator',
+      createdAt: apiUser?.createdAt ?? new Date().toISOString(),
+      name: apiUser?.name ?? sessionUser?.name ?? null,
+      ssoAuth: apiUser?.ssoAuth ?? Boolean(sessionUser),
+      oid: apiUser?.oid ?? sessionUser?.oid ?? null,
+    };
+  }, []);
+
   const fetchMe = useCallback(async () => {
     setLoading(true);
 
     try {
-      // Try SSO first, then fall back to JWT
+      let sessionUser: SsoSessionUser | null = null;
+
       try {
         const ssoData = await fetchSSOUserApi();
         if (ssoData.user) {
-          setUser({
-            id: ssoData.user.oid || ssoData.user.email,
+          sessionUser = {
+            id: ssoData.user.id,
             email: ssoData.user.email,
             name: ssoData.user.name,
-            role: 'creator', // SSO users default to creator
-            createdAt: new Date().toISOString()
-          });
-          return;
+            oid: ssoData.user.oid,
+            role: 'creator',
+          };
         }
       } catch (ssoError) {
-        // SSO failed, try JWT
-        console.log('SSO not available, trying JWT auth');
+        console.info('SSO session not found, continuing with JWT auth check');
       }
 
-      // Try JWT authentication
-      const data = await fetchMeApi();
-      setUser(data.user);
+      try {
+        const data = await fetchMeApi();
+        const mergedUser = mergeUsers(sessionUser, data.user);
+        setUser(mergedUser);
+        return;
+      } catch (apiError) {
+        if (sessionUser) {
+          const mergedUser = mergeUsers(sessionUser);
+          setUser(mergedUser);
+          return;
+        }
+
+        throw apiError;
+      }
     } catch (error: any) {
       console.error(error);
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mergeUsers]);
 
   useEffect(() => {
     fetchMe();
@@ -71,7 +112,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (email: string, password: string) => {
     try {
       const data = await loginApi(email, password);
-      setUser(data.user);
+      setUser({
+        ...data.user,
+        name: data.user.name ?? null,
+        ssoAuth: Boolean(data.user.ssoAuth),
+        oid: data.user.oid ?? null,
+      });
     } catch (error: any) {
       setUser(null);
       throw error; // Re-throw to let the calling component handle it
@@ -81,7 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = useCallback(async (email: string, password: string) => {
     try {
       const data = await registerApi(email, password);
-      setUser(data.user);
+      setUser({
+        ...data.user,
+        name: data.user.name ?? null,
+        ssoAuth: Boolean(data.user.ssoAuth),
+        oid: data.user.oid ?? null,
+      });
     } catch (error: any) {
       setUser(null);
       throw error; // Re-throw to let the calling component handle it

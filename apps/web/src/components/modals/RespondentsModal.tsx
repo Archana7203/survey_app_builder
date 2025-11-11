@@ -3,6 +3,7 @@ import Button from '../ui/Button';
 import { fetchRespondentsApi, updateSurveyRespondentsApi, sendSurveyInvitations } from '../../api-paths/surveysApi';
 import { useRespondents } from '../../contexts/RespondentContext';
 import { fetchRespondentsApi as fetchAllRespondentsApi } from '../../api-paths/respondentsApi';
+import { showErrorToast, showSuccessToast } from '../../utils/toast';
 // import type { Respondent, RespondentGroup } from '../../api-paths/respondentsApi';
 
 interface RespondentsModalProps {
@@ -54,14 +55,14 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
   // Show browser alerts for error and success messages
   useEffect(() => {
     if (error) {
-      alert(error);
+      showErrorToast(error);
       setError(null);
     }
   }, [error]);
 
   useEffect(() => {
     if (success) {
-      alert(success);
+      showSuccessToast(success);
       setSuccess(null);
     }
   }, [success]);
@@ -185,7 +186,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       if (surveyStatus === 'live') {
         try {
           const sendResult = await sendSurveyInvitations(surveyId);
-          setSuccess(`Respondents updated and ${sendResult.message || 'inviattions sent to all recipients'}`);
+          setSuccess(`Respondents updated and ${sendResult.message || 'invitations sent to all recipients'}`);
         } catch (sendError) {
           setSuccess('Respondents updated, but failed to send some invitations');
         }

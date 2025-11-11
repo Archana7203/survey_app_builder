@@ -8,10 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig(({ mode }) => {
-  // Load env from the same directory as vite.config.ts (apps/web/)
   const env = loadEnv(mode, __dirname, '');
-  console.log('Loading env from:', __dirname);
-  console.log('Loaded API URL:', env.VITE_API_BASE_URL);
   return {
     plugins: [react(), tailwindcss()],
     server: {

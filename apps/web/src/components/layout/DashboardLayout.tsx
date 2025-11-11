@@ -82,7 +82,7 @@ const DashboardLayout: React.FC = () => {
                   onClick={async () => { 
                     try { 
                       // Try SSO logout first, fallback to regular logout
-                      if (user?.name) {
+                      if (user?.ssoAuth) {
                         ssoLogout();
                       } else {
                         await logout(); 

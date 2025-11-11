@@ -1,32 +1,29 @@
-interface Template {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  thumbnail: string;
-  estimatedTime: string;
-}
-
-interface TemplateQuestion {
-  id: string;
-  type: string;
-  title: string;
-  description?: string;
-  required?: boolean;
-  options?: Array<{ id: string; text: string }>;
-  settings?: Record<string, unknown>;
-}
+import type { TemplateSummary, TemplateDetails } from '../types/templates';
 
 interface TemplatePage {
-  questions: Array<TemplateQuestion>;
+  questions: TemplateDetails['pages'][number]['questions'];
   branching?: Array<Record<string, unknown>>;
 }
 
-interface TemplateDetails extends Template {
-  pages: Array<TemplatePage>;
-}
+const normalizeSummary = (template: any): TemplateSummary => ({
+  id: template.id,
+  title: template.title,
+  description: template.description,
+  category: template.category,
+  thumbnail: template.thumbnail,
+  estimatedTime: template.estimatedTime,
+  createdBy:
+    template.createdBy !== undefined && template.createdBy !== null
+      ? String(template.createdBy)
+      : null,
+});
 
-export const fetchTemplates = async (): Promise<Template[]> => {
+const normalizeDetails = (template: any): TemplateDetails => ({
+  ...normalizeSummary(template),
+  pages: Array.isArray(template.pages) ? template.pages : [],
+});
+
+export const fetchTemplates = async (): Promise<TemplateSummary[]> => {
   try {
     const response = await fetch('/api/templates', {
       credentials: 'include',
@@ -36,7 +33,8 @@ export const fetchTemplates = async (): Promise<Template[]> => {
       throw new Error('Failed to fetch templates');
     }
 
-    return await response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data.map(normalizeSummary) : [];
   } catch (error) {
     console.error('Error fetching templates:', error);
     throw error;
@@ -53,7 +51,8 @@ export const fetchTemplateById = async (templateId: string): Promise<TemplateDet
       throw new Error('Failed to fetch template details');
     }
 
-    return await response.json();
+    const data = await response.json();
+    return normalizeDetails(data);
   } catch (error) {
     console.error('Error fetching template details:', error);
     throw error;
@@ -88,6 +87,73 @@ export const instantiateTemplate = async (templateId: string): Promise<Instantia
     return await response.json();
   } catch (error) {
     console.error('Error instantiating template:', error);
+    throw error;
+  }
+};
+
+export const importTemplate = async (templateData: unknown): Promise<TemplateDetails> => {
+  try {
+    const response = await fetch('/api/templates/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(templateData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to import template');
+    }
+
+    const data = await response.json();
+    return normalizeDetails(data);
+  } catch (error) {
+    console.error('Error importing template:', error);
+    throw error;
+  }
+};
+
+export const updateTemplate = async (
+  templateId: string,
+  updates: {
+    category: string;
+    estimatedTime: string;
+  },
+): Promise<TemplateDetails> => {
+  try {
+    const response = await fetch(`/api/templates/${templateId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to update template');
+    }
+
+    const data = await response.json();
+    return normalizeDetails(data);
+  } catch (error) {
+    console.error('Error updating template:', error);
+    throw error;
+  }
+};
+
+export const deleteTemplate = async (templateId: string): Promise<void> => {
+  try {
+    const response = await fetch(`/api/templates/${templateId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to delete template');
+    }
+  } catch (error) {
+    console.error('Error deleting template:', error);
     throw error;
   }
 };

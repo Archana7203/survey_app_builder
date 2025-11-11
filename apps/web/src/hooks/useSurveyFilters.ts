@@ -1,5 +1,5 @@
 // hooks/useSurveyFilters.ts
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface Survey {
   id: string;
@@ -8,6 +8,7 @@ interface Survey {
   slug: string;
   status: "draft" | "published" | "closed" | "live" | "archived";
   closeDate?: string;
+  endDate?: string;
   createdAt: string;
   updatedAt: string;
   responseCount?: number;
@@ -23,10 +24,25 @@ export const useSurveyFilters = (surveys: Survey[]) => {
   const [dateTo, setDateTo] = useState("");
   const [statusValue, setStatusValue] = useState("");
 
-  // NOTE: All filtering (search, status, dates, sorting) is handled server-side via API
-  // The surveys array already contains the filtered results from the server
-  // We only filter out invalid surveys (those without titles) for display purposes
-  const filteredSurveys = surveys.filter(survey => survey && survey.title);
+  // NOTE: Server-side filters handle status/date/sort. We perform lightweight client-side
+  // validation and search to avoid unnecessary network requests while typing.
+  const filteredSurveys = useMemo(() => {
+    const validSurveys = surveys.filter((survey) => survey && survey.title);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return validSurveys;
+    }
+
+    return validSurveys.filter((survey) => {
+      const titleMatch = survey.title.toLowerCase().includes(normalizedQuery);
+      const descriptionMatch = survey.description
+        ? survey.description.toLowerCase().includes(normalizedQuery)
+        : false;
+
+      return titleMatch || descriptionMatch;
+    });
+  }, [surveys, searchQuery]);
 
   const clearFilters = () => {
     setSearchQuery("");

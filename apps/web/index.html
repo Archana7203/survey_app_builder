@@ -8,8 +8,8 @@
     <script>
       try {
         var saved = localStorage.getItem('theme');
-        var prefersDark = globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
-        var shouldBeDark = saved === 'dark' || (!saved && prefersDark);
+        // Only use saved preference, ignore system preference
+        var shouldBeDark = saved === 'dark';
         document.documentElement.classList.toggle('dark', shouldBeDark);
         document.body && document.body.classList.toggle('dark', shouldBeDark);
       } catch (e) {console.log(e);}

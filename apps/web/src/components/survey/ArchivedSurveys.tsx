@@ -301,7 +301,7 @@ const ArchivedSurveys: React.FC = () => {
                             deleting={null}
                             onDuplicate={handleDuplicate}
                             onExport={handleExport}
-                            onDelete={() => {}}
+                            onDelete={async () => false}
                           />
                         </div>
                       </td>

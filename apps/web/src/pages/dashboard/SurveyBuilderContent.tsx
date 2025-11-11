@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Users, Circle, CheckSquare2, List, Type, FileText, Star, Smile, Hash, SlidersHorizontal } from "lucide-react";
@@ -24,6 +24,7 @@ import {
   getStatusSuccessMessage,
   validateSurveyForGoingLive,
 } from "../../utils/surveyUtils";
+import { showSuccessToast, showWarningToast } from "../../utils/toast";
 
 const QUESTION_TYPES = [
   {
@@ -139,7 +140,7 @@ interface SurveyBuilderContentProps {
   openPreviewInNewTab: () => void;
   isDeleteModalOpen: boolean;
   setIsDeleteModalOpen: (isOpen: boolean) => void;
-  handleDeleteSurvey: () => Promise<void>;
+  handleDeleteSurvey: () => Promise<boolean>;
   copyLink: () => void;
 }
 
@@ -189,6 +190,10 @@ export default function SurveyBuilderContent({
   const [respondentsModalOpen, setRespondentsModalOpen] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const hasPersistedSurvey = useMemo(
+    () => Boolean(survey?.id && survey.id !== "new"),
+    [survey?.id]
+  );
 
   useEffect(() => {
     if (validationError) {
@@ -390,9 +395,13 @@ export default function SurveyBuilderContent({
 
     try {
       switch (confirmAction) {
-        case "delete":
-          await handleDeleteSurvey();
+        case "delete": {
+          const wasDeleted = await handleDeleteSurvey();
+          if (wasDeleted) {
+            showSuccessToast("Survey deleted successfully.");
+          }
           break;
+        }
         case "publish":
           await handleStatusChangeLocal("published");
           break;
@@ -529,6 +538,13 @@ export default function SurveyBuilderContent({
 
   const renderActionButtons = () => {
     let Buttons: React.ReactNode;
+    const handleOpenRespondentsModal = () => {
+      const toastMessage = hasPersistedSurvey
+        ? "Reminder: double-check your draft before assigning respondents."
+        : "Save your latest changes before managing respondents.";
+      showWarningToast(toastMessage);
+      setRespondentsModalOpen(true);
+    };
 
     switch (surveyStatus) {
       case "draft":
@@ -551,7 +567,7 @@ export default function SurveyBuilderContent({
             </Button> 
             <Button 
               variant="outline" 
-              onClick={() => setRespondentsModalOpen(true)}
+              onClick={handleOpenRespondentsModal}
               title="Add Respondents"
             >
               <Users />
@@ -581,7 +597,7 @@ export default function SurveyBuilderContent({
             </Button>
             <Button 
               variant="outline" 
-              onClick={() => setRespondentsModalOpen(true)}
+              onClick={handleOpenRespondentsModal}
               title="Add Respondents"
             >
               <Users />
@@ -605,7 +621,7 @@ export default function SurveyBuilderContent({
             </Button>
             <Button 
               variant="outline" 
-              onClick={() => setRespondentsModalOpen(true)}
+              onClick={handleOpenRespondentsModal}
               title="Add Respondents"
             >
               <Users/>

@@ -19,8 +19,8 @@ const AuthPage: React.FC = () => {
       setError(null);
     }
   }, [error]);
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
 
@@ -36,6 +36,21 @@ const AuthPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSsoLogin = () => {
+    if (loading) {
+      return;
+    }
+    ssoLogin();
+  };
+
+  const handleSsoKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    event.preventDefault();
+    handleSsoLogin();
   };
 
   // ✅ Extracted submit button text
@@ -119,7 +134,9 @@ const AuthPage: React.FC = () => {
                 type="button"
                 variant="secondary"
                 className="w-full flex items-center justify-center space-x-2"
-                onClick={ssoLogin}
+                onClick={handleSsoLogin}
+                onKeyDown={handleSsoKeyDown}
+                aria-label="Sign in with Microsoft"
                 disabled={loading}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">

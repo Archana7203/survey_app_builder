@@ -1,3 +1,48 @@
+import {
+  createSurveyApi,
+  deleteSurveyApi,
+} from "../api-paths/surveysApi";
+import {
+  exportSurveyToFile,
+  importSurveyFromFile,
+  uploadImportedSurvey,
+} from "./surveyImportExport";
+
+export type StateSetter<T> = (value: T | ((prev: T) => T)) => void;
+
+export type FetchSurveysOptions = {
+  isInitial?: boolean;
+};
+
+export type FetchSurveysHandler = (
+  page: number,
+  limit: number,
+  options?: FetchSurveysOptions
+) => Promise<void>;
+
+export interface SurveySummary {
+  id: string;
+  title: string;
+  description?: string;
+  slug: string;
+  status: "draft" | "published" | "closed" | "live" | "archived";
+  closeDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  responseCount?: number;
+  locked?: boolean;
+}
+
+export interface PaginationState {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 export interface Question {
   id: string;
   type: string;
@@ -38,6 +83,172 @@ export const handleSaveError = async (
   }
   if (response.status === 401) message = "Please log in to save surveys.";
   setError(message);
+};
+
+// ---- Dashboard Survey Handlers ----
+interface BaseHandlerParams {
+  setError: StateSetter<string | null>;
+}
+
+export interface HandleCreateSurveyParams extends BaseHandlerParams {
+  formData: {
+    title: string;
+    description: string;
+    closeDate: string;
+  };
+  pagination: PaginationState;
+  setSubmitting: StateSetter<boolean>;
+  setSurveys: StateSetter<SurveySummary[]>;
+  setAllSurveys: StateSetter<SurveySummary[]>;
+  setIsModalOpen: (value: boolean) => void;
+  setPagination: StateSetter<PaginationState>;
+  fetchSurveys: FetchSurveysHandler;
+}
+
+export const handleCreateSurvey = async ({
+  formData,
+  pagination,
+  setSubmitting,
+  setError,
+  setSurveys,
+  setAllSurveys,
+  setIsModalOpen,
+  setPagination,
+  fetchSurveys,
+}: HandleCreateSurveyParams) => {
+  setSubmitting(true);
+  setError(null);
+  try {
+    const newSurvey = await createSurveyApi(formData);
+    const surveyRecord = newSurvey as SurveySummary;
+    setSurveys((prev) => [surveyRecord, ...prev]);
+    setAllSurveys((prev) => [surveyRecord, ...prev]);
+    setIsModalOpen(false);
+    setPagination((prev) => ({
+      ...prev,
+      total: prev.total + 1,
+      totalPages: Math.ceil((prev.total + 1) / prev.limit),
+    }));
+    await fetchSurveys(1, pagination.limit);
+  } catch (error: unknown) {
+    setError(
+      error instanceof Error ? error.message : "Failed to create survey"
+    );
+  } finally {
+    setSubmitting(false);
+  }
+};
+
+export interface HandleDeleteSurveyParams extends BaseHandlerParams {
+  surveyId: string;
+  setDeleting: StateSetter<string | null>;
+  surveys: SurveySummary[];
+  pagination: PaginationState;
+  fetchSurveys: FetchSurveysHandler;
+  setAllSurveys: StateSetter<SurveySummary[]>;
+}
+
+export const handleDeleteSurvey = async ({
+  surveyId,
+  setDeleting,
+  setError,
+  surveys,
+  pagination,
+  fetchSurveys,
+  setAllSurveys,
+}: HandleDeleteSurveyParams): Promise<boolean> => {
+  setDeleting(surveyId);
+  setError(null);
+  let wasSuccessful = false;
+  try {
+    await deleteSurveyApi(surveyId);
+    const remainingOnCurrentPage = surveys.length - 1;
+    if (remainingOnCurrentPage === 0 && pagination.page > 1) {
+      await fetchSurveys(pagination.page - 1, pagination.limit);
+    } else {
+      await fetchSurveys(pagination.page, pagination.limit);
+    }
+    setAllSurveys((prev) => prev.filter((survey) => survey.id !== surveyId));
+    wasSuccessful = true;
+  } catch (error: unknown) {
+    setError(
+      error instanceof Error ? error.message : "Failed to delete survey"
+    );
+  } finally {
+    setDeleting(null);
+  }
+  return wasSuccessful;
+};
+
+export interface HandleExportSurveyParams extends BaseHandlerParams {
+  surveyId: string;
+  setExporting: StateSetter<string | null>;
+}
+
+export const handleExportSurvey = async ({
+  surveyId,
+  setExporting,
+  setError,
+}: HandleExportSurveyParams) => {
+  setExporting(surveyId);
+  setError(null);
+  try {
+    await exportSurveyToFile(surveyId);
+  } catch (error: unknown) {
+    setError(
+      error instanceof Error ? error.message : "Failed to export survey"
+    );
+  } finally {
+    setExporting(null);
+  }
+};
+
+export interface HandleImportSurveyParams extends BaseHandlerParams {
+  file: File;
+  setSurveys: StateSetter<SurveySummary[]>;
+  setAllSurveys: StateSetter<SurveySummary[]>;
+  setPagination: StateSetter<PaginationState>;
+  pagination: PaginationState;
+  fetchSurveys: FetchSurveysHandler;
+}
+
+export const handleImportSurvey = async ({
+  file,
+  setError,
+  setSurveys,
+  setAllSurveys,
+  setPagination,
+  pagination,
+  fetchSurveys,
+}: HandleImportSurveyParams): Promise<boolean> => {
+  setError(null);
+  try {
+    const surveyData = await importSurveyFromFile(file);
+    const uploadedSurvey = (await uploadImportedSurvey(surveyData)) as
+      | SurveySummary
+      | undefined;
+
+    if (uploadedSurvey) {
+      setSurveys((prev) => [uploadedSurvey, ...prev]);
+      setAllSurveys((prev) => [uploadedSurvey, ...prev]);
+      setPagination((prev) => ({
+        ...prev,
+        total: prev.total + 1,
+        totalPages: Math.ceil((prev.total + 1) / prev.limit),
+      }));
+    }
+
+    await fetchSurveys(1, pagination.limit);
+
+    return true;
+  } catch (error: unknown) {
+    setError(
+      error instanceof Error ? error.message : "Failed to import survey"
+    );
+    return false;
+  } finally {
+    // no-op
+  }
 };
 
 // ---- Drag & Drop ----

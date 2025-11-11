@@ -18,6 +18,7 @@ import {
 import { useSurvey } from "../../hooks/useSurvey";
 import SurveyBuilderContent from "./SurveyBuilderContent";
 import { deleteSurveyApi } from "../../api-paths/surveysApi";
+import { showErrorToast, showSuccessToast } from "../../utils/toast";
 export interface Question {
   id: string;
   type: string;
@@ -120,10 +121,13 @@ export default function SurveyBuilder() {
         : { ...savedSurvey, id: survey.id };
       setSurvey(updatedSurvey);
 
-      if (isNew)
+      if (isNew) {
         navigate(`/dashboard/surveys/${savedSurvey.id}/edit`, {
           replace: true,
         });
+      }
+
+      showSuccessToast("Survey saved successfully.");
       
       return updatedSurvey;
     } catch (err) {
@@ -263,22 +267,24 @@ export default function SurveyBuilder() {
     setSurvey({ ...survey, pages: updatedPages });
   };
 
-  const handleDeleteSurvey = async () => {
-    if (!survey) return;
+  const handleDeleteSurvey = async (): Promise<boolean> => {
+    if (!survey) return false;
 
     if (!survey.id || survey.id === "new") {
       navigate("/dashboard/surveys");
-      return;
+      return true;
     }
 
     try {
       await deleteSurveyApi(survey.id);
       navigate("/dashboard/surveys");
+      return true;
     } catch (err) {
       console.error("Delete survey error:", err);
       setError(
         `Error deleting survey: ${err instanceof Error ? err.message : "Unknown error"}`
       );
+      return false;
     }
   };
 
@@ -326,11 +332,11 @@ export default function SurveyBuilder() {
     navigator.clipboard
       .writeText(link)
       .then(() => {
-        alert("Survey link copied to clipboard!");
+        showSuccessToast("Survey link copied to clipboard!");
       })
       .catch((err) => {
         console.error("Failed to copy link:", err);
-        alert("Failed to copy link. Please try again.");
+        showErrorToast("Failed to copy link. Please try again.");
       });
   };
 

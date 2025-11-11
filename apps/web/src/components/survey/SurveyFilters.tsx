@@ -5,10 +5,6 @@ import Card from "../ui/Card";
 interface SurveyFiltersProps {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
-  sortBy: string;
-  setSortBy: (value: string) => void;
-  sortOrder: "asc" | "desc";
-  setSortOrder: (value: "asc" | "desc") => void;
   filterBy: string;
   setFilterBy: (value: string) => void;
   dateFrom: string;
@@ -23,10 +19,6 @@ interface SurveyFiltersProps {
 const SurveyFilters: React.FC<SurveyFiltersProps> = ({
   searchQuery,
   setSearchQuery,
-  sortBy,
-  setSortBy,
-  sortOrder,
-  setSortOrder,
   filterBy,
   setFilterBy,
   dateFrom,
@@ -67,31 +59,6 @@ const SurveyFilters: React.FC<SurveyFiltersProps> = ({
 
         {/* Filters Row */}
         <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-          {/* Sort By */}
-          <div className="flex-1 min-w-[150px]">
-            <div className="flex gap-1.5">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-              >
-                <option value="createdAt">Created Date</option>
-                <option value="title">Title</option>
-                <option value="status">Status</option>
-                <option value="closeDate">Close Date</option>
-              </select>
-              <button
-                onClick={() => {
-                  setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                }}
-                className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 bg-white text-gray-700"
-                title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"}`}
-              >
-                {sortOrder === "asc" ? "↑" : "↓"}
-              </button>
-            </div>
-          </div>
-
           {/* First Dropdown: Filter Type */}
           <div className="flex-1 min-w-[150px]">
             <select
