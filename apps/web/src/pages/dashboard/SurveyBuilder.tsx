@@ -126,9 +126,6 @@ export default function SurveyBuilder() {
           replace: true,
         });
       }
-
-      showSuccessToast("Survey saved successfully.");
-      
       return updatedSurvey;
     } catch (err) {
       console.error("Save survey error:", err);

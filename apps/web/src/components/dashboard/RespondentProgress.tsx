@@ -291,7 +291,7 @@ export default function RespondentProgress({ surveyId }: Props) {
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 min-h-[400px] max-h-[400px] overflow-y-auto">
           {/* Tab Content */}
           {activeTab === 'progress' && (
             <>

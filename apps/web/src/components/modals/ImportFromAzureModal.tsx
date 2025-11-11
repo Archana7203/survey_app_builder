@@ -6,43 +6,29 @@ import Button from '../ui/Button';
 interface ImportFromAzureModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onImportSuccess?: (message: string) => void;
+  onImportError?: (message: string) => void;
 }
 
 const ImportFromAzureModal: React.FC<ImportFromAzureModalProps> = ({
   isOpen,
   onClose,
+  onImportSuccess,
+  onImportError,
 }) => {
   const { azureUsers, azureUsersLoading, fetchAzureUsers, importAzureRespondents } = useRespondents();
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       fetchAzureUsers({ page: 1, limit: 100 });
       setSelectedIds(new Set());
-      setSuccessMessage(null);
-      setErrorMessage(null);
       setSearchQuery('');
     }
   }, [isOpen, fetchAzureUsers]);
-
-  useEffect(() => {
-    if (errorMessage) {
-      alert(errorMessage);
-      setErrorMessage(null);
-    }
-  }, [errorMessage]);
-
-  useEffect(() => {
-    if (successMessage) {
-      alert(successMessage);
-      setSuccessMessage(null);
-    }
-  }, [successMessage]);
 
   const filteredUsers = azureUsers.filter(user => {
     if (!searchQuery) return true;
@@ -74,30 +60,27 @@ const ImportFromAzureModal: React.FC<ImportFromAzureModalProps> = ({
 
   const handleSubmit = async () => {
     if (selectedIds.size === 0) {
-      setErrorMessage('Please select at least one user to import');
+      onImportError?.('Please select at least one user to import');
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       const selectedUsers = azureUsers.filter(u => selectedIds.has(u.azureId));
       const result = await importAzureRespondents(selectedUsers);
-      
-      setSuccessMessage(
-        `Successfully imported ${result.upsertedCount} profile(s). ${result.modifiedCount} existing profile(s) updated.`
-      );
-      
+
+      const successNotice = `Successfully imported ${result.upsertedCount} profile(s). ${result.modifiedCount} existing profile(s) updated.`;
+      onImportSuccess?.(successNotice);
+
       // Auto-close after 2 seconds on success
       setTimeout(() => {
         onClose();
       }, 2000);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Failed to import profiles. Please try again.'
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to import profiles. Please try again.';
+      onImportError?.(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

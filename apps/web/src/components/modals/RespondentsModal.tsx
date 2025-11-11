@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Button from '../ui/Button';
 import { fetchRespondentsApi, updateSurveyRespondentsApi, sendSurveyInvitations } from '../../api-paths/surveysApi';
 import { useRespondents } from '../../contexts/RespondentContext';
@@ -30,6 +30,8 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
   const [isRespondentDropdownOpen, setIsRespondentDropdownOpen] = useState(false);
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
+  const respondentDropdownRef = useRef<HTMLDivElement | null>(null);
+  const groupDropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -66,6 +68,30 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       setSuccess(null);
     }
   }, [success]);
+
+  useEffect(() => {
+    if (!isRespondentDropdownOpen) {
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      respondentDropdownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isRespondentDropdownOpen]);
+
+  useEffect(() => {
+    if (!isGroupDropdownOpen) {
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      groupDropdownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isGroupDropdownOpen]);
 
   const loadSurveyRespondents = async () => {
     setLoading(true);
@@ -185,10 +211,10 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
       // If survey is live, send invitations automatically
       if (surveyStatus === 'live') {
         try {
-          const sendResult = await sendSurveyInvitations(surveyId);
-          setSuccess(`Respondents updated and ${sendResult.message || 'invitations sent to all recipients'}`);
+          await sendSurveyInvitations(surveyId);
+          setSuccess('Respondents updated and invitations sent to all recipients');
         } catch (sendError) {
-          setSuccess('Respondents updated, but failed to send some invitations');
+          setError('Respondents updated, but failed to send some invitations');
         }
       } else {
         setSuccess('Respondents and groups updated successfully.');
@@ -276,7 +302,7 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Manage Recipients
+              Manage Respondents
             </h2>
             <button
               onClick={handleClose}
@@ -325,7 +351,10 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
                           className="fixed inset-0 z-10" 
                           onClick={() => setIsRespondentDropdownOpen(false)}
                         />
-                        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <div
+                          ref={respondentDropdownRef}
+                          className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                        >
                           {filteredRespondents.map((respondent) => (
                             <button
                               key={respondent._id}
@@ -412,7 +441,10 @@ const RespondentsModal: React.FC<RespondentsModalProps> = ({ isOpen, onClose, su
                           className="fixed inset-0 z-10" 
                           onClick={() => setIsGroupDropdownOpen(false)}
                         />
-                        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <div
+                          ref={groupDropdownRef}
+                          className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                        >
                           {filteredGroups.map((group) => (
                             <button
                               key={group._id}

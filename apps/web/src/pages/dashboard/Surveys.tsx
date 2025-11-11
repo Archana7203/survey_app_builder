@@ -20,6 +20,7 @@ import {
 import { loadConfig, getSurveyPaginationConfig } from "../../utils/config";
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
 import ImportSurveyModal from "../../components/modals/ImportSurveyModal";
+import { showErrorToast, showSuccessToast } from "../../utils/toast";
 
 type Survey = SurveySummary;
 
@@ -291,8 +292,10 @@ const Surveys: React.FC = () => {
     setError(null);
     try {
       await duplicateSurvey(surveyId);
+      showSuccessToast("Survey duplicated successfully.");
       fetchSurveys(1, pagination.limit);
     } catch (error) {
+      showErrorToast("Failed to duplicate survey. Please try again.");
       setError(
         error instanceof Error ? error.message : "Failed to duplicate survey"
       );
@@ -635,7 +638,7 @@ const Surveys: React.FC = () => {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px] sm:min-w-[350px]">
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[260px] max-w-[260px] sm:min-w-[320px] sm:max-w-[320px]">
                       <button
                         type="button"
                         onClick={() => handleSortChange("title")}
@@ -708,12 +711,12 @@ const Surveys: React.FC = () => {
                       }}
                     >
                       <td className="px-3 sm:px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="max-w-[260px] sm:max-w-[320px]">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {survey.title}
                           </div>
                           {survey.description && (
-                            <div className="text-xs sm:text-sm text-gray-500 dark:text-white truncate max-w-[200px] sm:max-w-xs">
+                            <div className="text-xs sm:text-sm text-gray-500 dark:text-white truncate">
                               {survey.description}
                             </div>
                           )}

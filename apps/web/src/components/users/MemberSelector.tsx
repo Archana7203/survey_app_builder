@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Respondent } from '../../api-paths/respondentsApi';
 
 interface MemberSelectorProps {
@@ -16,6 +16,7 @@ const MemberSelector: React.FC<MemberSelectorProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Filter available respondents (exclude already selected)
   const filteredRespondents = useMemo(() => {
@@ -64,6 +65,22 @@ const MemberSelector: React.FC<MemberSelectorProps> = ({
     onMembersChange(newSelectedIds);
   };
 
+  useEffect(() => {
+    if (!isDropdownOpen) {
+      return;
+    }
+
+    const scrollToDropdown = () => {
+      if (!dropdownRef.current) {
+        return;
+      }
+      dropdownRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    const animationFrame = window.requestAnimationFrame(scrollToDropdown);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isDropdownOpen]);
+
 
   return (
     <div className="space-y-4">
@@ -89,7 +106,10 @@ const MemberSelector: React.FC<MemberSelectorProps> = ({
               
               {/* Dropdown */}
               {isDropdownOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div
+                  ref={dropdownRef}
+                  className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                >
                   {filteredRespondents.length > 0 ? (
                     filteredRespondents.map((respondent) => (
                       <button

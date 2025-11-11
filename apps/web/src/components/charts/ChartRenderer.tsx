@@ -89,13 +89,36 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
 
   const chartData = getChartData();
 
+  const getAxisLabels = () => {
+    switch (data.type) {
+      case 'numeric':
+        return { x: 'Value', y: 'Responses' };
+      case 'choice':
+        return { x: 'Options', y: 'Responses' };
+      case 'matrix':
+      case 'grid':
+        return { x: 'Categories', y: 'Responses' };
+      default:
+        return { x: 'Categories', y: 'Responses' };
+    }
+  };
+
+  const axisLabels = getAxisLabels();
+
   // Render appropriate chart based on type
   switch (chartType) {
     case 'Bar':
       if (data.type === 'text' || data.type === 'matrix' || data.type === 'grid') {
         return <div className="text-gray-500 dark:text-gray-400">Bar chart not available for this data type</div>;
       }
-      return <BarChart data={chartData as Array<{ name: string; value: number }>} title={title} />;
+      return (
+        <BarChart
+          data={chartData as Array<{ name: string; value: number }>}
+          title={title}
+          xAxisLabel={axisLabels.x}
+          yAxisLabel={axisLabels.y}
+        />
+      );
     
     case 'Pie':
     case 'Doughnut':
@@ -109,7 +132,14 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({
       if (data.type === 'text' || data.type === 'matrix' || data.type === 'grid') {
         return <div className="text-gray-500 dark:text-gray-400">Line chart not available for this data type</div>;
       }
-      return <LineChart data={chartData as Array<{ name: string; value: number }>} title={title} />;
+      return (
+        <LineChart
+          data={chartData as Array<{ name: string; value: number }>}
+          title={title}
+          xAxisLabel={axisLabels.x}
+          yAxisLabel={axisLabels.y}
+        />
+      );
     
     case 'WordCloud':
       if (data.type !== 'text') {

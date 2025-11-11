@@ -144,6 +144,28 @@ interface SurveyBuilderContentProps {
   copyLink: () => void;
 }
 
+const getStatusBadge = (status: string) => {
+  const colors = {
+    draft: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+    published: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    closed: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    live: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    archived: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  } as const;
+
+  const statusKey = (status || "draft") as keyof typeof colors;
+  const badgeClasses = colors[statusKey] ?? colors.draft;
+  const label = status
+    ? status.charAt(0).toUpperCase() + status.slice(1)
+    : "Draft";
+
+  return (
+    <span className={`px-2 py-1 text-xs font-medium rounded-full ${badgeClasses}`}>
+      {label}
+    </span>
+  );
+};
+
 export default function SurveyBuilderContent({
   survey,
   setSurvey,
@@ -339,7 +361,7 @@ export default function SurveyBuilderContent({
 
       const successMessage = getStatusSuccessMessage(result.survey.status);
       if (successMessage) {
-        console.log(successMessage);
+        showSuccessToast(successMessage);
       }
     } catch (err: any) {
       console.error("Status change error:", err);
@@ -482,18 +504,24 @@ export default function SurveyBuilderContent({
         {/* Title & Description */}
         {surveyStatus === "draft" ? (
           <>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Survey Builder
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Survey Builder
+              </h1>
+              {getStatusBadge(surveyStatus)}
+            </div>
             <p className="text-gray-600 dark:text-gray-400">
               Build and customize your survey
             </p>
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {survey.title || "Untitled Survey"}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {survey.title || "Untitled Survey"}
+              </h1>
+              {getStatusBadge(surveyStatus)}
+            </div>
             <p className="text-gray-600 dark:text-gray-400">
               {survey.description || "No description provided"}
             </p>
@@ -572,7 +600,9 @@ export default function SurveyBuilderContent({
             >
               <Users />
             </Button>
-            <Button variant="outline" onClick={saveSurvey} disabled={saving}>
+            <Button 
+              variant="outline" onClick={() => {saveSurvey(); showSuccessToast("Survey saved successfully.");
+}} disabled={saving}>
               {saving ? "Saving..." : "Save"}
             </Button>
             <Button variant="danger" onClick={() => openConfirmation("delete")}>

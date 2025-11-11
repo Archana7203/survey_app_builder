@@ -11,6 +11,7 @@ import CreateGroupModal from '../../components/modals/CreateGroupModal';
 import EditGroupModal from '../../components/modals/EditGroupModal';
 import ImportFromAzureModal from '../../components/modals/ImportFromAzureModal';
 import ConfirmationModal from '../../components/modals/ConfirmationModal';
+import { showErrorToast, showSuccessToast } from '../../utils/toast';
 
 const Users: React.FC = () => {
   const {
@@ -84,6 +85,14 @@ const Users: React.FC = () => {
     setIsCreateModalOpen(true);
   };
 
+  const showSuccessMessage = (message: string) => {
+    showSuccessToast(message);
+  };
+
+  const showErrorMessage = (message: string) => {
+    showErrorToast(message);
+  };
+
   const handleCreateProfileSubmit = async (data: {
     name: string;
     mail: string;
@@ -100,9 +109,11 @@ const Users: React.FC = () => {
         userPrincipalName: data.mail,
         accountEnabled: true,
       });
+      showSuccessMessage('Profile created successfully.');
       setIsCreateModalOpen(false);
     } catch (error) {
       console.error('Failed to create profile:', error);
+      showErrorMessage('Failed to create profile. Please try again.');
       throw error;
     }
   };
@@ -133,10 +144,12 @@ const Users: React.FC = () => {
 
     try {
       await deleteRespondent(profileToDelete);
+      showSuccessMessage('Profile deleted successfully.');
       setIsDeleteModalOpen(false);
       setProfileToDelete(null);
     } catch (error) {
       console.error('Failed to delete profile:', error);
+      showErrorMessage('Failed to delete profile. Please try again.');
     }
   };
 
@@ -156,9 +169,11 @@ const Users: React.FC = () => {
   }) => {
     try {
       await createGroup(data);
+      showSuccessMessage('Group created successfully.');
       setIsCreateGroupModalOpen(false);
     } catch (error) {
       console.error('Failed to create group:', error);
+      showErrorMessage('Failed to create group. Please try again.');
       throw error;
     }
   };
@@ -189,10 +204,12 @@ const Users: React.FC = () => {
 
     try {
       await deleteGroup(groupToDelete);
+      showSuccessMessage('Group deleted successfully.');
       setIsDeleteGroupModalOpen(false);
       setGroupToDelete(null);
     } catch (error) {
       console.error('Failed to delete group:', error);
+      showErrorMessage('Failed to delete group. Please try again.');
     }
   };
 
@@ -203,8 +220,10 @@ const Users: React.FC = () => {
       
       const newName = `${group.name} (Copy)`;
       await duplicateGroup(groupId, newName);
+      showSuccessMessage('Group duplicated successfully.');
     } catch (error) {
       console.error('Failed to duplicate group:', error);
+      showErrorMessage('Failed to duplicate group. Please try again.');
     }
   };
 
@@ -423,6 +442,8 @@ const Users: React.FC = () => {
       <ImportFromAzureModal
         isOpen={isImportAzureModalOpen}
         onClose={() => setIsImportAzureModalOpen(false)}
+        onImportSuccess={showSuccessMessage}
+        onImportError={showErrorMessage}
       />
 
       {/* Group Modals */}
