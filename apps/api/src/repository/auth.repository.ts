@@ -13,5 +13,9 @@ export class AuthRepository {
     const user = new User(userData);
     return user.save();
   }
+
+  async save(user: IUser): Promise<IUser> {
+    return user.save();
+  }
 }
 

@@ -11,6 +11,7 @@ export interface ITemplate extends Document {
     questions: Array<any>;
     branching?: Array<any>;
   }>;
+  createdBy?: Schema.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +52,11 @@ const TemplateSchema: Schema = new Schema({
       type: Schema.Types.Mixed,
     }],
   }],
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
 }, {
   timestamps: true,
 });

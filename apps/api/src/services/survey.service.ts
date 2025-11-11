@@ -82,7 +82,6 @@ export class SurveyService {
     for (const s of surveysWithResponses) {
       try {
         await this.ensureJustInTimeTransitions(s, userId, s._id?.toString?.() ?? '');
-        console.log(s.status);
       } catch {}
     }
     

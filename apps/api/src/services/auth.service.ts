@@ -1,4 +1,5 @@
 import { AuthRepository } from '../repository/auth.repository';
+import { IUser } from '../models/User';
 import {
   hashPassword,
   comparePassword,
@@ -79,6 +80,72 @@ export class AuthService {
     }
     log.debug('Current user retrieved', 'getCurrentUser', { userId });
     return user;
+  }
+
+  async findOrCreateSsoUser(profile: {
+    email: string;
+    name?: string;
+    oid?: string;
+    role?: 'creator' | 'respondent';
+  }): Promise<IUser> {
+    const normalizedEmail = profile.email.toLowerCase();
+    let user = await this.repo.findByEmail(normalizedEmail);
+
+    if (!user) {
+      user = await this.repo.create({
+        email: normalizedEmail,
+        name: profile.name,
+        oid: profile.oid,
+        role: profile.role ?? 'creator',
+        ssoAuth: true,
+      });
+      log.info('Created new user from Microsoft SSO', 'SSO_USER_CREATE', {
+        email: normalizedEmail,
+        oid: profile.oid,
+        role: profile.role ?? 'creator',
+      });
+      return user;
+    }
+
+    let needsSave = false;
+
+    if (profile.name && user.name !== profile.name) {
+      user.name = profile.name;
+      needsSave = true;
+    }
+
+    if (profile.oid && user.oid !== profile.oid) {
+      user.oid = profile.oid;
+      needsSave = true;
+    }
+
+    if (!user.ssoAuth) {
+      user.ssoAuth = true;
+      needsSave = true;
+    }
+
+    if (!user.role) {
+      user.role = profile.role ?? 'creator';
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      user = await this.repo.save(user);
+      log.info('Updated existing user with Microsoft SSO data', 'SSO_USER_UPDATE', {
+        userId: (user._id as any).toString(),
+        email: user.email,
+      });
+    }
+
+    return user;
+  }
+
+  async issueTokensForUser(user: IUser) {
+    const userId = (user._id as any).toString();
+    const accessToken = generateAccessToken(userId);
+    const refreshToken = generateRefreshToken(userId);
+
+    return { user, accessToken, refreshToken };
   }
 }
 

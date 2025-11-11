@@ -38,24 +38,50 @@ export const requireAuth = async (
     // Check for SSO session first
     if (req.session?.user) {
       // For SSO users, find or create a User record in database
-      let user = await User.findOne({ email: req.session.user.email }).select('-passwordHash');
-      
+      const sessionUser = req.session.user;
+      let user = await User.findOne({ email: sessionUser.email }).select('-passwordHash');
+
       if (!user) {
         // Create a new user record for SSO authentication
         user = new User({
-          email: req.session.user.email,
-          name: req.session.user.name,
+          email: sessionUser.email,
+          name: sessionUser.name,
           role: 'creator', // Default role for SSO users (they can create surveys)
-          oid: req.session.user.oid, // Store Azure AD OID
+          oid: sessionUser.oid, // Store Azure AD OID
           ssoAuth: true
         });
         await user.save();
-        log.info('Created new user from SSO', 'SSO_USER_CREATE', { 
+        log.info('Created new user from SSO', 'SSO_USER_CREATE', {
           userId: (user._id as any).toString(),
-          email: user.email 
+          email: user.email
         });
+      } else {
+        let shouldPersist = false;
+
+        if (!user.ssoAuth) {
+          user.ssoAuth = true;
+          shouldPersist = true;
+        }
+
+        if (sessionUser.name && user.name !== sessionUser.name) {
+          user.name = sessionUser.name;
+          shouldPersist = true;
+        }
+
+        if (sessionUser.oid && user.oid !== sessionUser.oid) {
+          user.oid = sessionUser.oid;
+          shouldPersist = true;
+        }
+
+        if (shouldPersist) {
+          await user.save();
+          log.info('Updated SSO user profile from session', 'SSO_USER_UPDATE', {
+            userId: (user._id as any).toString(),
+            email: user.email
+          });
+        }
       }
-      
+
       req.user = user;
       return next();
     }
@@ -80,10 +106,14 @@ export const requireAuth = async (
       return;
     }
 
+    if (!user.ssoAuth) {
+      user.ssoAuth = false;
+    }
+
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({error});
+    res.status(401).json({ error: error instanceof Error ? error.message : 'Unauthorized' });
   }
 };
 

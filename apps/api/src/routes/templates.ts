@@ -8,14 +8,17 @@ const router = express.Router();
 const service = new TemplateService();
 
 // GET /api/templates - List all available templates
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    log.info('Fetching templates list', 'GET_TEMPLATES');
-    
-    const templates = await service.listTemplates();
-    
+    log.info('Fetching templates list', 'GET_TEMPLATES', {
+      userId: req.user._id.toString(),
+    });
+
+    const templates = await service.listTemplates(req.user._id.toString());
+
     log.info('Templates fetched successfully', 'GET_TEMPLATES', { 
-      count: templates.length 
+      count: templates.length,
+      userId: req.user._id.toString(),
     });
     
     res.json(templates);
@@ -29,13 +32,14 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/templates/:id - Get single template details
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const templateId = req.params.id;
+    const userId = req.user._id.toString();
     
-    log.info('Fetching template details', 'GET_TEMPLATE', { templateId });
+    log.info('Fetching template details', 'GET_TEMPLATE', { templateId, userId });
     
-    const template = await service.getTemplate(templateId);
+    const template = await service.getTemplate(templateId, userId);
 
     res.json(template);
   } catch (error) {
@@ -89,6 +93,80 @@ router.post('/:id/instantiate', requireAuth, async (req: AuthRequest, res) => {
       stack: error instanceof Error ? error.stack : undefined
     });
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/templates/import - Import a template for the current user
+router.post('/import', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user._id.toString();
+
+    log.info('Importing template', 'IMPORT_TEMPLATE', { userId });
+
+    const template = await service.importTemplate(userId, req.body);
+
+    res.status(201).json(template);
+  } catch (error) {
+    log.error('Failed to import template', 'IMPORT_TEMPLATE', {
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    const message =
+      error instanceof Error ? error.message : 'Failed to import template';
+    res.status(400).json({ error: message });
+  }
+});
+
+// PATCH /api/templates/:id - Update template metadata (owner only)
+router.patch('/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id.toString();
+    const { category, estimatedTime } = req.body ?? {};
+
+    log.info('Updating template', 'PATCH_TEMPLATE', { templateId: id, userId });
+
+    const updated = await service.updateTemplate(userId, id, {
+      category,
+      estimatedTime,
+    });
+
+    res.json(updated);
+  } catch (error) {
+    log.error('Failed to update template', 'PATCH_TEMPLATE', {
+      templateId: req.params.id,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    const message =
+      error instanceof Error ? error.message : 'Failed to update template';
+    res.status(400).json({ error: message });
+  }
+});
+
+// DELETE /api/templates/:id - Delete user-owned template
+router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id.toString();
+
+    log.info('Deleting template', 'DELETE_TEMPLATE', { templateId: id, userId });
+
+    await service.deleteTemplate(userId, id);
+
+    res.status(204).send();
+  } catch (error) {
+    log.error('Failed to delete template', 'DELETE_TEMPLATE', {
+      templateId: req.params.id,
+      userId: req.user?._id.toString(),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    const message =
+      error instanceof Error ? error.message : 'Failed to delete template';
+    res.status(400).json({ error: message });
   }
 });
 
