@@ -255,62 +255,10 @@ export default function SurveyPreview() {
               
                 
                 :root { 
-                  --color-primary: ${(() => {
-                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
-                      default: { primary: '#2563eb', secondary: '#dbeafe', accent: '#3b82f6' },
-                      emerald: { primary: '#059669', secondary: '#d1fae5', accent: '#10b981' },
-                      purple: { primary: '#7c3aed', secondary: '#ede9fe', accent: '#8b5cf6' },
-                      rose: { primary: '#e11d48', secondary: '#ffe4e6', accent: '#f43f5e' },
-                      amber: { primary: '#d97706', secondary: '#fef3c7', accent: '#f59e0b' },
-                      indigo: { primary: '#4f46e5', secondary: '#e0e7ff', accent: '#6366f1' },
-                      teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
-                      slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
-                    };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-                    return theme.primary;
-                  })()}; 
-                  --color-secondary: ${(() => {
-                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
-                      default: { primary: '#2563eb', secondary: '#dbeafe', accent: '#3b82f6' },
-                      emerald: { primary: '#059669', secondary: '#d1fae5', accent: '#10b981' },
-                      purple: { primary: '#7c3aed', secondary: '#ede9fe', accent: '#8b5cf6' },
-                      rose: { primary: '#e11d48', secondary: '#ffe4e6', accent: '#f43f5e' },
-                      amber: { primary: '#d97706', secondary: '#fef3c7', accent: '#f59e0b' },
-                      indigo: { primary: '#4f46e5', secondary: '#e0e7ff', accent: '#6366f1' },
-                      teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
-                      slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
-                    };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-                    return theme.secondary;
-                  })()}; 
-                  --color-accent: ${(() => {
-                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
-                      default: { primary: '#2563eb', secondary: '#dbeafe', accent: '#3b82f6' },
-                      emerald: { primary: '#059669', secondary: '#d1fae5', accent: '#10b981' },
-                      purple: { primary: '#7c3aed', secondary: '#ede9fe', accent: '#8b5cf6' },
-                      rose: { primary: '#e11d48', secondary: '#ffe4e6', accent: '#f43f5e' },
-                      amber: { primary: '#d97706', secondary: '#fef3c7', accent: '#f59e0b' },
-                      indigo: { primary: '#4f46e5', secondary: '#e0e7ff', accent: '#6366f1' },
-                      teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
-                      slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
-                    };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-                    return theme.accent;
-                  })()}; 
-                  --color-accent-hover: ${(() => {
-                    const palette: Record<string, { primary: string; secondary: string; accent: string }> = {
-                      default: { primary: '#1d4ed8', secondary: '#bfdbfe', accent: '#2563eb' },
-                      emerald: { primary: '#047857', secondary: '#a7f3d0', accent: '#059669' },
-                      purple: { primary: '#6d28d9', secondary: '#ddd6fe', accent: '#7c3aed' },
-                      rose: { primary: '#be185d', secondary: '#fecdd3', accent: '#e11d48' },
-                      amber: { primary: '#b45309', secondary: '#fde68a', accent: '#d97706' },
-                      indigo: { primary: '#4338ca', secondary: '#c7d2fe', accent: '#4f46e5' },
-                      teal: { primary: '#0f766e', secondary: '#99f6e4', accent: '#0d9488' },
-                      slate: { primary: '#334155', secondary: '#cbd5e1', accent: '#475569' },
-                    };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
-                    return theme.primary; // Use primary for hover (darker shade)
-                  })()}; 
+                  --color-primary: #2563eb;
+                  --color-secondary: #dbeafe;
+                  --color-accent: #3b82f6;
+                  --color-accent-hover: #2563eb;
                   --color-on-primary: #ffffff; 
                 }
                 `}

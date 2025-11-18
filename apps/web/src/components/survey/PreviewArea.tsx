@@ -306,7 +306,7 @@ const goToPreviousPage = useCallback(() => {
                       teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
                       slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
                     };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    const theme = palette.default;
                     return theme.primary;
                   })()}; 
                   --color-secondary: ${(() => {
@@ -320,7 +320,7 @@ const goToPreviousPage = useCallback(() => {
                       teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
                       slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
                     };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    const theme = palette.default;
                     return theme.secondary;
                   })()}; 
                   --color-accent: ${(() => {
@@ -334,7 +334,7 @@ const goToPreviousPage = useCallback(() => {
                       teal: { primary: '#0d9488', secondary: '#ccfbf1', accent: '#14b8a6' },
                       slate: { primary: '#475569', secondary: '#e2e8f0', accent: '#64748b' },
                     };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    const theme = palette.default;
                     return theme.accent;
                   })()}; 
                   --color-accent-hover: ${(() => {
@@ -348,7 +348,7 @@ const goToPreviousPage = useCallback(() => {
                       teal: { primary: '#0f766e', secondary: '#99f6e4', accent: '#0d9488' },
                       slate: { primary: '#334155', secondary: '#cbd5e1', accent: '#475569' },
                     };
-                    const theme = palette[survey.theme as keyof typeof palette] || palette.default;
+                    const theme = palette.default;
                     return theme.primary; // Use primary for hover (darker shade)
                   })()}; 
                   --color-on-primary: #ffffff; 

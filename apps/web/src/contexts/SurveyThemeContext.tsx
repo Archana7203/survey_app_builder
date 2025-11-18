@@ -1,6 +1,31 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
-import { THEME_PRESETS } from '../components/ui/ThemePicker';
-import type { ThemePreset } from '../components/ui/ThemePicker';
+
+// Inline ThemePreset and presets — ThemePicker removed, single Ocean Blue theme retained
+export interface ThemePreset {
+  id: string;
+  name: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  surface: string;
+  text: string;
+  description: string;
+}
+
+export const THEME_PRESETS: ThemePreset[] = [
+  {
+    id: 'default',
+    name: 'Ocean Blue',
+    primary: '#2563eb',
+    secondary: '#dbeafe',
+    accent: '#3b82f6',
+    background: '#f9fafb',
+    surface: '#ffffff',
+    text: '#111827',
+    description: 'Clean and professional blue theme',
+  },
+];
 
 interface SurveyThemeContextType {
   currentTheme: ThemePreset;

@@ -2,7 +2,6 @@ import React from 'react';
 import Card from '../ui/Card';
 import Input from '../ui/Input';
 import Tabs from '../ui/Tabs';
-import ThemePicker from '../ui/ThemePicker';
 
 interface SurveyDetailsCardProps {
   survey: any;
@@ -19,7 +18,6 @@ const SurveyDetailsCard: React.FC<SurveyDetailsCardProps> = ({
 }) => {
   const tabs = [
     { id: 'general', label: 'General' },
-    { id: 'theme', label: 'Theme' },
   ];
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,9 +38,7 @@ const SurveyDetailsCard: React.FC<SurveyDetailsCardProps> = ({
     setSurvey({ ...survey, textColor: color });
   };
 
-  const handleThemeChange = (themeId: string) => {
-    setSurvey({ ...survey, theme: themeId });
-  };
+  // Theme removed: only background/text color are kept here
 
   return (
     <Card>
@@ -98,14 +94,7 @@ const SurveyDetailsCard: React.FC<SurveyDetailsCardProps> = ({
             </div>
         )}
           
-          {activeTab === 'theme' && (
-            <div className="space-y-4">
-              <ThemePicker
-                selectedTheme={survey.theme || 'default'}
-                onThemeChange={handleThemeChange}
-              />
-            </div>
-          )}
+          {/* Theme tab removed */}
         </div>
       </div>
     </Card>

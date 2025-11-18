@@ -1,5 +1,4 @@
 import Input from '../ui/Input';
-import ThemePicker from '../ui/ThemePicker';
 import Button from '../ui/Button';
 
 
@@ -254,16 +253,7 @@ function GlobalInspector({
         />
       </div>
 
-      {/* Theme */}
-      <div className="pt-2">
-        <label htmlFor="theme-picker" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Theme
-        </label>
-        <ThemePicker
-          selectedTheme={survey.theme || 'default'}
-          onThemeChange={(themeId) => onUpdate({ theme: themeId })}
-        />
-      </div>
+      {/* Theme selection removed — use background/text color controls */}
 
       {/* Colors */}
       <div className="pt-2 space-y-3">

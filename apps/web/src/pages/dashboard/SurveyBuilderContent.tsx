@@ -8,7 +8,6 @@ import ReorderableQuestions from "../../components/survey/ReorderableQuestions";
 import VisibilityRulesModal from "../../components/modals/VisibilityRulesModal";
 import AddQuestionModal from "../../components/modals/AddQuestionModal";
 import ComponentLibraryPanel from "../../components/survey/ComponentLibraryPanel";
-import { useSurveyTheme } from "../../contexts/SurveyThemeContext";
 import PreviewArea from "../../components/survey/PreviewArea";
 import QuestionSettingsPanel from "../../components/survey/QuestionSettingsPanel";
 import PageNavigation from "../../components/survey/PageNavigation";
@@ -205,7 +204,6 @@ export default function SurveyBuilderContent({
   copyLink,
   surveyId,
 }: Readonly<SurveyBuilderContentProps>) {
-  const { setSurveyTheme } = useSurveyTheme();
   const navigate = useNavigate();
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -372,11 +370,7 @@ export default function SurveyBuilderContent({
     }
   };
 
-  useEffect(() => {
-    if (survey?.theme) {
-      setSurveyTheme(survey.theme);
-    }
-  }, [survey?.theme, setSurveyTheme]);
+  // Theme is fixed to default (Ocean Blue); removed applying survey.theme
 
   // Show loading immediately until all content is loaded
   const isContentReady = survey && survey.pages && Array.isArray(survey.pages);
